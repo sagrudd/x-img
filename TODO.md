@@ -271,10 +271,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   `ConfigStore::replace` boundary persists a confirmed candidate), bulk-enable
   accounts, call X, or relax ADR 0002's live approval/rights gates.
 
-- [ ] **XIMG-042 P0 — Implement incremental X media discovery.**
-  Support photos, videos, GIFs, pagination, permitted timeline depth, and best
-  supported variant. Acceptance: fixture parity, budget enforcement, complete
-  provenance, and XIMG-023 idempotency pass.
+- [x] **XIMG-042 P0 — Implement incremental X media discovery.** Completed in
+  `ba2ed76`; synthetic page planning supports photos, videos, animated GIFs,
+  cursor pagination, explicit depth/page/item limits, and best supported
+  JPEG/PNG/WebP or MP4 variants. It records canonical X identity, source alias,
+  account/item/media IDs, checksum, discovery time, adapter/policy result and
+  converts a candidate to the XIMG-023 reconciliation request; duplicate page
+  entries settle once in the fixture test. It has no live X request, byte
+  transfer, or ADR 0002 policy-gate bypass.
 
 - [ ] **XIMG-043 P0 — Research and implement approved Instagram auth/API.**
   Freeze implementation to the capabilities permitted by XIMG-002. Acceptance:

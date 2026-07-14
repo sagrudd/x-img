@@ -261,6 +261,11 @@ Exit criteria:
   selected; the task-pane contract provides word-first added/existing/not-
   selected diff rows and requires confirmation before the existing atomic JSON
   save boundary. It provides no live X call, bulk import, or policy-gate bypass.
+- XIMG-042 implements fixture-driven incremental X discovery (commit `ba2ed76`):
+  cursor-chain, page/item/depth budgets; supported photo/video/animated-GIF
+  rendition selection; canonical source provenance; and reconciliation-request
+  idempotency are test-covered. It makes no X request or transfer while ADR
+  0002 remains open.
 - official, user-authorized Instagram connector supports the account/media
   types permitted by the approved API and records unsupported cases clearly;
 - `Refresh accounts` schedules all enabled connectors once, reports per-account
