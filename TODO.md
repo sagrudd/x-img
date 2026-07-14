@@ -178,11 +178,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 ## 0.3.0 — External authorities
 
-- [ ] **XIMG-030 P0 — Define and register the Monas product.**
-  Set mandatory authentication, single Web/API mount, object-store requirement,
-  product root, capability list, and future Synoptikon-equivalent bootstrap.
-  Acceptance: unauthenticated app/API access fails; direct x-img login routes do
-  not exist.
+- [x] **XIMG-030 P0 — Define and register the Monas product.** Completed in
+  `eada9e8`; the strict public bootstrap registration pins one Monas Web/API
+  mount, product root, host-owned Prosopikon authentication, DASObjectStore
+  requirement, capability list, and Synoptikon-equivalent bootstrap. Synthetic
+  fixtures reject anonymous access and a direct x-img login-route declaration;
+  live Axum host-context enforcement remains XIMG-031.
 
 - [ ] **XIMG-031 P0 — Implement authenticated host-context adapter.**
   Acceptance: Monas session identity and authorization are validated at the host

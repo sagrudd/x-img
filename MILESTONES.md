@@ -171,6 +171,12 @@ Exit criteria:
 
 - x-img is declared as a Monas product mount with mandatory authentication and
   object-store requirement;
+- XIMG-030 records the versioned Monas product bootstrap (commit `eada9e8`):
+  one ``/products/x-img/app/`` and ``/products/x-img/api/`` mount, host-owned
+  Prosopikon authentication, ``/opt/x-img`` product root, DASObjectStore
+  requirement, declared capabilities, and a Synoptikon-equivalent bootstrap.
+  Its synthetic fixtures reject anonymous access and direct x-img login-route
+  declarations; runtime host-context validation remains the XIMG-031 gate.
 - Axum routes consume Monas-authenticated context and reject direct/anonymous
   privileged access;
 - a scoped DASObjectStore application identity obtains short-lived capability
