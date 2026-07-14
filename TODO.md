@@ -49,12 +49,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   `b381921`; open Monas fixture and DAS HTTP-range contract risks remain
   explicitly recorded in `docs/compatibility-matrix.md`.
 
-- [ ] **XIMG-004 P0 — Write architecture decisions.**
+- [x] **XIMG-004 P0 — Write architecture decisions.**
   Create ADRs for authority boundaries, local metadata versus media bytes,
   idempotent acquisition, canonical source identity, review lifecycle, account
   refresh scheduling, extension pairing, and external-cache fail-open behavior.
   Acceptance: each ADR includes alternatives, failure modes, privacy impact,
-  compatibility impact, and acceptance tests.
+  compatibility impact, and acceptance tests. Completed in `49af3eb`; the
+  Sphinx entry point and pinned local container build the full ADR set with
+  warnings treated as errors.
 
 - [ ] **XIMG-005 P0 — Define versioned configuration.**
   Draft strict JSON schemas for one x-img instance, X accounts, Instagram

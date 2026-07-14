@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added the XIMG-004 architecture ADR set for authority boundaries,
+  metadata-only local state, canonical identity and idempotent settlement,
+  review lifecycle, bounded account refresh scheduling, Firefox pairing, and
+  external-cache fail-open behavior, with a pinned local Sphinx verification
+  container.
 - Added the XIMG-003 sibling compatibility matrix with pinned Monas,
   DASObjectStore, Mnemosyne design-language, and future Synoptikon revisions,
   fixture anchors, public-build independence rules, and explicit host/range

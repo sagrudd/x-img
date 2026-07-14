@@ -83,6 +83,9 @@ Exit criteria:
   decisions are explicit;
 - the durable object, local catalogue, account JSON, job, and review schemas are
   drafted with compatibility rules; and
+- architecture ADRs define authority boundaries, metadata-only local state,
+  canonical identity/idempotency, review admission, bounded refresh jobs,
+  extension pairing, and external-cache fail-open behavior; and
 - a Firefox spike plan identifies how redirects, range requests, HLS/DASH,
   CORS, CSP, signed URLs, and local HTTPS will be tested.
 - Firefox policy explicitly forbids automatic opening, hidden traversal, bulk
