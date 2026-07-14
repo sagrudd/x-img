@@ -204,6 +204,12 @@ Exit criteria:
   exact length and SHA-256, backend receipt identity, backpressure, and
   idempotent completion are fail-closed. A future DAS transport adapter owns
   credential exchange, durable authority commit, and cross-restart recovery.
+- XIMG-035 adds cross-repository contract CI (commit `3e20812`): the required
+  public-clone check validates x-img-owned fixture anchors and rejects sibling
+  path dependencies; an explicit pinned-sibling inspection verifies the exact
+  Monas, DASObjectStore, Synoptikon/Mnemosyne, and design-language revisions
+  and contract paths. It does not claim live authority integration before
+  credentialed transport adapters exist.
 - upload completion is reconciled idempotently after crash boundaries; and
 - a future Synoptikon host adapter can replace Monas without changing domain or
   connector logic.

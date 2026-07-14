@@ -213,9 +213,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   a future HTTP/browser adapter remains responsible for transport and fail-open
   origin behavior.
 
-- [ ] **XIMG-035 P1 — Add cross-repository contract CI.**
-  Test pinned fixtures without requiring sibling checkouts; optionally run live
-  integration when sibling repositories are available.
+- [x] **XIMG-035 P1 — Add cross-repository contract CI.** Completed in
+  `3e20812`; `scripts/contracts/check.sh` verifies x-img-owned versioned
+  fixtures and forbids unpublished sibling path dependencies in a clean public
+  clone. With `--require-siblings`, it verifies the four exact compatibility
+  revisions and required contract paths; the manually dispatched public-source
+  workflow performs the same inspection. This is deliberately source-contract
+  evidence, not a credentialed live-authority test before transport adapters
+  exist.
 
 - [ ] **XIMG-036 P0 — Define endpoint/device and ObjectStore contracts.**
   Depends on XIMG-003/008. Model endpoint/appliance identity separately from

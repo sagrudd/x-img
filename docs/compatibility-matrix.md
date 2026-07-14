@@ -59,8 +59,9 @@ they do not make sibling APIs available to a public build.
 3. DAS documentation defines the authority, scoped authentication, streaming,
    range, and verification obligations, but exact public upload/read route
    names and stable wire schemas remain implementation-sensitive at this pin.
-   XIMG-032 through XIMG-034 therefore remain blocked on versioned contract
-   fixtures and cross-repository tests.
+   XIMG-032 through XIMG-034 use x-img-owned versioned fixtures and are covered
+   by XIMG-035's pinned source-contract inspection. Live transport integration
+   remains gated until those public route contracts are versioned and testable.
 4. The future Synoptikon SDK expects integrated host context and object-store
    artefact authority, while x-img’s current catalogue and acquisition schemas
    do not yet exist. The adapter must be designed after XIMG-005/XIMG-006 and
