@@ -22,6 +22,14 @@ Configuration
 
    configuration
 
+Release and quality
+-------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   release-quality-policy
+
 The local documentation container is the reproducible verification authority:
 
 .. code-block:: console

@@ -259,6 +259,16 @@ Select checks proportionate to the change. The eventual baseline includes:
   checks; and
 - a clean public clone/build without sibling-only files.
 
+Run `scripts/quality/check.sh` on every planning or contract change. It checks
+local documentation targets, strict JSON/schema-major structure, fixture
+privacy, and current version mirrors. The GitHub Actions quality workflow is a
+convenience mirror only; it does not replace the local Sphinx container build.
+Once XIMG-020 creates the Rust workspace, `[workspace.package].version` becomes
+the sole editable product-version source and all crates, Sphinx metadata,
+extension/product metadata, CLI output, tags, and release artefacts must be
+derived from or checked against it. Until then, `MILESTONES.md` is the temporary
+planning-version authority.
+
 Work is done only when acceptance criteria pass, user-facing Sphinx docs are
 updated and locally container-verified, docs/backlog/changelog are aligned,
 the focused commit is pushed, and no run-owned lock or subagent remains.

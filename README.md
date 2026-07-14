@@ -48,6 +48,12 @@ Planning only. See [MILESTONES.md](MILESTONES.md) for release gates and
 [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
 
+The supported-toolchain, browser, Semantic Versioning, dependency, fixture,
+CI, documentation, and Definition of Done rules are maintained in the
+[release and quality policy](docs/release-quality-policy.rst). Run the
+dependency-free planning checks with `scripts/quality/check.sh`; the pinned
+local Sphinx container remains the documentation release authority.
+
 The v1.0.0 product and brand target is **Pinakotheke**. Until the coordinated
 release migration is complete, this public planning repository remains
 `sagrudd/x-img`; the target repository slug is `sagrudd/pinakotheke` and all
