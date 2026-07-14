@@ -117,10 +117,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 ## 0.2.0 — Rust core and contracts
 
-- [ ] **XIMG-020 P1 — Scaffold the Rust workspace.** Depends on XIMG-003/004/008.
-  Add shared model, core, CLI, API adapter, and Yew crates with workspace-linted
-  dependencies and MPL notices. Acceptance: native and wasm checks pass; CLI
-  reports `0.2.0`; no live source or storage code exists yet.
+- [x] **XIMG-020 P1 — Scaffold the Rust workspace.** Depends on XIMG-003/004/008.
+  Completed in `81e359c`; shared model, core, `clap` CLI, Axum composition, and
+  Yew crates inherit workspace lint/version/license metadata and carry MPL
+  notices. Native checks, WebAssembly client check, tests, clippy, the CLI
+  version (`0.2.0`), planning checks, and local Sphinx container verification
+  passed; no live source, storage, authentication, or media-payload code exists.
 
 - [ ] **XIMG-021 P1 — Implement strict account/site config.** Depends on XIMG-005.
   Parse, validate, atomically update, and list versioned JSON without secrets.

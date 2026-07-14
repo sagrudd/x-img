@@ -115,6 +115,12 @@ Goal: implement platform-neutral domain logic without live platform access.
 Exit criteria:
 
 - Rust workspace and `clap` CLI skeleton compile on supported targets;
+- XIMG-020 provides the pinned Rust 1.97.0 workspace scaffold (commit
+  `81e359c`): shared model/core, `clap` CLI, Axum composition boundary, and
+  Yew WebAssembly boundary. It passes native and WebAssembly compilation,
+  tests, clippy, CLI-version, planning, and local Sphinx-container checks;
+  no live source, storage, authentication, or media-payload integration is
+  present.
 - versioned JSON config supports X accounts, Instagram accounts, and website
   policies with strict validation and safe atomic writes;
 - acquisition state machine covers discovered, claimed, transferring, stored,
