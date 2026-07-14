@@ -301,9 +301,9 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   states. It is metadata-only orchestration: no connector, credential, media,
   or review-admission work is executed.
 
-- [ ] **XIMG-046 P1 — Implement new-item review admission.**
-  Mark media `new` only after verified object commit; keep source/account grouping
-  and discovery time. Acceptance: interrupted jobs never expose broken new cards.
+- [x] **XIMG-046 P1 — Implement new-item review admission.** Completed in
+  `3ac77e9`; only verified committed evidence enters the `New` queue with source
+  grouping and discovery time; interrupted work is rejected.
 
 ## 0.5.0 — Web library and review
 

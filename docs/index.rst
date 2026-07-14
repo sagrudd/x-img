@@ -34,6 +34,7 @@ Configuration
    x-media-discovery
    instagram-media-discovery
    account-refresh
+   review-admission
    identity-migration
 
 Release and quality

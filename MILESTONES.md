@@ -276,6 +276,9 @@ Exit criteria:
   job with per-account bounded progress, partial failure, cancellation, retry,
   no overlap, and final new-item summary states; it executes no connector or
   media transfer.
+- XIMG-046 implements verified-commit-only new-item admission (commit
+  `3ac77e9`), retaining source grouping and discovery time while excluding
+  interrupted work from review cards.
 - official, user-authorized Instagram connector supports the account/media
   types permitted by the approved API and records unsupported cases clearly;
 - `Refresh accounts` schedules all enabled connectors once, reports per-account
