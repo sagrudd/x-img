@@ -7,6 +7,16 @@ use yew::prelude::*;
 #[function_component(App)]
 pub fn app() -> Html {
     let selected = use_state(|| "all".to_owned());
+    let density = use_state(|| "compact".to_owned());
+    let active_card = use_state(|| 0usize);
+    let cards = [
+        "Aurora study",
+        "Tidal form",
+        "Glass archive",
+        "Night garden",
+        "Field record",
+        "Open geometry",
+    ];
     let sources = [
         ("all", "All sources", "6"),
         ("x", "X accounts", "2"),
@@ -35,6 +45,7 @@ pub fn app() -> Html {
                     </ul>
                 </section>
                 <section class="ximg-shell__empty" aria-labelledby="library-state"><h2 id="library-state">{ "No committed media in this context" }</h2><p>{ "Counts describe configured sources; committed media appears here after verified admission." }</p></section>
+                <section class="ximg-gallery" aria-labelledby="gallery-title"><div class="ximg-gallery__toolbar"><h2 id="gallery-title">{ "Thumbnail browser" }</h2><button onclick={{ let density=density.clone(); Callback::from(move |_| density.set(if *density=="compact" { "comfortable".to_owned() } else { "compact".to_owned() })) }}>{ format!("Density: {}", *density) }</button></div><p>{ "Synthetic preview records; images lazy-load when a future authorized catalogue supplies them." }</p><div class={classes!("ximg-gallery__grid", format!("is-{}", *density))}>{for cards.iter().enumerate().map(|(index,label)| { let active_card=active_card.clone(); let selected=index==*active_card; html!{<button class={classes!("ximg-gallery__card",selected.then_some("is-selected"))} aria-pressed={selected.to_string()} onclick={Callback::from(move |_|active_card.set(index))}><span class="ximg-gallery__placeholder" aria-hidden="true"></span><span>{*label}</span><small>{format!("Record {}",index+1)}</small></button>}})}</div></section>
             </main>
             <footer class="mn-brand-footer" aria-label="Mnemosyne Biosciences provenance">
                 <div class="mn-brand-footer__content">
