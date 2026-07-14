@@ -1,0 +1,31 @@
+{
+  "schema_version": "x-img.monas-product-bootstrap.v1",
+  "product_id": "x-img",
+  "product_version": "0.2.0",
+  "host": "monas",
+  "host_mode": "monas_standalone",
+  "product_root": "/opt/x-img",
+  "web_mount": "/products/x-img/app/",
+  "api_mount": "/products/x-img/api/",
+  "bootstrap_path": "/products/x-img/.well-known/mnemosyne/product-bootstrap.json",
+  "capabilities": [
+    "monas_mandatory_web_authentication",
+    "dasobjectstore_required",
+    "ximg_catalogue_review",
+    "ximg_account_refresh",
+    "ximg_browser_capture",
+    "ximg_bioinformatics_plan"
+  ],
+  "correlation_policy": "host_generated",
+  "visibility": "local_profile_enabled",
+  "external_sql_required": false,
+  "object_store_required": true,
+  "authentication_required": true,
+  "authentication_framework": "Prosopikon",
+  "device_token_requirement": "NotRequired",
+  "synoptikon_equivalent": {
+    "host_modes": ["monas_standalone", "synoptikon_integrated"],
+    "bootstrap_schema": "mnemosyne.product_ui.bootstrap.v1",
+    "host_context_owner": "host"
+  }
+}

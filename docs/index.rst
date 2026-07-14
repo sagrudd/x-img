@@ -22,6 +22,7 @@ Configuration
 
    configuration
    acquisition
+   monas-product
    identity-migration
 
 Release and quality

@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-030's versioned Monas product registration and synthetic strict
+  fixtures. It requires host-owned Prosopikon authentication, one x-img
+  application/API mount, a DASObjectStore requirement, capability disclosure,
+  and a future Synoptikon-equivalent bootstrap; it rejects anonymous access and
+  direct x-img login-route declarations without adding a live host dependency.
 - Added the XIMG-020 Rust 2024 workspace scaffold at product version 0.2.0:
   shared model and core crates, a `clap` CLI reporting the workspace version,
   an Axum composition boundary, and a Yew WebAssembly boundary. The pinned

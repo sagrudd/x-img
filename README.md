@@ -79,6 +79,12 @@ future job: it requires reviewable source, file/checksum, rights, and stable
 ObjectStore destination evidence, with policy blocking and confirmation kept
 separate from transfer.
 
+x-img now carries a strict, versioned Monas product-registration contract for
+one authenticated application/API mount, a DASObjectStore requirement, and a
+future Synoptikon-equivalent bootstrap. It declares no x-img login/session
+route; a later host-context adapter will enforce the registered host context at
+the live Axum boundary. See [Monas product registration](docs/monas-product.rst).
+
 The supported-toolchain, browser, Semantic Versioning, dependency, fixture,
 CI, documentation, and Definition of Done rules are maintained in the
 [release and quality policy](docs/release-quality-policy.rst). Run the
