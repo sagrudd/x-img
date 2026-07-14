@@ -68,3 +68,20 @@ turn a supplied observation into proof of authorization. XIMG-030 and later
 storage/persistence contracts must obtain and durably record verified authority
 evidence. The present boundary exists so retries and crash recovery have one
 deterministic, testable settlement rule.
+
+Scheduling contracts
+--------------------
+
+XIMG-024 provides an in-memory scheduling contract for future account refresh,
+extension capture, resource, and video jobs. A refresh request is coalesced per
+actor scope: repeated presses return the already active global job rather than
+enqueueing another pass. Each child has an explicit source scope, so one source
+cannot have two unexpired leases. Different sources are admitted only within
+the global child-capacity limit.
+
+The contract tracks request, byte, and elapsed-time budget usage. Attempts that
+would exceed a budget return ``BudgetExceeded``; work that would exceed active
+child capacity returns ``CapacityLimited``. Cancellation moves pending or
+claimed children to ``Cancelled`` and clears their opaque lease owner. It does
+not transfer content, contact a connector, create a retry, persist a job, or
+claim that a source or ObjectStore operation succeeded.

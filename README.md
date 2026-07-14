@@ -66,6 +66,10 @@ identity plus immutable checksum. Replays reuse the first committed object
 reference and append safe URL aliases; checksum disagreement becomes an
 explicit conflict. It remains in-memory and performs no storage query or write.
 
+The scheduler contract coalesces repeated refreshes, prevents concurrent work
+for one source, bounds child capacity and cost usage, and releases leases on
+cancellation. It remains an in-memory contract and does not execute any job.
+
 The supported-toolchain, browser, Semantic Versioning, dependency, fixture,
 CI, documentation, and Definition of Done rules are maintained in the
 [release and quality policy](docs/release-quality-policy.rst). Run the

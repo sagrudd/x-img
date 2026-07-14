@@ -3,6 +3,7 @@
 
 pub mod acquisition;
 pub mod reconciliation;
+pub mod scheduler;
 
 use std::{
     fs::{self, File, OpenOptions},

@@ -28,6 +28,10 @@ All notable changes to x-img will be documented in this file. The project uses
   safe aliases without replacing an object reference, and absent/mismatched
   authority observations remain pending or conflict without any byte, network,
   or persistent-storage operation.
+- Added XIMG-024 in-memory scheduler contracts for coalesced global refreshes,
+  mutually exclusive source leases, bounded child/request/byte/time budgets,
+  and cooperative cancellation. No connector, queue, persistence, or network
+  execution is enabled.
 - Added the XIMG-009 executable Pinakotheke v1 identity-migration plan,
   including a complete rename surface matrix, a minimum compatibility window,
   migration and rollback rules, retained schema/object/extension identities,
