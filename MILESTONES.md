@@ -157,6 +157,10 @@ Exit criteria:
   `924ad12`) with bounded source input, reviewable file/checksum/transport and
   destination evidence, policy blocking, and confirmation before any future
   transfer or DASObjectStore write.
+- XIMG-027 provides the synthetic resolution/transport matrix (commit
+  `9732f34`) for ENA/SRA, GEO, NCBI, retry/resume/cancellation, backpressure,
+  checksum mismatch, and optional Aspera fallback without live providers,
+  credentials, or payloads.
 - no code path can persist media bytes outside the storage port.
 
 ## 0.3.0 — DASObjectStore and Monas integration contracts

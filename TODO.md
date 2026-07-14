@@ -170,13 +170,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   requires an allowed-plan confirmation. Bulk input, unsafe destination, and
   blocked-policy confirmation fail closed; no discovery or transfer occurs.
 
-- [ ] **XIMG-027 P0 — Add bioinformatics resolution and transport fixtures.**
-  Depends on XIMG-026. Cover ENA/SRA manifests and multi-run expansion, GEO
-  metadata/raw archive/file lists, NCBI routing, checksum/size evidence,
-  retries/resume/cancellation, bounded backpressure, and optional Aspera with
-  HTTPS fallback, without real credentials or copyrighted payloads. Planning
-  evidence: `docs/adr/0003-bioinformatics-resource-commit.md` in commit
-  `b21c6da`.
+- [x] **XIMG-027 P0 — Add bioinformatics resolution and transport fixtures.**
+  Completed in `9732f34`; the strict synthetic matrix covers ENA/SRA manifests
+  and multi-run expansion, GEO raw archive review, NCBI routing, checksum/size
+  evidence, retry/resume/cancellation, backpressure, checksum mismatch, and
+  optional Aspera-to-HTTPS fallback without credentials or payloads.
 
 ## 0.3.0 — External authorities
 
