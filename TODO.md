@@ -225,14 +225,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   evidence, not a credentialed live-authority test before transport adapters
   exist.
 
-- [ ] **XIMG-036 P0 — Define endpoint/device and ObjectStore contracts.**
-  Depends on XIMG-003/008. Model endpoint/appliance identity separately from
-  logical ObjectStore identity, local folder-profile provisioning, remote
-  pairing/discovery, scoped credentials, capabilities, health, quota, TLS
-  trust, and endpoint-qualified provenance. Acceptance: versioned fixtures
-  reject unmanaged-folder writes, mutable-name identity, broad secrets, and
-  arbitrary first-store selection. Planning evidence:
-  `docs/adr/0004-endpoints-and-objectstores.md` in commit `bdd5294`.
+- [x] **XIMG-036 P0 — Define endpoint/device and ObjectStore contracts.**
+  Completed in `0594598`; the strict metadata-only inventory separates stable
+  endpoint/device and ObjectStore IDs, managed local profile provisioning,
+  paired HTTPS appliance references, health, quota, TLS, compatible types, and
+  endpoint-qualified reviewed selection. Synthetic fixtures reject unmanaged
+  folder fields, mutable IDs, broad secrets, and arbitrary first-store
+  selection. It holds no credential and performs no live pairing, discovery,
+  write, or transport; XIMG-037 implements reviewed selection/revalidation.
 
 - [ ] **XIMG-037 P0 — Implement reviewed endpoint/ObjectStore selection.**
   Depends on XIMG-024/030/031/032/036. Discover every visible store, expose an

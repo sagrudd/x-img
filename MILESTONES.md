@@ -212,6 +212,13 @@ Exit criteria:
   Monas, DASObjectStore, Synoptikon/Mnemosyne, and design-language revisions
   and contract paths. It does not claim live authority integration before
   credentialed transport adapters exist.
+- XIMG-036 defines the endpoint/device and logical ObjectStore contract (commit
+  `0594598`): stable IDs, managed local profile or paired remote appliance
+  references, TLS/health/quota/type evidence, explicit default/override
+  selection, and endpoint-qualified review metadata are strict and synthetic
+  fixture tested. It rejects unmanaged folders, mutable identities, broad
+  secrets, and arbitrary first-store selection without live credentials or
+  transport.
 - upload completion is reconciled idempotently after crash boundaries; and
 - a future Synoptikon host adapter can replace Monas without changing domain or
   connector logic.
