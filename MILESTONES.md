@@ -6,6 +6,10 @@ Version: 0.1.0
 
 Updated: 2026-07-14
 
+Product identity: `x-img` is the planning/repository name until the coordinated
+v1.0.0 migration to the Pinakotheke brand and target repository slug
+`sagrudd/pinakotheke`.
+
 ## Product outcome
 
 x-img provides one private, authenticated Web library for media acquired from:
@@ -47,6 +51,9 @@ Every milestone must:
 
 - preserve MPL-2.0 licensing and public-repository hygiene;
 - maintain Semantic Versioning and update the changelog on version changes;
+- author precise user-facing documentation in Sphinx/Read the Docs format and
+  build/verify it in the reproducible local `docs/Dockerfile` container; GitHub
+  Actions may mirror the check but is not its authority;
 - use versioned JSON/API/persistent-state schemas;
 - pass formatting, lint, unit, contract, and relevant integration checks;
 - update TODO status and user/operator documentation;
@@ -71,6 +78,11 @@ Exit criteria:
   drafted with compatibility rules; and
 - a Firefox spike plan identifies how redirects, range requests, HLS/DASH,
   CORS, CSP, signed URLs, and local HTTPS will be tested.
+- Firefox policy explicitly forbids automatic opening, hidden traversal, bulk
+  crawling, simulated browsing, and cookie/credential forwarding; it records
+  observed-thumbnail versus explicitly-opened-original semantics and keeps
+  capture/substitution per-site opt-in, transparent, same-instance, and
+  fail-open.
 
 ## 0.2.0 — Rust core and versioned contracts
 
@@ -140,6 +152,10 @@ Exit criteria:
   traversal, quick preview, metadata detail, and video playback are usable;
 - new/unreviewed media is visibly filterable and can be marked reviewed in
   batches without using colour alone;
+- gallery status distinguishes `Previously observed` thumbnails from `Stored
+  in ObjectStore` committed originals using accessible, reversible,
+  non-obstructive words/iconography and colour, with tooltips and a user toggle;
+  stored bytes are never watermarked or mutated;
 - the single `Refresh accounts` action exposes progress and safe retry;
 - loading, empty, stale, permission, transport, and object-unavailable states
   are designed explicitly;
@@ -165,6 +181,10 @@ Exit criteria:
   issued through Monas and contain no browser password or copied site cookie;
 - private browsing is disabled by default and browsing history is minimized;
 - errors are visible but never break the source page; and
+- capture is per-site opt-in and transparent: thumbnails are cached only after
+  actual display/observation, originals only after an explicit user open, and
+  the extension never automatically opens, traverses hidden content,
+  bulk-crawls, simulates browsing, or forwards cookies/credentials; and
 - initial adapters are fixture-tested before any generic-site mode is enabled.
 
 ## 0.7.0 — Firefox external-cache substitution
@@ -182,6 +202,9 @@ Exit criteria:
 - stale signed URLs do not prevent canonical hits and do not leak credentials;
 - cache substitution is limited to user-enabled origins and can be paused from
   the toolbar;
+- thumbnails are cached only after actual display/observation and originals
+  only after an explicit user open; automatic opening, hidden traversal, bulk
+  crawling, simulated browsing, and cookie/credential forwarding are forbidden;
 - object unavailability falls back safely without redirect loops; and
 - hit/miss/substitution diagnostics are inspectable without retaining general
   browsing history.
@@ -227,6 +250,15 @@ Goal: stable public interfaces and dependable day-to-day operation.
 Exit criteria:
 
 - no unresolved P0/P1 TODOs;
+- the coordinated Pinakotheke rename/rebrand is complete across user-facing
+  documentation, Rust/code identifiers, CLI/package/product metadata,
+  Monas/Synoptikon/DASObjectStore adapters, Firefox extension identity, and
+  the GitHub repository migrated from `sagrudd/x-img` to the chosen
+  `sagrudd/pinakotheke` slug; compatibility aliases and migrations are
+  documented and tested where needed;
+- the Sphinx/Read the Docs user documentation builds and verifies successfully
+  in the reproducible local container, with the local container check treated
+  as authoritative over any GitHub Actions mirror;
 - stable CLI, JSON schemas, API, object metadata, Monas mount, and extension
   pairing contracts are documented;
 - release artifacts, Firefox package, checksums, SBOM, and upgrade notes are

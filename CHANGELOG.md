@@ -5,6 +5,13 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ## [Unreleased]
 
+### Planning
+
+- Added the Pinakotheke v1.0.0 coordinated rename/rebrand gate, including
+  compatibility aliases and repository migration planning.
+- Added the Sphinx/Read the Docs local-container documentation authority and
+  stricter Firefox observation, opt-in, fail-open, and status-display rules.
+
 ## [0.1.0] - 2026-07-14
 
 ### Added

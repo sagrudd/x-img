@@ -72,12 +72,31 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   capture or mixed-content failure.
   Acceptance: spike matrix covers WebRequest/DNR, response filtering, local
   HTTPS, CORS/CSP/CORP, redirects, signed URLs, and fail-open behavior; uncertain
-  cases are isolated behind explicit site capabilities.
+  cases are isolated behind explicit site capabilities. It must also prove no
+  automatic opening, hidden traversal, bulk crawling, simulated browsing,
+  cookie/credential forwarding, or API-avoidance policy loophole; thumbnails
+  are eligible only after actual display/observation and originals only after
+  explicit user open.
 
 - [ ] **XIMG-008 P1 — Establish release and quality policy.**
   Add changelog, SemVer rules, supported Rust/MSRV and Firefox versions, CI
   matrix, dependency policy, fixture privacy rules, and Definition of Done.
-  Acceptance: version sources cannot drift and CI checks planning links/schemas.
+  Acceptance: version sources cannot drift; the Definition of Done requires
+  precise Sphinx/Read the Docs user documentation and a reproducible local
+  `docs/Dockerfile` container build/verification that is authoritative over
+  any GitHub Actions mirror; and CI checks planning links/schemas.
+
+- [ ] **XIMG-009 P0 — Plan the Pinakotheke v1 identity migration.**
+  Keep `x-img` as the planning/repository name until a coordinated v1.0.0
+  migration to Pinakotheke and target GitHub slug `sagrudd/pinakotheke`.
+  Inventory documentation, Rust/code identifiers, CLI/package/product
+  metadata, Monas/Synoptikon/DASObjectStore adapters, Firefox extension
+  identity, repository settings, compatibility aliases, and data/schema
+  migrations.
+  Acceptance: the 1.0.0 gate has an executable rename matrix, rollback plan,
+  alias/deprecation windows, and tests proving existing config, catalogue,
+  object references, and extension pairings remain readable or migrate
+  explicitly; no partial rename can ship.
 
 ## 0.2.0 — Rust core and contracts
 
@@ -198,7 +217,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 - [ ] **XIMG-054 P1 — Implement review queue and batch review.**
   Filters and words distinguish new/reviewed/hidden/removed; actions are scoped
-  and undoable where feasible. Acceptance: colour is never the sole signal.
+  and undoable where feasible. Acceptance: colour is never the sole signal;
+  `Previously observed` thumbnail status is distinct from `Stored in ObjectStore`
+  committed-original status using accessible words/iconography, colour,
+  tooltip, a reversible non-obstructive frame/badge/overlay, and a user toggle;
+  stored bytes are never watermarked or mutated.
 
 - [ ] **XIMG-055 P1 — Implement refresh controls and progress.**
   Surface XIMG-045 as one `Refresh accounts` action with per-account progress,
@@ -212,7 +235,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 - [ ] **XIMG-060 P0 — Scaffold least-privilege Firefox extension.**
   Use supported manifest behavior, per-origin optional permissions, no private
-  browsing by default, and a minimal toolbar/options surface.
+  browsing by default, and a minimal toolbar/options surface. Capture and
+  substitution are per-site opt-in, transparent, routed through the same x-img
+  instance, and fail open.
+  Acceptance: the extension identity is migration-ready for Pinakotheke and
+  contains no automatic opening, hidden traversal, bulk crawling, simulated
+  browsing, cookie extraction, or credential forwarding.
 
 - [ ] **XIMG-061 P0 — Implement Monas-mediated extension pairing.**
   Pair one extension profile with one x-img instance using revocable,
@@ -222,7 +250,8 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 - [ ] **XIMG-062 P1 — Implement trivial website policy UI.**
   Add current site, enable/disable capture and substitution, choose supported
   media classes, and remove permission. Acceptance: exact requested origin and
-  consequences are visible before Firefox permission request.
+  consequences are visible before Firefox permission request; capture and
+  substitution are visibly per-site opt-in and can be paused independently.
 
 - [ ] **XIMG-063 P1 — Implement site-adapter registry.**
   Version matching, canonicalization, exclusions, capabilities, and fixtures.
@@ -230,8 +259,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 - [ ] **XIMG-064 P0 — Implement viewed-media capture.**
   Stream or re-fetch only through an approved design from XIMG-007, submit to the
-  common scheduler, and fail without page disruption. Acceptance: no cookies,
-  authorization headers, form bodies, or general history reach x-img.
+  common scheduler, and fail without page disruption. Acceptance: a thumbnail
+  is eligible only when actually displayed/observed, an original only after
+  explicit user open, no automatic opening/hidden traversal/bulk crawling/
+  simulated browsing occurs, and no cookies, authorization headers, form
+  bodies, credentials, or general history reach x-img; avoiding a site API does
+  not waive platform terms.
 
 - [ ] **XIMG-065 P1 — Integrate captures into the common review queue.**
   Acceptance: site, page, canonical media URL, discovery time, and adapter
@@ -241,7 +274,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 - [ ] **XIMG-070 P0 — Implement low-latency cache alias lookup.**
   Acceptance: bounded memory, invalidation, immutable hit identity, measured
-  p95 budget, offline/object-unavailable state, and no browsing-history leak.
+  p95 budget, offline/object-unavailable state, and no browsing-history leak;
+  only previously displayed/observed thumbnails may be cached automatically,
+  and every substitution is per-site opt-in, transparent, same-instance, and
+  fail-open to the origin.
 
 - [ ] **XIMG-071 P0 — Implement image substitution.**
   Restrict to enabled sites and proven aliases; fail open without loops.
@@ -257,7 +293,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 - [ ] **XIMG-074 P1 — Add toolbar cache controls and diagnostics.**
   Per-site pause, hit/miss state, last error, open x-img source view, and clear
-  wording about permissions without exposing secrets.
+  wording about permissions without exposing secrets. Show the words
+  `Previously observed` and `Stored in ObjectStore` where applicable, with
+  accessible iconography/tooltips and a reversible non-obstructive status
+  treatment; never watermark or mutate stored media bytes.
 
 ## 0.8.0–1.0.0 — Hardening and release
 
@@ -270,6 +309,9 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 - [ ] **XIMG-086 P1 — Run production-like upgrade/rollback acceptance.**
 - [ ] **XIMG-087 P1 — Publish 0.9.0 release candidate.**
 - [ ] **XIMG-088 P0 — Close all release blockers and publish 1.0.0.**
+  Acceptance includes the coordinated Pinakotheke rename/rebrand matrix and
+  repository migration, compatibility aliases/migrations, and local-container
+  Sphinx documentation verification described above.
 
 ## Post-1.0
 

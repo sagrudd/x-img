@@ -33,6 +33,11 @@ Planning only. See [MILESTONES.md](MILESTONES.md) for release gates and
 [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
 
+The v1.0.0 product and brand target is **Pinakotheke**. Until the coordinated
+release migration is complete, this public planning repository remains
+`sagrudd/x-img`; the target repository slug is `sagrudd/pinakotheke` and all
+compatibility aliases and migrations must be documented before that move.
+
 ## Key concerns before implementation
 
 1. X and Instagram access, storage, display, and deletion obligations must be
@@ -45,6 +50,12 @@ follow [AGENTS.md](AGENTS.md).
    in Firefox before the external-cache design is declared viable.
 5. The public project must not redistribute downloaded media, tokens, account
    lists, DAS credentials, or Monas sessions.
+6. Firefox capture and substitution are per-site opt-in and fail-open: the
+   extension never automatically opens pages, traverses hidden content,
+   bulk-crawls, simulates browsing, or forwards site cookies/credentials;
+   thumbnails are eligible only after display/observation and originals only
+   after an explicit user open. Avoiding an API does not exempt behavior from
+   platform terms.
 
 ## Versioning
 

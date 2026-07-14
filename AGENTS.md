@@ -102,6 +102,14 @@ integration, review, tests, commits, and the final handoff.
   secret references. Never ingest browser cookies or passwords.
 - The Firefox extension is a least-privilege client of one configured x-img
   instance. Sites require explicit user enablement and origin permission.
+- Firefox capture and substitution are per-site opt-in, transparent, and
+  routed through that same x-img instance and DASObjectStore authority. The
+  extension must never automatically open pages, traverse hidden content,
+  bulk-crawl, or simulate browsing. It may cache a thumbnail only when that
+  thumbnail was actually displayed or observed; it may capture/cache an
+  original only after the user explicitly opens it. It must never extract or
+  forward site cookies or credentials, and avoiding an API does not exempt any
+  behavior from platform terms.
 - The browser cache must fail open to the origin and must never break ordinary
   page loading when x-img, Monas, or DASObjectStore is unavailable.
 
@@ -121,6 +129,29 @@ integration, review, tests, commits, and the final handoff.
   lists, downloaded media, tokens, cookies, credentials, or private URLs.
 - Logs and diagnostics must redact authorization, signed-query parameters,
   Monas sessions, DAS credentials, and user browsing history.
+
+## Product identity and documentation
+
+- `x-img` is the planning/repository name until the coordinated v1.0.0
+  rebrand. The v1.0.0 product and brand target is **Pinakotheke**, with the
+  target GitHub repository slug `sagrudd/pinakotheke`. Do not perform a partial
+  rename. The release gate covers documentation, Rust/code identifiers,
+  CLI/package/product metadata, Monas/Synoptikon/DASObjectStore adapters,
+  Firefox extension identity, and repository migration, with documented
+  compatibility aliases and migrations where existing names or schemas must
+  remain readable.
+- Precise user-facing documentation is authored as a Sphinx project in `docs/`
+  using Read the Docs-compatible configuration and reStructuredText entry
+  points. The reproducible local authority is the pinned `docs/Dockerfile`.
+  Build and verify it locally with:
+
+  ```sh
+  docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
+  ```
+
+  Run the documented container check as well. GitHub Actions may mirror these
+  checks but never replaces local container verification as the release
+  authority.
 
 ## Architecture and code quality
 
@@ -145,6 +176,11 @@ integration, review, tests, commits, and the final handoff.
   but comparable account/job/setting records use tables or structured lists.
 - State uses words, not colour alone. Design loading, empty, stale, permission,
   transport, partial-failure, and object-unavailable states.
+- The gallery distinguishes `Previously observed` thumbnails from `Stored in
+  ObjectStore` committed originals. The distinction uses words and iconography
+  as well as colour, has an accessible reversible frame/badge/overlay with a
+  tooltip, does not obstruct media, and can be toggled by the user. It must
+  never watermark or mutate stored media bytes.
 - Preserve keyboard navigation, focus entry/trap/return, responsive behavior,
   and WCAG 2.2 AA contrast.
 
@@ -157,9 +193,12 @@ Select checks proportionate to the change. The eventual baseline includes:
 - connector fixture and crash/idempotency tests;
 - Monas and DASObjectStore contract tests;
 - real Firefox tests for permissions, capture, redirect, range, and fail-open;
+- Sphinx/Read the Docs documentation built and verified in the reproducible
+  local container, independent of GitHub Actions;
 - accessibility, privacy, secret-scan, dependency, license, and vulnerability
   checks; and
 - a clean public clone/build without sibling-only files.
 
-Work is done only when acceptance criteria pass, docs/backlog/changelog are
-aligned, the focused commit is pushed, and no run-owned lock or subagent remains.
+Work is done only when acceptance criteria pass, user-facing Sphinx docs are
+updated and locally container-verified, docs/backlog/changelog are aligned,
+the focused commit is pushed, and no run-owned lock or subagent remains.
