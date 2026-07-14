@@ -123,6 +123,10 @@ Exit criteria:
   present.
 - versioned JSON config supports X accounts, Instagram accounts, and website
   policies with strict validation and safe atomic writes;
+- XIMG-021 implements that contract (commit `d96922d`) with deny-unknown-field
+  parsing, exact schema-version checks, strict account/origin/reference rules,
+  duplicate rejection, synchronized same-directory atomic replacement, and a
+  no-network CLI for validation and safe identifier-only listing.
 - acquisition state machine covers discovered, claimed, transferring, stored,
   verified, committed, failed, and policy-blocked states;
 - canonical identity supports platform media IDs and content-hash fallback;

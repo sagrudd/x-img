@@ -124,10 +124,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   version (`0.2.0`), planning checks, and local Sphinx container verification
   passed; no live source, storage, authentication, or media-payload code exists.
 
-- [ ] **XIMG-021 P1 — Implement strict account/site config.** Depends on XIMG-005.
-  Parse, validate, atomically update, and list versioned JSON without secrets.
-  Acceptance: duplicate accounts/origins, invalid handles, unknown fields,
-  unsafe wildcard defaults, and incompatible schema majors are tested.
+- [x] **XIMG-021 P1 — Implement strict account/site config.** Depends on XIMG-005.
+  Completed in `d96922d`; the offline `x-img config validate`, `list`, and
+  `replace` commands strictly parse and validate versioned JSON, list only
+  source identifiers/origins, and atomically replace a validated complete
+  document. Tests cover duplicate handles/origins, invalid handles, unknown
+  fields, wildcard origins, missing opaque authorization references, and
+  incompatible schema versions; no source, authority, or storage call occurs.
 
 - [ ] **XIMG-022 P0 — Implement acquisition state machine.** Depends on XIMG-006.
   Acceptance: property/unit tests prove valid transitions and reject double
