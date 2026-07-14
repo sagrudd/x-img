@@ -1,0 +1,24 @@
+{
+  "schema_version": "x-img.connector-fixtures.v1",
+  "generated_by": "XIMG-025 synthetic deterministic fixture matrix",
+  "scenarios": [
+    {"id":"x-pagination","source":"x","events":["page:1","page:2"],"expected":"next_cursor"},
+    {"id":"x-edit","source":"x","events":["item:edited"],"expected":"reconcile_metadata"},
+    {"id":"x-deleted","source":"x","events":["item:deleted"],"expected":"inaccessible"},
+    {"id":"x-duplicate-media","source":"x","events":["media:duplicate"],"expected":"same_identity"},
+    {"id":"x-multiple-variants","source":"x","events":["media:variants"],"expected":"policy_selects_variant"},
+    {"id":"x-rate-limited","source":"x","events":["response:rate_limited"],"expected":"bounded_backoff"},
+    {"id":"x-authorization-expired","source":"x","events":["authorization:expired"],"expected":"reauthorization_required"},
+    {"id":"x-malformed-response","source":"x","events":["response:malformed"],"expected":"failed"},
+    {"id":"x-cursor-reset","source":"x","events":["cursor:invalid"],"expected":"replay_with_identity_deduplication"},
+    {"id":"instagram-pagination","source":"instagram","events":["page:1","page:2"],"expected":"next_cursor"},
+    {"id":"instagram-edit","source":"instagram","events":["item:edited"],"expected":"reconcile_metadata"},
+    {"id":"instagram-deleted","source":"instagram","events":["item:deleted"],"expected":"inaccessible"},
+    {"id":"instagram-duplicate-media","source":"instagram","events":["media:duplicate"],"expected":"same_identity"},
+    {"id":"instagram-multiple-variants","source":"instagram","events":["media:variants"],"expected":"policy_selects_variant"},
+    {"id":"instagram-rate-limited","source":"instagram","events":["response:rate_limited"],"expected":"bounded_backoff"},
+    {"id":"instagram-authorization-expired","source":"instagram","events":["authorization:expired"],"expected":"reauthorization_required"},
+    {"id":"instagram-malformed-response","source":"instagram","events":["response:malformed"],"expected":"failed"},
+    {"id":"instagram-cursor-reset","source":"instagram","events":["cursor:invalid"],"expected":"replay_with_identity_deduplication"}
+  ]
+}

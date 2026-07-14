@@ -70,6 +70,10 @@ The scheduler contract coalesces repeated refreshes, prevents concurrent work
 for one source, bounds child capacity and cost usage, and releases leases on
 cancellation. It remains an in-memory contract and does not execute any job.
 
+Synthetic fixture coverage for X and Instagram is versioned and deterministic;
+it exercises connector edge cases without network access or credentials and
+does not authorize a live connector.
+
 The supported-toolchain, browser, Semantic Versioning, dependency, fixture,
 CI, documentation, and Definition of Done rules are maintained in the
 [release and quality policy](docs/release-quality-policy.rst). Run the

@@ -32,6 +32,10 @@ All notable changes to x-img will be documented in this file. The project uses
   mutually exclusive source leases, bounded child/request/byte/time budgets,
   and cooperative cancellation. No connector, queue, persistence, or network
   execution is enabled.
+- Added XIMG-025's strict synthetic X/Instagram connector-fixture matrix and
+  test contract, covering pagination, edits, deletions, duplicates, variants,
+  rate limits, authorization expiry, malformed responses, and cursor reset
+  without live traffic, account data, credentials, or media payloads.
 - Added the XIMG-009 executable Pinakotheke v1 identity-migration plan,
   including a complete rename surface matrix, a minimum compatibility window,
   migration and rollback rules, retained schema/object/extension identities,

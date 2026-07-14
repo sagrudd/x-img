@@ -85,3 +85,18 @@ child capacity returns ``CapacityLimited``. Cancellation moves pending or
 claimed children to ``Cancelled`` and clears their opaque lease owner. It does
 not transfer content, contact a connector, create a retry, persist a job, or
 claim that a source or ObjectStore operation succeeded.
+
+Synthetic connector fixtures
+----------------------------
+
+XIMG-025 provides a versioned synthetic matrix at
+``fixtures/connectors/v1/scenarios.json``. It covers pagination, edits,
+deletions, duplicate media, multiple variants, rate limiting, authorization
+expiry, malformed responses, and cursor reset for both X and Instagram. The
+Rust test contract requires every source/scenario pair and rejects an
+incompatible fixture schema.
+
+These are opaque deterministic adapter inputs and expected outcomes only. They
+contain no actual account names, media payloads, browser data, credentials,
+cookies, tokens, signed URLs, or platform traffic. Passing them does not
+authorize a connector or weaken the XIMG-002 platform-policy gate.
