@@ -102,6 +102,11 @@ Exit criteria:
   for the initial 0.2.x line, current Firefox Release/ESR channel support,
   version-drift and planning/schema/privacy checks, a SHA-pinned CI mirror, and
   the local Sphinx container retained as the documentation authority.
+- XIMG-009 records the executable Pinakotheke v1 identity-migration plan in
+  `docs/adr/0011-pinakotheke-v1-identity-migration.md` and its synthetic
+  coverage matrix (commit `c37e5d2`). It preserves data-bearing identity,
+  requires explicit aliases/migrations and proof fixtures, and blocks partial
+  rename/rebrand releases.
 
 ## 0.2.0 — Rust core and versioned contracts
 

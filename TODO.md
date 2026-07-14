@@ -99,7 +99,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   `docs/Dockerfile` container build/verification that is authoritative over
   any GitHub Actions mirror; and CI checks planning links/schemas.
 
-- [ ] **XIMG-009 P0 — Plan the Pinakotheke v1 identity migration.**
+- [x] **XIMG-009 P0 — Plan the Pinakotheke v1 identity migration.** Completed
+  in `c37e5d2`; ADR 0011, the Sphinx migration guide, a synthetic identity
+  matrix, and an executable coverage check define the coordinated v1 cutover,
+  compatibility window, rollback, and required config/catalogue/ObjectStore/
+  extension-pairing proof cases.
   Keep `x-img` as the planning/repository name until a coordinated v1.0.0
   migration to Pinakotheke and target GitHub slug `sagrudd/pinakotheke`.
   Inventory documentation, Rust/code identifiers, CLI/package/product

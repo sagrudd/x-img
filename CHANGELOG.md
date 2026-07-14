@@ -7,6 +7,10 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added the XIMG-009 executable Pinakotheke v1 identity-migration plan,
+  including a complete rename surface matrix, a minimum compatibility window,
+  migration and rollback rules, retained schema/object/extension identities,
+  and required configuration, catalogue, ObjectStore, and pairing proof cases.
 - Established the XIMG-008 release and quality policy: Semantic Versioning and
   version authority, Rust/MSRV and Firefox Release/ESR support, the required CI
   matrix, dependency/security/licence governance, fixture privacy, release and
