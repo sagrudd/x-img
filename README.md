@@ -31,6 +31,10 @@ single-click refresh of configured social accounts.
   stores visible to the user, and require explicit endpoint-plus-store review
   before every write. x-img never writes an unmanaged folder or silently
   changes a reviewed destination.
+- Video-focused websites may offer a user-selected, policy-gated review pane.
+  Only observed or explicitly selected candidates enter it; normalized,
+  checksum-verified, Firefox-tested renditions are stored as typed
+  DASObjectStore objects before they are advertised as playable.
 - Acquisition is idempotent: once a media identity has a verified committed
   object, routine refreshes do not download it again.
 - The UI follows sibling `../mnemosyne_design_language` and retains a future
@@ -73,6 +77,10 @@ compatibility aliases and migrations must be documented before that move.
 8. Endpoint/device identity, logical ObjectStore identity, pairing, capability,
    health, quota, and TLS state are authority-owned; extension/browser storage
    never contains raw passwords, S3 secrets, or broad tokens.
+9. Video normalization uses versioned, evidence-backed playback profiles and a
+   pinned containerized FFmpeg adapter. DRM, unsupported media, rights-
+   uncertain sources, and source-only renditions remain explicitly blocked or
+   failed; browser capture does not avoid platform terms.
 
 ## Versioning
 

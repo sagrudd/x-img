@@ -19,6 +19,10 @@ All notable changes to x-img will be documented in this file. The project uses
   folder-profile bootstrap, remote HTTPS pairing and discovery, explicit
   endpoint-plus-store selection, commit-time capability checks, stable-ID
   provenance, and safe reconnect behavior without silent destination changes.
+- Added user-selected video planning: policy-gated candidate review,
+  versioned Firefox playback profiles, normalized DASObjectStore renditions,
+  pinned containerized FFmpeg, bounded scratch/cleanup, explicit failure states,
+  and no automatic crawling, DRM circumvention, or source-only readiness.
 
 ## [0.1.0] - 2026-07-14
 

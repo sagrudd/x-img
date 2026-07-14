@@ -307,6 +307,35 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Acceptance: site, page, canonical media URL, discovery time, and adapter
   version are retained; committed aliases deduplicate account-connector media.
 
+- [ ] **XIMG-066 P0 — Define user-selected video candidate plans.** Depends on
+  XIMG-037/060/062/063/064. Offer a DownloadThemAll-like task pane only for
+  observed or explicitly selected candidates; show title/source, duration,
+  dimensions, container/codecs, size, audio/subtitles, policy/support,
+  endpoint/ObjectStore, and intended profile. Acceptance rejects automatic
+  opening, hidden traversal, playlist/channel bulk discovery, DRM bypass, and
+  cookie/credential extraction, and requires explicit confirmation.
+
+- [ ] **XIMG-067 P0 — Define versioned normalized video objects and profiles.**
+  Depends on XIMG-033/034/066. Specify `pinakotheke-video-webm-v1` and
+  `pinakotheke-video-mp4-v1` candidate contracts, profile evidence for VP9/Opus,
+  AV1/Opus, and H.264/AAC, typed derived objects, readiness states, retention,
+  and provenance. Acceptance never marks source-only video ready and documents
+  browser, hardware, licensing, quality, encoding, and storage evidence.
+
+- [ ] **XIMG-068 P0 — Implement the containerized video normalization adapter.**
+  Depends on XIMG-024/033/067. Use a pinned FFmpeg image/tool with structured
+  arguments, bounded resources, DAS-managed staging or isolated ephemeral
+  scratch, cleanup, probe/checksum manifests, cancellation, retry/resume,
+  progress, and crash/idempotency handling. Acceptance has no shell
+  interpolation, durable x-img-local payload, secret, or copyrighted fixture.
+
+- [ ] **XIMG-069 P0 — Prove normalized Firefox playback and delivery.** Depends
+  on XIMG-067/068/072. Acceptance requires DAS commit, checksum, probe, real
+  Firefox playback, MIME/ETag/Content-Length, conditional requests, byte
+  ranges, seek/pause/resume, authorization, and fail-open tests; blocked or
+  failed/DRM media remains explicit and never falls back as ready source-only
+  playback.
+
 ## 0.7.0 — External cache
 
 - [ ] **XIMG-070 P0 — Implement low-latency cache alias lookup.**
@@ -326,7 +355,8 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 - [ ] **XIMG-073 P0 — Gate segmented video substitution by adapter.**
   Implement HLS/DASH only where manifest and segment canonicalization are proven.
-  Unsupported streams remain origin-served and visibly diagnosed.
+  Unsupported streams remain origin-served and visibly diagnosed. Normalized
+  Pinakotheke renditions only are eligible for ready/playable substitution.
 
 - [ ] **XIMG-074 P1 — Add toolbar cache controls and diagnostics.**
   Per-site pause, hit/miss state, last error, open x-img source view, and clear

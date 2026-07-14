@@ -206,6 +206,11 @@ Exit criteria:
   the extension never automatically opens, traverses hidden content,
   bulk-crawls, simulates browsing, or forwards cookies/credentials; and
 - initial adapters are fixture-tested before any generic-site mode is enabled.
+- video-focused adapters offer only observed or explicitly selected candidates
+  in a review task pane with source details, tracks, policy/support, reviewed
+  endpoint/ObjectStore, and normalization profile; no automatic opening,
+  hidden traversal, playlist/channel bulk acquisition, DRM circumvention, or
+  cookie/credential extraction is permitted.
 
 ## 0.7.0 — Firefox external-cache substitution
 
@@ -228,6 +233,9 @@ Exit criteria:
 - object unavailability falls back safely without redirect loops; and
 - hit/miss/substitution diagnostics are inspectable without retaining general
   browsing history.
+- normalized video is served only after a versioned Pinakotheke playback
+  profile has passed transcode, checksum, probe, and real Firefox playback
+  checks; source-only or failed video is visibly blocked/failed, never ready.
 
 ## 0.8.0 — Reliability, policy, and operations
 
@@ -246,6 +254,9 @@ Exit criteria:
 - dependency, license, vulnerability, and extension-permission audits pass; and
 - package/install documentation covers Monas, DASObjectStore, Firefox, and
   upgrades.
+- video jobs enforce bounded streaming, cancellation, resumable transfer where
+  possible, quotas, backpressure, pinned containerized FFmpeg, scratch cleanup,
+  crash reconciliation, and profile-version idempotency.
 
 ## 0.9.0 — Release candidate
 
@@ -261,7 +272,8 @@ Exit criteria:
 - upgrade from the previous minor version preserves configuration, catalogue,
   object aliases, and review state; and
 - public documentation clearly distinguishes supported behavior, known limits,
-  and non-goals.
+  and non-goals, including the evidence-backed Firefox playback profile choice,
+  rights gates, and local Sphinx container verification.
 
 ## 1.0.0 — Stable personal archive
 

@@ -141,6 +141,24 @@ integration, review, tests, commits, and the final handoff.
   object type, policy, quota, and session immediately before each commit.
   Provenance must bind endpoint ID, ObjectStore ID, object key/checksum,
   actor/session reference, and commit time; mutable display names are labels.
+- Video-site adapters are user-initiated and per-site opt-in: only media
+  observed on an enabled page or explicitly selected by the user is eligible.
+  Automatic opening, hidden traversal, playlist/channel bulk crawling,
+  simulated browsing, DRM/encryption circumvention, cookie/credential
+  extraction, and claims that browser capture avoids platform terms are
+  prohibited. A review pane must show candidate source details, tracks,
+  policy/support, endpoint plus ObjectStore, and normalization profile before
+  confirmation.
+- Video is catalogue-ready only after a versioned Pinakotheke rendition is
+  transcoded, DASObjectStore-committed, checksum-verified, probed, and proven
+  playable in Firefox. Use a narrow pinned containerized FFmpeg adapter with
+  structured arguments and no shell interpolation. Record profile/tool/codecs/
+  settings/dimensions/checksums/errors/provenance; keep source and scratch in
+  DAS-managed staging or bounded ephemeral isolated storage, delete scratch,
+  and never retain durable payloads locally. Derived video, poster, subtitles,
+  optional storyboard, and manifest are separate typed DAS objects. Original
+  retention is optional only where policy/rights allow, and never before
+  verified normalized commit.
 
 ## Data integrity and privacy
 
@@ -185,6 +203,10 @@ integration, review, tests, commits, and the final handoff.
   NCBI accession/URL examples, plan confirmation, rights/policy blocking,
   destination selection, checksum failure, retry/resume, and local container
   verification.
+- User-facing video documentation must include candidate review, explicit
+  selection, policy/rights and DRM blocks, endpoint/ObjectStore confirmation,
+  versioned playback-profile evidence, normalization phases, source retention,
+  failure/retry states, and Firefox playback verification.
 
 ## Architecture and code quality
 
