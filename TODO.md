@@ -58,7 +58,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Sphinx entry point and pinned local container build the full ADR set with
   warnings treated as errors.
 
-- [ ] **XIMG-005 P0 — Define versioned configuration.**
+- [x] **XIMG-005 P0 — Define versioned configuration.** Completed in `564ff20`.
   Draft strict JSON schemas for one x-img instance, X accounts, Instagram
   accounts, and website policies. Keep secrets as host-managed references.
   Acceptance: examples cover enabled/disabled sources, per-source media policy,

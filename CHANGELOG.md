@@ -7,6 +7,10 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-005 versioned draft-2020-12 configuration schemas and synthetic
+  positive/negative fixtures for the instance, X, Instagram, and website
+  policy contracts, with strict fields and host-managed references documented
+  in the Sphinx configuration guide.
 - Added the XIMG-004 architecture ADR set for authority boundaries,
   metadata-only local state, canonical identity and idempotent settlement,
   review lifecycle, bounded account refresh scheduling, Firefox pairing, and
