@@ -90,6 +90,13 @@ Monas owns verifier, secret, token, refresh, and revocation custody while x-img
 keeps opaque references only. Live X API/media access remains blocked on ADR
 0002 approval and rights gates. See [X OAuth authorization](docs/x-oauth.rst).
 
+Followed X accounts can now enter the local allowlist only through a
+fixture-tested review preview: the user selects returned stable account IDs,
+reviews added/already-configured/not-selected rows, then explicitly confirms a
+complete candidate configuration for atomic save. It contains no live X call or
+bulk import, and remains subject to ADR 0002. See
+[followed-account selection](docs/x-followed-accounts.rst).
+
 x-img now carries a strict, versioned Monas product-registration contract for
 one authenticated application/API mount, a DASObjectStore requirement, and a
 future Synoptikon-equivalent bootstrap. It declares no x-img login/session

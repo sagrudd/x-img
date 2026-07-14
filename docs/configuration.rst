@@ -123,6 +123,16 @@ validation leaves the existing configuration unchanged. This protects local
 configuration metadata; it does not claim to authenticate authority references
 or schedule an acquisition.
 
+Followed X-account selection
+----------------------------
+
+The reviewed followed-account import prepares a complete candidate
+configuration but does not save it. A task pane must display the explicit
+selection and its ``Added``, ``Already configured``, and ``Not selected`` diff;
+the caller must receive a positive confirmation before using ``replace`` to
+persist the candidate. It has no live X call in the current release. See
+:doc:`x-followed-accounts` for its grant-binding and privacy boundaries.
+
 The implemented XIMG-022 lifecycle layer admits review state only after a
 verified ObjectStore evidence record is committed. The separate XIMG-023
 contract will add canonical-identity-plus-immutable-checksum idempotency,

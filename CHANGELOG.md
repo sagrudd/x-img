@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-041's explicit followed-X-account selection boundary. A
+  grant-bound returned candidate list becomes a reviewable added/existing/not-
+  selected configuration diff and requires confirmation before the existing
+  atomic configuration save; it neither bulk-enables accounts nor makes live X
+  traffic while ADR 0002 remains open.
 - Added XIMG-040's official X OAuth 2.0 Authorization Code + S256 PKCE host
   boundary. State replay, denial, expiry, required scopes, viewing-account
   binding, opaque refresh, and revocation are test-covered without raw tokens,

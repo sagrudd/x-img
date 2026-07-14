@@ -30,6 +30,7 @@ Configuration
    object-ingest
    object-read
    x-oauth
+   x-followed-accounts
    identity-migration
 
 Release and quality
