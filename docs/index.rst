@@ -22,6 +22,7 @@ Configuration
 
    configuration
    acquisition
+   bioinformatics-commit
    monas-product
    host-context
    das-application-identity

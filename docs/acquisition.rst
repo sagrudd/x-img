@@ -123,3 +123,13 @@ manifests and multi-run expansion, GEO raw archive review, NCBI routing,
 checksums/sizes, retry/resume/cancellation, backpressure, checksum failure, and
 optional Aspera fallback to HTTPS. It contains no payload, credential, or live
 provider interaction.
+
+Confirmed direct commit
+-----------------------
+
+XIMG-038 turns one allowed, explicitly confirmed plan file into a direct,
+bounded DASObjectStore ingest only after exact reviewed-destination
+revalidation. It verifies SHA-256, length, and authority receipt and records
+metadata-only provenance keyed by accession/file/checksum. See
+``bioinformatics-commit`` for user workflow and failure states; provider and
+authority transports remain separate adapters and x-img retains no payload.

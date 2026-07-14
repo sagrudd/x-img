@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-038's confirmed direct bioinformatics commit orchestrator. It
+  requires allowed explicit plan confirmation and exact destination
+  revalidation, streams bounded chunks through the DAS ingest port, verifies
+  SHA-256/length/authority receipt, and records idempotent metadata provenance
+  without durable local payloads or live transport.
 - Added XIMG-037's reviewed destination row and commit-time revalidation
   contract. It exposes all discovered stores in structured status-word rows and
   refuses removed, renamed, unavailable, read-only, expired, over-quota,

@@ -79,6 +79,12 @@ future job: it requires reviewable source, file/checksum, rights, and stable
 ObjectStore destination evidence, with policy blocking and confirmation kept
 separate from transfer.
 
+Confirmed bioinformatics files now stream through the existing bounded ingest
+port only after plan confirmation and destination revalidation; their verified
+receipt produces metadata-only provenance and deterministic in-memory replay.
+No provider, authority, or local payload transport is enabled. See
+[confirmed bioinformatics commits](docs/bioinformatics-commit.rst).
+
 x-img now carries a strict, versioned Monas product-registration contract for
 one authenticated application/API mount, a DASObjectStore requirement, and a
 future Synoptikon-equivalent bootstrap. It declares no x-img login/session

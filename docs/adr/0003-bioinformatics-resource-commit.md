@@ -1,7 +1,7 @@
 # ADR 0003: User-initiated bioinformatics resource commit
 
-- Status: Proposed; direct acquisition remains gated by XIMG-002 policy and
-  XIMG-003/XIMG-033 authority contracts
+- Status: Accepted for XIMG-038's confirmed streaming contract; live provider
+  and DASObjectStore transport remain gated by XIMG-002 policy and adapters
 - Date: 2026-07-14
 - Deciders: x-img maintainers
 - Scope: GEO, SRA, ENA, and NCBI public-resource acquisition
@@ -20,7 +20,7 @@ Compatibility-sensitive inspection pins:
 | --- | --- | --- |
 | `../epithema` | `619b7700536a93aacbd928e82bd6bfa9d8070877` | `crates/epithema-providers/src/ena_ngs.rs`, `sra_ngs.rs`, `ena.rs`, `sra_archive.rs`; `crates/epithema-diagnostics/src/provenance.rs`; NGS fixtures under `crates/epithema-providers/tests/fixtures/ngs/` and `crates/epithema-testkit/tests/fixtures/acceptance_anchors/` |
 | `../epic_collection` | `07ade3c4e9a7630dc2e444f5e181fe3bc121fa21` | `scripts/discover_geo.py`; `catalog/human_methylation_geo_raw.toml`, `catalog/epic_seed.toml`; `docs/literature-review.md`; `docs/TODO_DOWNLOAD.md` |
-| `../DASObjectStore` | `bc23cc0f` | `docs/application-authentication.md`, `docs/architecture.md`, `docs/metadata-compatibility.md`, `docs/bioinformatics-reference-workflow.md`; `crates/dasobjectstore-core/src/object_catalogue.rs`; `crates/dasobjectstore-core/fixtures/application-auth/`; `crates/dasobjectstore-gui-api/src/object_browser_routes.rs`; `crates/dasobjectstore-daemon/src/server/unix_socket.rs` |
+| `../DASObjectStore` | `8368d34a365689e19321ecd6a35aab7c819268f6` | `docs/application-authentication.md`, storage/read/upload contracts, and `crates/dasobjectstore-core/src/application_auth.rs`, `object_catalogue.rs`; `crates/dasobjectstore-daemon/src/api/provider_stream.rs` |
 
 The public x-img build must not depend on these sibling paths. Their behavior
 is input to versioned x-img wire contracts, copied synthetic fixtures, and
