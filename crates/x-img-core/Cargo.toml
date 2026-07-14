@@ -13,4 +13,5 @@ publish = false
 workspace = true
 
 [dependencies]
+serde_json.workspace = true
 x-img-model = { path = "../x-img-model" }

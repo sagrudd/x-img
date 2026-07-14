@@ -1147,12 +1147,16 @@ dependencies = [
 name = "x-img-core"
 version = "0.2.0"
 dependencies = [
+ "serde_json",
  "x-img-model",
 ]
 
 [[package]]
 name = "x-img-model"
 version = "0.2.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "x-img-web"

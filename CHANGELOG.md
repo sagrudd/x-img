@@ -13,6 +13,12 @@ All notable changes to x-img will be documented in this file. The project uses
   Rust 1.97.0 toolchain, Rust 1.95 MSRV metadata, lint policy, MPL notices, and
   lockfile are in place; no live source, storage, authentication, or media
   payload integration is enabled.
+- Added XIMG-021 strict local configuration parsing, validation, safe atomic
+  replacement, and identifier-only listing for versioned X, Instagram, and
+  website rules. It rejects unknown fields and schema majors, duplicate source
+  identities, invalid account names, unsafe wildcard/non-origin websites, and
+  missing/incompatible opaque authority references without contacting any
+  source or authority.
 - Added the XIMG-009 executable Pinakotheke v1 identity-migration plan,
   including a complete rename surface matrix, a minimum compatibility window,
   migration and rollback rules, retained schema/object/extension identities,

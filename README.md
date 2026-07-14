@@ -51,6 +51,11 @@ media-payload integration. See [MILESTONES.md](MILESTONES.md) for release gates
 and [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
 
+The CLI now strictly validates, lists, and atomically replaces local versioned
+account/site configuration; it performs no network access or source refresh.
+See [configuration documentation](docs/configuration.rst) for commands and
+fail-closed validation rules.
+
 The supported-toolchain, browser, Semantic Versioning, dependency, fixture,
 CI, documentation, and Definition of Done rules are maintained in the
 [release and quality policy](docs/release-quality-policy.rst). Run the

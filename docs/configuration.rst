@@ -96,8 +96,32 @@ The reproducible documentation check is authoritative:
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check
 
-Configuration validation belongs in the future Rust contract layer (XIMG-021)
-and must preserve these strict, fail-closed semantics.
+Rust configuration commands
+---------------------------
+
+XIMG-021 implements the strict configuration layer in the local ``x-img``
+CLI. These commands are offline: they validate local metadata only and never
+contact X, Instagram, a website, Monas, or DASObjectStore.
+
+.. code-block:: console
+
+   cargo run -p x-img-cli -- config validate --path instance.json
+   cargo run -p x-img-cli -- config list --path instance.json
+   cargo run -p x-img-cli -- config replace --path instance.json --input candidate.json
+
+``validate`` parses the complete document and fails closed on unknown fields,
+unknown schema versions, invalid opaque-reference kinds, invalid account names,
+unsafe origins, missing required authorizations, duplicate account IDs/handles,
+or duplicate website IDs/origins. ``list`` prints only source-kind, stable
+rule ID, and handle/username/origin; it deliberately does not print host or
+authorization references.
+
+``replace`` first parses and validates the complete candidate. Only then does
+it write a synchronized temporary file beside the destination and rename it
+into place. The destination directory must already exist, and a failed parse or
+validation leaves the existing configuration unchanged. This protects local
+configuration metadata; it does not claim to authenticate authority references
+or schedule an acquisition.
 
 Acquisition/catalogue validation belongs in the future Rust contract and state
 machine layers (XIMG-022 and XIMG-023). Those layers must preserve the
