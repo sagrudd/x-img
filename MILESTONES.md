@@ -93,6 +93,10 @@ Exit criteria:
   observed-thumbnail versus explicitly-opened-original semantics and keeps
   capture/substitution per-site opt-in, transparent, same-instance, and
   fail-open.
+- XIMG-007 evidence is recorded in `docs/adr/0010-firefox-architecture-spike.md`
+  and `docs/fixtures/firefox-architecture-matrix.json` (commit `1b788bc`),
+  with DNR/body-filtering limits, HTTPS and response-contract gates, and
+  explicit segmented-video capability requirements.
 
 ## 0.2.0 — Rust core and versioned contracts
 

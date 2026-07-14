@@ -72,7 +72,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Acceptance: state diagrams cover retry before/after DAS commit, duplicate URLs,
   URL rotation, platform ID reuse assumptions, and reconciliation.
 
-- [ ] **XIMG-007 P0 — Prove the Firefox architecture on paper and fixtures.**
+- [x] **XIMG-007 P0 — Prove the Firefox architecture on paper and fixtures.**
   Define how the extension detects/captures responses and substitutes cached
   content for images, MP4, range requests, and HLS/DASH without credential
   capture or mixed-content failure.
@@ -82,7 +82,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   automatic opening, hidden traversal, bulk crawling, simulated browsing,
   cookie/credential forwarding, or API-avoidance policy loophole; thumbnails
   are eligible only after actual display/observation and originals only after
-  explicit user open.
+  explicit user open. Completed in `1b788bc`; the architecture ADR and
+  synthetic fixture matrix keep DNR body replacement, response filtering,
+  progressive range delivery, and HLS/DASH behind explicit capability and
+  fail-open evidence gates.
 
 - [ ] **XIMG-008 P1 — Establish release and quality policy.**
   Add changelog, SemVer rules, supported Rust/MSRV and Firefox versions, CI

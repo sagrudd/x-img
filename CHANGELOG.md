@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added the XIMG-007 Firefox architecture spike ADR and synthetic fixture
+  matrix, covering WebRequest/DNR limits, bounded response filtering, exact
+  origin permissions, HTTPS and response contracts, signed-URL redaction,
+  observed-thumbnail versus explicit-original eligibility, segmented-video
+  capability gates, and fail-open behavior.
 - Added the XIMG-006 versioned acquisition/catalogue metadata contract for
   source items, canonical media identities, DASObjectStore references,
   attempts, leases, cursors, review state, tombstones, audit events, and
