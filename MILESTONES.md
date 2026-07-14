@@ -299,6 +299,9 @@ Goal: deliver the dense, fast visual browser.
 - XIMG-050 implements the Mnemosyne-compatible Monas shell (commit `9e9cabb`):
   semantic-token CSS, compact header, responsive accessible empty state, and
   one mandatory footer provenance mark; host authentication remains Monas-owned.
+- XIMG-051 implements source/account navigation (commit `ffdd275`): All, X,
+  Instagram, and website contexts share one catalogue view with explicit
+  selection and source counts.
 
 Exit criteria:
 

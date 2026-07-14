@@ -313,9 +313,9 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   one required provenance footer mark. The host supplies approved token and
   brand assets; x-img adds no login flow.
 
-- [ ] **XIMG-051 P1 — Implement source/account navigation.**
-  Show X, Instagram, and website sources resolving to the same catalogue, with
-  visible selected context and counts.
+- [x] **XIMG-051 P1 — Implement source/account navigation.** Completed in
+  `ffdd275`; keyboard-operable source navigation selects All, X, Instagram, or
+  Websites with visible selected context and configured-source counts.
 
 - [ ] **XIMG-052 P1 — Implement dense virtualized thumbnail browser.**
   Include keyboard traversal, adaptive thumbnail size, stable selection,

@@ -7,6 +7,7 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-051's selected-context X/Instagram/website source navigation.
 - Added XIMG-050's Mnemosyne-compatible Yew/Monas shell.
 - Added XIMG-046's verified-commit-only new-item review admission queue.
 - Added XIMG-045's one-click social-account refresh orchestration contract:
