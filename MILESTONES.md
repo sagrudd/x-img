@@ -194,6 +194,11 @@ Exit criteria:
   issuance, quota, health, and final commit verification.
 - object keys, metadata, checksums, media types, provenance, and range-readable
   responses have contract tests against sibling fixtures;
+- XIMG-034 implements the authorized object-read/cache handoff (commit
+  `2d36647`): media type, length, SHA-256/ETag, conditional, range, and
+  unavailable outcomes are validated before an authority stream is exposed. It
+  has no local byte cache; future HTTP/browser adapters own transport and
+  fail-open origin substitution behavior.
 - XIMG-033 implements the bounded streaming ingest port (commit `f2c6ef2`):
   chunks flow directly to an authority backend with no local payload staging;
   exact length and SHA-256, backend receipt identity, backpressure, and

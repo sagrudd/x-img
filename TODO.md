@@ -206,9 +206,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   It owns no payload files or durable local media; daemon transport and durable
   crash reconciliation remain future adapter work.
 
-- [ ] **XIMG-034 P0 — Implement authorized object read/cache port.**
-  Acceptance: content type, length, checksum, ETag, conditional GET, byte ranges,
-  and object-unavailable errors match DASObjectStore contracts.
+- [x] **XIMG-034 P0 — Implement authorized object read/cache port.** Completed
+  in `2d36647`; the authority stream handoff validates media type, content and
+  total length, SHA-256, quoted ETag, conditional not-modified, exact byte
+  ranges, and explicit unavailable outcomes. It persists no local media cache;
+  a future HTTP/browser adapter remains responsible for transport and fail-open
+  origin behavior.
 
 - [ ] **XIMG-035 P1 — Add cross-repository contract CI.**
   Test pinned fixtures without requiring sibling checkouts; optionally run live
