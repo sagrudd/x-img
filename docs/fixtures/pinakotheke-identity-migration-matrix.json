@@ -1,0 +1,47 @@
+{
+  "schema": "x-img.identity-migration-matrix",
+  "schema_major": 1,
+  "fixture_kind": "synthetic",
+  "planned_release": "1.0.0",
+  "legacy": {
+    "product_name": "x-img",
+    "repository": "sagrudd/x-img",
+    "schema_namespace": "x-img"
+  },
+  "canonical": {
+    "product_name": "Pinakotheke",
+    "product_id": "pinakotheke",
+    "repository": "sagrudd/pinakotheke"
+  },
+  "compatibility_window": {
+    "minimum_months_after_v1": 12,
+    "minimum_subsequent_minor_releases": 2,
+    "removal_requires_major_release": true
+  },
+  "phases": [
+    {"id": "preflight", "gate": "inventory GitHub, package, host, ObjectStore application, extension, link, and rollback state", "rollback": "abort before public identity change"},
+    {"id": "compatibility-release", "gate": "readers, aliases, explicit migration tools, backups, warnings, and proof fixtures pass before rename", "rollback": "ship only legacy-compatible v0.9.x/RC artefact"},
+    {"id": "v1-cutover", "gate": "canonical identity, GitHub rename, host registrations, scoped ObjectStore principal, extension listing, docs, and full suite pass together", "rollback": "revert deployment registrations; never recreate old repository"},
+    {"id": "postflight", "gate": "canonical URL, old redirect, aliases, audit, release artefacts, and deprecation notice verified", "rollback": "retain canonical repository and legacy-compatible readers"}
+  ],
+  "surfaces": [
+    {"id": "documentation", "strategy": "update at v1; retain migration page and legacy link guidance", "proof": "Sphinx links and public-clone docs pass"},
+    {"id": "github-repository", "strategy": "rename once at v1; update controlled remotes; do not recreate old name", "proof": "canonical URL and old redirect verified"},
+    {"id": "rust-workspace-package", "strategy": "canonical package names with forwarding/deprecation where published", "proof": "Cargo metadata, CLI version, artefact, and compatibility tests pass"},
+    {"id": "cli", "strategy": "legacy wrapper preserves arguments and warns through compatibility window", "proof": "golden CLI invocation tests pass"},
+    {"id": "monas-product", "strategy": "canonical manifest plus host-controlled legacy redirect/alias", "proof": "host-session and mount contract tests pass"},
+    {"id": "synoptikon-adapter", "strategy": "versioned manifest alias; never change tenant, project, catalogue, or audit identity by label", "proof": "dual-host manifest fixtures pass"},
+    {"id": "das-application", "strategy": "register/rotate through DAS authority; preserve historical principal in audit records", "proof": "scope, revocation, and provenance tests pass"},
+    {"id": "catalogue-config-schema", "strategy": "retain legacy readers/schema IDs; add canonical fields only through explicit migration", "proof": "configuration and catalogue migration fixtures pass"},
+    {"id": "objectstore-references", "strategy": "never rekey or rewrite committed media for branding", "proof": "read/range/checksum/provenance equivalence tests pass"},
+    {"id": "firefox-extension", "strategy": "keep published gecko.id; otherwise choose Pinakotheke ID before first signing; re-pair explicitly", "proof": "upgrade, pairing, revocation, origin, and destination tests pass"},
+    {"id": "ci-release-artifacts", "strategy": "update controlled references and preserve release provenance", "proof": "clean clone, tag, SBOM, checksum, and link checks pass"}
+  ],
+  "proof_cases": [
+    {"id": "existing-config", "legacy_fixture": "x-img.instance.v1", "expected": "read unchanged or idempotently migrate with backup and report"},
+    {"id": "existing-catalogue", "legacy_fixture": "x-img.acquisition.v1", "expected": "historic identities, checksums, and audit records remain readable"},
+    {"id": "existing-object-reference", "legacy_fixture": "endpoint/store/object-key/checksum synthetic record", "expected": "endpoint, ObjectStore, key, checksum, and range semantics remain stable"},
+    {"id": "existing-extension-pairing", "legacy_fixture": "synthetic legacy extension pairing", "expected": "explicit reviewed re-pair preserves origin, revocation, and destination safeguards"}
+  ],
+  "no_partial_release": true
+}

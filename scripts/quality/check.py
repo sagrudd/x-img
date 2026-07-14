@@ -263,7 +263,50 @@ def check_versions(findings: Findings) -> None:
                 findings.add(cargo, f"Rust version {match.group(1)} must match canonical version {expected}")
 
 
-CHECKS = {"links": check_links, "json": check_json, "privacy": check_privacy, "versions": check_versions}
+def check_identity_migration(findings: Findings) -> None:
+    path = ROOT / "docs" / "fixtures" / "pinakotheke-identity-migration-matrix.json"
+    if not path.is_file():
+        findings.add(path, "Pinakotheke identity migration matrix is missing")
+        return
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        findings.add(path, f"invalid migration matrix JSON: {error}")
+        return
+    if document.get("schema") != "x-img.identity-migration-matrix" or document.get("schema_major") != 1:
+        findings.add(path, "migration matrix must declare x-img.identity-migration-matrix major 1")
+    if document.get("canonical", {}).get("repository") != "sagrudd/pinakotheke":
+        findings.add(path, "migration matrix must name canonical repository sagrudd/pinakotheke")
+    if document.get("legacy", {}).get("repository") != "sagrudd/x-img":
+        findings.add(path, "migration matrix must preserve legacy repository sagrudd/x-img")
+    if document.get("no_partial_release") is not True:
+        findings.add(path, "migration matrix must prohibit partial release")
+
+    required_surfaces = {
+        "documentation", "github-repository", "rust-workspace-package", "cli",
+        "monas-product", "synoptikon-adapter", "das-application",
+        "catalogue-config-schema", "objectstore-references", "firefox-extension",
+        "ci-release-artifacts",
+    }
+    surface_ids = {entry.get("id") for entry in document.get("surfaces", []) if isinstance(entry, dict)}
+    missing_surfaces = required_surfaces - surface_ids
+    if missing_surfaces:
+        findings.add(path, f"migration matrix missing identity surfaces: {', '.join(sorted(missing_surfaces))}")
+
+    required_proofs = {"existing-config", "existing-catalogue", "existing-object-reference", "existing-extension-pairing"}
+    proof_ids = {entry.get("id") for entry in document.get("proof_cases", []) if isinstance(entry, dict)}
+    missing_proofs = required_proofs - proof_ids
+    if missing_proofs:
+        findings.add(path, f"migration matrix missing proof cases: {', '.join(sorted(missing_proofs))}")
+
+
+CHECKS = {
+    "identity-migration": check_identity_migration,
+    "json": check_json,
+    "links": check_links,
+    "privacy": check_privacy,
+    "versions": check_versions,
+}
 
 
 def main() -> int:

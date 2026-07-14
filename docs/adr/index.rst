@@ -17,3 +17,4 @@ blocked where the policy and rights gates say so.
    0008-external-cache-fail-open
    0009-acquisition-catalogue-schemas
    0010-firefox-architecture-spike
+   0011-pinakotheke-v1-identity-migration

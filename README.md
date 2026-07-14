@@ -58,6 +58,9 @@ The v1.0.0 product and brand target is **Pinakotheke**. Until the coordinated
 release migration is complete, this public planning repository remains
 `sagrudd/x-img`; the target repository slug is `sagrudd/pinakotheke` and all
 compatibility aliases and migrations must be documented before that move.
+The [Pinakotheke identity migration guide](docs/identity-migration.rst) records
+the staged cutover, compatibility window, immutable data identities, and
+rollback constraints.
 
 ## Key concerns before implementation
 

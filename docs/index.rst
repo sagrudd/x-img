@@ -21,6 +21,7 @@ Configuration
    :maxdepth: 1
 
    configuration
+   identity-migration
 
 Release and quality
 -------------------
