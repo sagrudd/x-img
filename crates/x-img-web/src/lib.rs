@@ -9,6 +9,7 @@ pub fn app() -> Html {
     let selected = use_state(|| "all".to_owned());
     let density = use_state(|| "compact".to_owned());
     let active_card = use_state(|| 0usize);
+    let refresh_state = use_state(|| "Not started".to_owned());
     let cards = [
         "Aurora study",
         "Tidal form",
@@ -37,6 +38,7 @@ pub fn app() -> Html {
                 <p class="ximg-shell__eyebrow">{ "Media workspace" }</p>
                 <h1>{ "x-img library" }</h1>
                 <p>{ "Review committed media from configured sources." }</p>
+                <section class="ximg-refresh" aria-labelledby="refresh-title"><h2 id="refresh-title">{ "Account refresh" }</h2><p>{ format!("Status: {}", *refresh_state) }</p><button onclick={{ let refresh_state=refresh_state.clone(); Callback::from(move |_| refresh_state.set("Complete · 2 accounts · 0 new items".to_owned())) }}>{ "Refresh accounts" }</button><button onclick={{ let refresh_state=refresh_state.clone(); Callback::from(move |_| refresh_state.set("Partial failure · retry available".to_owned())) }}>{ "Show retry state" }</button></section>
                 <section class="ximg-source-nav" aria-labelledby="source-context">
                     <h2 id="source-context">{ "Sources" }</h2>
                     <p>{ format!("Selected context: {}", sources.iter().find(|source| source.0 == (*selected).as_str()).map(|source| source.1).unwrap_or("All sources")) }</p>
