@@ -87,7 +87,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   progressive range delivery, and HLS/DASH behind explicit capability and
   fail-open evidence gates.
 
-- [ ] **XIMG-008 P1 — Establish release and quality policy.**
+- [x] **XIMG-008 P1 — Establish release and quality policy.** Completed in
+  `34c7792`; the Sphinx release policy, dependency-free repository checks, and
+  SHA-pinned GitHub Actions mirror define SemVer/version authority, Rust 1.95.0
+  MSRV and Firefox Release/ESR support, CI/dependency/fixture rules, and the
+  local-container-authoritative Definition of Done.
   Add changelog, SemVer rules, supported Rust/MSRV and Firefox versions, CI
   matrix, dependency policy, fixture privacy rules, and Definition of Done.
   Acceptance: version sources cannot drift; the Definition of Done requires

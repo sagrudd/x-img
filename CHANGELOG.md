@@ -7,6 +7,13 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Established the XIMG-008 release and quality policy: Semantic Versioning and
+  version authority, Rust/MSRV and Firefox Release/ESR support, the required CI
+  matrix, dependency/security/licence governance, fixture privacy, release and
+  exception procedures, and a precise Definition of Done. Added dependency-
+  free local link/JSON/schema-major/privacy/version checks plus a SHA-pinned
+  GitHub Actions mirror; local containerized Sphinx verification remains the
+  documentation authority.
 - Added the XIMG-007 Firefox architecture spike ADR and synthetic fixture
   matrix, covering WebRequest/DNR limits, bounded response filtering, exact
   origin permissions, HTTPS and response contracts, signed-URL redaction,

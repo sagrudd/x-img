@@ -97,6 +97,11 @@ Exit criteria:
   and `docs/fixtures/firefox-architecture-matrix.json` (commit `1b788bc`),
   with DNR/body-filtering limits, HTTPS and response-contract gates, and
   explicit segmented-video capability requirements.
+- XIMG-008 release and quality policy is recorded in
+  `docs/release-quality-policy.rst` (commit `34c7792`), with a Rust 1.95.0 MSRV
+  for the initial 0.2.x line, current Firefox Release/ESR channel support,
+  version-drift and planning/schema/privacy checks, a SHA-pinned CI mirror, and
+  the local Sphinx container retained as the documentation authority.
 
 ## 0.2.0 — Rust core and versioned contracts
 
