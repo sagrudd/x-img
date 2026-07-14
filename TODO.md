@@ -317,7 +317,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   `ffdd275`; keyboard-operable source navigation selects All, X, Instagram, or
   Websites with visible selected context and configured-source counts.
 
-- [ ] **XIMG-052 P1 — Implement dense virtualized thumbnail browser.**
+- [x] **XIMG-052 P1 — Implement dense virtualized thumbnail browser.** Completed in `312d290`; synthetic dense adaptive grid has stable keyboard selection and lazy-load boundary.
   Include keyboard traversal, adaptive thumbnail size, stable selection,
   thumbnail lazy loading, and fast filters. Acceptance: performance targets are
   documented and met against a large synthetic catalogue.
