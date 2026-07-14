@@ -9,4 +9,8 @@
 .ximg-shell__main { margin: 0 auto; max-width: 80rem; padding: clamp(var(--mn-space-4), 6vw, var(--mn-space-8)); width: 100%; }
 .ximg-shell__eyebrow { color: var(--mn-color-text-secondary); font-size: 0.875rem; }
 .ximg-shell__empty { background: var(--mn-color-surface-raised); border: 1px solid var(--mn-color-border-subtle); margin-top: var(--mn-space-6); padding: var(--mn-space-4); }
+.ximg-source-nav { margin-top: var(--mn-space-6); }
+.ximg-source-nav ul { display: flex; flex-wrap: wrap; gap: var(--mn-space-2); list-style: none; padding: 0; }
+.ximg-source-nav__item { background: var(--mn-color-surface-raised); border: 1px solid var(--mn-color-border-subtle); color: var(--mn-color-text-primary); display: flex; gap: var(--mn-space-2); padding: var(--mn-space-2) var(--mn-space-3); }
+.ximg-source-nav__item.is-selected { border-color: var(--mn-color-action-primary-default); }
 @media (max-width: 40rem) { .ximg-shell__header { flex-wrap: wrap; } .ximg-shell__host { margin-left: 0; width: 100%; } }
