@@ -31,13 +31,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   are present; planning baseline is pushed. Completed in `78eee75`; the `main`
   branch requires linear history and rejects force-pushes and deletion.
 
-- [ ] **XIMG-002 P0 — Record platform-policy and content-rights decisions.**
+- [x] **XIMG-002 P0 — Record platform-policy and content-rights decisions.**
   Review current primary X and Meta/Instagram developer terms, API terms,
   display/storage rules, deletion/compliance duties, automation restrictions,
   and personal copyright/privacy obligations. Define allowed and prohibited
   connector behavior for public and protected/private sources.
   Acceptance: dated ADR links every conclusion to a primary source; unresolved
   legal/policy questions block live acquisition but not fixture work.
+  Completed in [`docs/adr/0002-platform-policy.md`](docs/adr/0002-platform-policy.md), commit `625c833`; X and Instagram remain fixture-only until the listed approval, account-class, rights, and retention gates are answered.
 
 - [ ] **XIMG-003 P0 — Inventory sibling contracts.**
   Pin the relevant Monas product mount/session contract, DASObjectStore
