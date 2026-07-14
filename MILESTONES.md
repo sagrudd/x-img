@@ -153,6 +153,10 @@ Exit criteria:
 - explicit GEO/SRA/ENA/NCBI plan and resolution fixtures prove source authority,
   release, files, checksums, transport, rights/policy, destination, and no
   bulk discovery; and
+- XIMG-026 implements the explicit metadata-only plan contract (commit
+  `924ad12`) with bounded source input, reviewable file/checksum/transport and
+  destination evidence, policy blocking, and confirmation before any future
+  transfer or DASObjectStore write.
 - no code path can persist media bytes outside the storage port.
 
 ## 0.3.0 — DASObjectStore and Monas integration contracts

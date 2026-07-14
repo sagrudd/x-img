@@ -163,13 +163,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   responses, and cursor reset. Fixtures remain opaque, deterministic, and free
   of real traffic, credentials, account data, or media payloads.
 
-- [ ] **XIMG-026 P0 — Define explicit bioinformatics transfer plans.** Depends
-  on XIMG-006/008. Accept one bounded, user-identified GEO, SRA, ENA, or NCBI
-  accession/URL and render a reviewable plan containing authority/release,
-  files, sizes/checksums, transport, endpoint/ObjectStore/prefix/type,
-  estimated bytes, licensing/usage, and policy result before any transfer;
-  reject bulk discovery and implicit repository crawling. Planning evidence:
-  `docs/adr/0003-bioinformatics-resource-commit.md` in commit `b21c6da`.
+- [x] **XIMG-026 P0 — Define explicit bioinformatics transfer plans.** Depends
+  on XIMG-006/008. Completed in `924ad12`; the metadata-only GEO/SRA/ENA/NCBI
+  plan accepts one bounded explicit accession/URL, captures reviewable release,
+  files/checksums/bytes/transport, rights/policy, and stable destination, and
+  requires an allowed-plan confirmation. Bulk input, unsafe destination, and
+  blocked-policy confirmation fail closed; no discovery or transfer occurs.
 
 - [ ] **XIMG-027 P0 — Add bioinformatics resolution and transport fixtures.**
   Depends on XIMG-026. Cover ENA/SRA manifests and multi-run expansion, GEO
