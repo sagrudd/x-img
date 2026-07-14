@@ -186,6 +186,12 @@ Exit criteria:
   not parse or retain cookies, passwords, session tokens, or credentials.
 - a scoped DASObjectStore application identity obtains short-lived capability
   or S3 credentials without persisting secrets in x-img state;
+- XIMG-032 records and validates the scoped application identity (commit
+  `784a3cd`): one endpoint/ObjectStore/prefix, bounded read/write/list/verify
+  operations and bytes, expiry, and opaque owner/authority references. Expired,
+  replayed, wrong-store, wrong-prefix, and oversized operations fail closed;
+  a future daemon adapter remains responsible for proof, token/capability
+  issuance, quota, health, and final commit verification.
 - object keys, metadata, checksums, media types, provenance, and range-readable
   responses have contract tests against sibling fixtures;
 - upload completion is reconciled idempotently after crash boundaries; and

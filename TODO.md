@@ -192,10 +192,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   `ximg.access`, and retain no cookie, session, password, token, or credential;
   the host remains responsible for validating its session before injection.
 
-- [ ] **XIMG-032 P0 — Register scoped DASObjectStore application identity.**
-  Request only read/write/list/verify access to one configured ObjectStore/prefix
-  with short-lived credentials or capabilities. Acceptance: expired, replayed,
-  wrong-store, wrong-prefix, and oversized operations fail closed.
+- [x] **XIMG-032 P0 — Register scoped DASObjectStore application identity.**
+  Completed in `784a3cd`; the public registration binds one endpoint,
+  ObjectStore, prefix, narrow read/write/list/verify scope, byte limits, expiry,
+  and opaque authority references. Its authorization gate rejects expired,
+  replayed, wrong-store, wrong-prefix, and oversized operations without storing
+  a credential or issuing a token; live token exchange/ingest remains XIMG-033.
 
 - [ ] **XIMG-033 P0 — Implement streaming object ingest port.**
   Acceptance: checksum and exact length are verified; completion is idempotent;
