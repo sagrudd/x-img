@@ -256,6 +256,11 @@ Exit criteria:
   viewing-account binding are test-covered without raw credentials, cookies,
   tokens, live API traffic, or a scraping fallback. ADR 0002 still blocks live
   acquisition until X approval, rights, retention, and deletion gates close.
+- XIMG-041 implements the followed-account review boundary (commit `1d693d9`):
+  only stable account IDs returned for the grant-bound viewing account may be
+  selected; the task-pane contract provides word-first added/existing/not-
+  selected diff rows and requires confirmation before the existing atomic JSON
+  save boundary. It provides no live X call, bulk import, or policy-gate bypass.
 - official, user-authorized Instagram connector supports the account/media
   types permitted by the approved API and records unsupported cases clearly;
 - `Refresh accounts` schedules all enabled connectors once, reports per-account

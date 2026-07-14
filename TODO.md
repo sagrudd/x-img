@@ -263,10 +263,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   traffic; ADR 0002's approval, rights, retention, and deletion gates still
   block live acquisition.
 
-- [ ] **XIMG-041 P1 — Import/select followed X accounts.**
-  Let the user explicitly select from permitted followed accounts into the local
-  JSON allowlist; never silently follow every account. Acceptance: import is a
-  task pane and config diff is reviewable before save.
+- [x] **XIMG-041 P1 — Import/select followed X accounts.** Completed in
+  `1d693d9`; the grant-bound, fixture-driven preview accepts only returned
+  stable X account IDs and produces explicit `Added`, `Already configured`, and
+  `Not selected` rows before a confirmation can yield a candidate local JSON
+  configuration. It does not write itself (the existing atomic
+  `ConfigStore::replace` boundary persists a confirmed candidate), bulk-enable
+  accounts, call X, or relax ADR 0002's live approval/rights gates.
 
 - [ ] **XIMG-042 P0 — Implement incremental X media discovery.**
   Support photos, videos, GIFs, pagination, permitted timeline depth, and best
