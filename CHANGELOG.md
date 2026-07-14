@@ -36,6 +36,10 @@ All notable changes to x-img will be documented in this file. The project uses
   test contract, covering pagination, edits, deletions, duplicates, variants,
   rate limits, authorization expiry, malformed responses, and cursor reset
   without live traffic, account data, credentials, or media payloads.
+- Added XIMG-026 metadata-only GEO/SRA/ENA/NCBI transfer plans with one
+  explicit accession/URL, bounded resolved file evidence, transport, rights,
+  endpoint/ObjectStore destination, policy blocking, and explicit confirmation;
+  no repository discovery or byte transfer is enabled.
 - Added the XIMG-009 executable Pinakotheke v1 identity-migration plan,
   including a complete rename surface matrix, a minimum compatibility window,
   migration and rollback rules, retained schema/object/extension identities,

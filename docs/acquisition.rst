@@ -100,3 +100,19 @@ These are opaque deterministic adapter inputs and expected outcomes only. They
 contain no actual account names, media payloads, browser data, credentials,
 cookies, tokens, signed URLs, or platform traffic. Passing them does not
 authorize a connector or weaken the XIMG-002 platform-policy gate.
+
+Bioinformatics transfer plans
+-----------------------------
+
+XIMG-026 accepts one explicit GEO, SRA, ENA, or NCBI accession/URL as a
+metadata-only transfer plan. Before any future transfer, the plan presents the
+authority, release, selected files, announced bytes and checksum, transport,
+endpoint/ObjectStore/prefix/object type, rights note, and policy result.
+Wildcard/bulk inputs and arbitrary root destinations are rejected.
+
+Only an ``Allowed`` plan can be explicitly confirmed. ``ReviewRequired`` and
+``Blocked`` plans remain metadata-only. Confirmation does not transfer bytes:
+the future server-side adapter must revalidate policy, destination, quota, and
+write capability immediately before DASObjectStore ingest. HTTPS remains the
+baseline transport; optional Aspera and any fallback/resume work remain later
+fixture and adapter gates.
