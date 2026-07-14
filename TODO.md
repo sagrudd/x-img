@@ -185,10 +185,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   fixtures reject anonymous access and a direct x-img login-route declaration;
   live Axum host-context enforcement remains XIMG-031.
 
-- [ ] **XIMG-031 P0 — Implement authenticated host-context adapter.**
-  Acceptance: Monas session identity and authorization are validated at the host
-  boundary, never copied into logs/config, and can be replaced by a Synoptikon
-  adapter in contract tests.
+- [x] **XIMG-031 P0 — Implement authenticated host-context adapter.**
+  Completed in `4b000f1`; the API accepts only a host-injected, non-secret
+  authorized context and direct privileged access returns `401`. Monas and
+  Synoptikon adapters use the same strict synthetic contract, reject missing
+  `ximg.access`, and retain no cookie, session, password, token, or credential;
+  the host remains responsible for validating its session before injection.
 
 - [ ] **XIMG-032 P0 — Register scoped DASObjectStore application identity.**
   Request only read/write/list/verify access to one configured ObjectStore/prefix

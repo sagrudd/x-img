@@ -176,9 +176,14 @@ Exit criteria:
   Prosopikon authentication, ``/opt/x-img`` product root, DASObjectStore
   requirement, declared capabilities, and a Synoptikon-equivalent bootstrap.
   Its synthetic fixtures reject anonymous access and direct x-img login-route
-  declarations; runtime host-context validation remains the XIMG-031 gate.
+  declarations.
 - Axum routes consume Monas-authenticated context and reject direct/anonymous
   privileged access;
+- XIMG-031 implements that boundary (commit `4b000f1`): a direct privileged
+  route returns `401`, while a host-injected authorized context is admitted.
+  The strict Monas and Synoptikon adapters consume only non-secret identity,
+  authorization, and correlation fields, reject missing `ximg.access`, and do
+  not parse or retain cookies, passwords, session tokens, or credentials.
 - a scoped DASObjectStore application identity obtains short-lived capability
   or S3 credentials without persisting secrets in x-img state;
 - object keys, metadata, checksums, media types, provenance, and range-readable
