@@ -15,6 +15,10 @@ All notable changes to x-img will be documented in this file. The project uses
   accession plans, rights gates, direct DASObjectStore streaming, checksum and
   provenance requirements, optional Aspera with HTTPS fallback, and no bulk
   discovery or durable x-img-local payloads.
+- Added endpoint/device versus logical ObjectStore planning: managed local
+  folder-profile bootstrap, remote HTTPS pairing and discovery, explicit
+  endpoint-plus-store selection, commit-time capability checks, stable-ID
+  provenance, and safe reconnect behavior without silent destination changes.
 
 ## [0.1.0] - 2026-07-14
 

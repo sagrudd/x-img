@@ -25,6 +25,12 @@ single-click refresh of configured social accounts.
   URL becomes a reviewable transfer plan before bounded streaming to the
   configured DASObjectStore ObjectStore. x-img does not bulk-discover or crawl
   public repositories.
+- Storage endpoints/devices are separate from logical ObjectStores. The
+  default local folder profile is provisioned by the authorized DASObjectStore
+  service; remote endpoints are paired through Monas/DASObjectStore, expose all
+  stores visible to the user, and require explicit endpoint-plus-store review
+  before every write. x-img never writes an unmanaged folder or silently
+  changes a reviewed destination.
 - Acquisition is idempotent: once a media identity has a verified committed
   object, routine refreshes do not download it again.
 - The UI follows sibling `../mnemosyne_design_language` and retains a future
@@ -64,6 +70,9 @@ compatibility aliases and migrations must be documented before that move.
 7. GEO, SRA, ENA, and NCBI resources require explicit accession/URL selection,
    rights/policy review, destination confirmation, checksum verification, and
    provenance; controlled-access or license-uncertain resources remain blocked.
+8. Endpoint/device identity, logical ObjectStore identity, pairing, capability,
+   health, quota, and TLS state are authority-owned; extension/browser storage
+   never contains raw passwords, S3 secrets, or broad tokens.
 
 ## Versioning
 

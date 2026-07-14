@@ -19,6 +19,8 @@ x-img provides one private, authenticated Web library for media acquired from:
 - websites enabled by the user through a Firefox extension.
 - user-identified public GEO, SRA, ENA, and NCBI resources through an explicit
   review-and-confirm transfer plan.
+- endpoint/device inventory and logical ObjectStore selection through the
+  authorized DASObjectStore boundary, with useful local and remote operation.
 
 A user can press one `Refresh accounts` action to schedule all enabled social
 connectors. Newly committed items enter a visible review queue and are
@@ -129,6 +131,9 @@ Exit criteria:
 - the resource ingest contract streams bounded, confirmed GEO/SRA/ENA/NCBI
   transfers to DASObjectStore, verifies checksums before catalogue admission,
   and records endpoint/ObjectStore and source provenance.
+- endpoint/device and ObjectStore contracts distinguish managed local
+  folder-profile provisioning from remote appliances, discover all visible
+  stores, and require explicit endpoint-plus-store selection for writes.
 
 ## 0.4.0 — Account connectors and one-click refresh
 
@@ -172,6 +177,10 @@ Exit criteria:
   are designed explicitly;
 - thumbnails and originals are served from DASObjectStore through authorized,
   range-capable URLs; and
+- endpoint/device inventory and ObjectStore selection use accessible
+  Mnemosyne tables/task panes, show endpoint and store together, and handle
+  writable/read-only, health, capacity, pairing, TLS, and reconnect states
+  without silently changing a reviewed destination; and
 - no full administration form is permanently embedded in the browsing view.
 
 ## 0.6.0 — Firefox site capture

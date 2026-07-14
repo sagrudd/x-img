@@ -126,6 +126,21 @@ integration, review, tests, commits, and the final handoff.
   and discovery/commit times. Aspera is optional, explicitly licensed and
   binary-bounded, HTTPS fallback is mandatory, and secrets never enter config,
   logs, or fixtures.
+- Storage endpoints/devices and logical ObjectStores are distinct authority
+  records. The default local folder-profile store must be provisioned through
+  the authorized DASObjectStore service boundary, never treated as an
+  unmanaged arbitrary folder. Remote endpoints use HTTPS/discovery and
+  Monas/DASObjectStore-approved scoped, revocable pairing; raw passwords, S3
+  secrets, and broad or long-lived tokens never enter extension site rules or
+  browser storage.
+- After pairing, discover every ObjectStore visible to the actor and retain
+  stable endpoint/appliance and ObjectStore IDs. Show endpoint and ObjectStore
+  together for every reviewed write, allow explicit per-endpoint/site/resource
+  overrides, and never infer a first remote store or silently switch after a
+  reconnect. Revalidate destination existence, health, write capability,
+  object type, policy, quota, and session immediately before each commit.
+  Provenance must bind endpoint ID, ObjectStore ID, object key/checksum,
+  actor/session reference, and commit time; mutable display names are labels.
 
 ## Data integrity and privacy
 
@@ -199,6 +214,11 @@ integration, review, tests, commits, and the final handoff.
   as well as colour, has an accessible reversible frame/badge/overlay with a
   tooltip, does not obstruct media, and can be toggled by the user. It must
   never watermark or mutate stored media bytes.
+- Endpoint inventory and ObjectStore selection use Mnemosyne table/task-pane
+  patterns. Selectors are keyboard accessible, show endpoint/device and store
+  together, use status words such as `Ready`, `Read-only`, and `Unavailable`,
+  filter to compatible writable stores for writes, and make local HTTPS,
+  mixed-content, remote TLS trust, pairing, and reconnect states explicit.
 - Preserve keyboard navigation, focus entry/trap/return, responsive behavior,
   and WCAG 2.2 AA contrast.
 

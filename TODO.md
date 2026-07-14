@@ -172,9 +172,25 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Test pinned fixtures without requiring sibling checkouts; optionally run live
   integration when sibling repositories are available.
 
-- [ ] **XIMG-036 P0 — Implement confirmed direct bioinformatics commit.** Depends
-  on XIMG-023/024/026/027/033. After user confirmation and server-side policy
-  and capability revalidation, stream directly to DASObjectStore, verify
+- [ ] **XIMG-036 P0 — Define endpoint/device and ObjectStore contracts.**
+  Depends on XIMG-003/008. Model endpoint/appliance identity separately from
+  logical ObjectStore identity, local folder-profile provisioning, remote
+  pairing/discovery, scoped credentials, capabilities, health, quota, TLS
+  trust, and endpoint-qualified provenance. Acceptance: versioned fixtures
+  reject unmanaged-folder writes, mutable-name identity, broad secrets, and
+  arbitrary first-store selection.
+
+- [ ] **XIMG-037 P0 — Implement reviewed endpoint/ObjectStore selection.**
+  Depends on XIMG-024/030/031/032/036. Discover every visible store, expose an
+  accessible endpoint-plus-store table/dropdown, support per-endpoint defaults
+  and explicit site/resource overrides, and revalidate the reviewed target
+  immediately before commit. Acceptance: removed, renamed, unavailable,
+  read-only, expired, over-quota, TLS, reconnect, and multi-endpoint alias
+  fixtures never silently switch destinations.
+
+- [ ] **XIMG-038 P0 — Implement confirmed direct bioinformatics commit.** Depends
+  on XIMG-023/024/026/027/033/037. After user confirmation and server-side
+  policy and capability revalidation, stream directly to DASObjectStore, verify
   checksum and exact length before catalogue commit, reconcile crashes
   idempotently, deduplicate by accession/file identity plus checksum, and
   preserve source, transport, rights, and destination provenance. No durable
