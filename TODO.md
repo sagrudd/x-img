@@ -132,9 +132,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   fields, wildcard origins, missing opaque authorization references, and
   incompatible schema versions; no source, authority, or storage call occurs.
 
-- [ ] **XIMG-022 P0 — Implement acquisition state machine.** Depends on XIMG-006.
-  Acceptance: property/unit tests prove valid transitions and reject double
-  claims, commit-before-verification, and review-before-object-commit.
+- [x] **XIMG-022 P0 — Implement acquisition state machine.** Depends on XIMG-006.
+  Completed in `7fcf9c8`; the platform-neutral in-memory lifecycle permits only
+  discovered → claimed → transferring → stored → verified → committed, requires
+  immutable ObjectStore evidence before commit, and admits review only after
+  commit. Unit tests prove the valid lifecycle and reject double claims,
+  out-of-order commits, review-before-commit, terminal re-entry, and malformed
+  evidence; it performs no transfer, persistence, or authority call.
 
 - [ ] **XIMG-023 P0 — Implement idempotency and reconciliation.**
   Use platform media identity plus immutable object checksum; keep aliases from

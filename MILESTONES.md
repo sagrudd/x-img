@@ -129,6 +129,10 @@ Exit criteria:
   no-network CLI for validation and safe identifier-only listing.
 - acquisition state machine covers discovered, claimed, transferring, stored,
   verified, committed, failed, and policy-blocked states;
+- XIMG-022 implements the state-machine contract (commit `7fcf9c8`): bounded
+  verified ObjectStore metadata is required before commit, review is permitted
+  only after commit, and double claims, terminal re-entry, and out-of-order
+  settlement transitions fail closed without live authority calls.
 - canonical identity supports platform media IDs and content-hash fallback;
 - review state distinguishes new, reviewed, retained, hidden, and removed;
 - fixture adapters prove pagination, duplicate discovery, crash reconciliation,
