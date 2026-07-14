@@ -266,6 +266,11 @@ Exit criteria:
   rendition selection; canonical source provenance; and reconciliation-request
   idempotency are test-covered. It makes no X request or transfer while ADR
   0002 remains open.
+- XIMG-044 implements fixture-only incremental Instagram discovery (commit
+  `298d2c5`): posts, carousels, reels/videos, cursor/page/candidate budgets,
+  opaque credential expiry/revocation, provenance, and reconciliation replay
+  are test-covered. No Meta/Instagram request, browser fallback, transfer, or
+  XIMG-043/ADR 0002 approval bypass is enabled.
 - official, user-authorized Instagram connector supports the account/media
   types permitted by the approved API and records unsupported cases clearly;
 - `Refresh accounts` schedules all enabled connectors once, reports per-account

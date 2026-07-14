@@ -285,9 +285,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   unsupported account/media classes are explicit and no browser credential or
   scraping fallback is introduced implicitly.
 
-- [ ] **XIMG-044 P0 — Implement incremental Instagram media discovery.**
-  Acceptance: supported posts/carousels/videos, pagination, provenance, budgets,
-  token lifecycle, and XIMG-023 idempotency pass.
+- [x] **XIMG-044 P0 — Implement incremental Instagram media discovery.**
+  Completed in `298d2c5`; synthetic page planning covers single-media posts,
+  multi-media carousels, reels/videos, cursor pagination, page/candidate
+  budgets, supported image/MP4 variant choice, provenance, and XIMG-023
+  reconciliation replay. Opaque fixture credential expiry/revocation fails
+  closed to reauthorization without accepting a token. No Instagram/Meta API
+  request, browser fallback, byte transfer, or XIMG-043/ADR 0002 gate bypass is
+  present.
 
 - [ ] **XIMG-045 P0 — Implement one-click account refresh.**
   One authenticated action schedules all enabled X and Instagram accounts,
