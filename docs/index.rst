@@ -32,6 +32,7 @@ Configuration
    x-oauth
    x-followed-accounts
    x-media-discovery
+   instagram-media-discovery
    identity-migration
 
 Release and quality

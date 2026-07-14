@@ -10,6 +10,7 @@ pub mod destination;
 pub mod destination_selection;
 pub mod host_context;
 pub mod host_product;
+pub mod instagram_discovery;
 pub mod object_ingest;
 pub mod object_read;
 pub mod reconciliation;

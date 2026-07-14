@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-044's fixture-only incremental Instagram discovery planner. It
+  handles posts, carousels, reels/videos, pagination and budgets; exposes
+  opaque credential expiry/revocation; selects supported renditions; preserves
+  provenance; and feeds reconciliation idempotency without an API call, media
+  transfer, or XIMG-043/ADR 0002 gate bypass.
 - Added XIMG-042's fixture-driven, incremental X media-discovery planner. It
   enforces cursor/page/item/depth budgets, selects supported best photo/video/
   animated-GIF variants, preserves metadata provenance, and produces existing

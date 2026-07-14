@@ -104,6 +104,13 @@ feeds canonical identity plus checksum into the existing idempotency boundary.
 It does not call X or transfer media while ADR 0002 remains open. See
 [incremental X media discovery](docs/x-media-discovery.rst).
 
+Instagram has an equivalent fixture-only incremental discovery planner for
+posts, carousels, and reels/videos. It enforces cursors and budgets, selects
+supported image/video variants, records provenance, makes opaque credential
+expiry/revocation explicit, and uses the same reconciliation boundary. It does
+not call Instagram or Meta while XIMG-043 and ADR 0002 remain open. See
+[incremental Instagram media discovery](docs/instagram-media-discovery.rst).
+
 x-img now carries a strict, versioned Monas product-registration contract for
 one authenticated application/API mount, a DASObjectStore requirement, and a
 future Synoptikon-equivalent bootstrap. It declares no x-img login/session

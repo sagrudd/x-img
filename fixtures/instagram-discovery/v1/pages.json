@@ -1,0 +1,54 @@
+{
+  "schema_version": "x-img.instagram-discovery-fixtures.v1",
+  "generated_by": "XIMG-044 synthetic Instagram incremental discovery fixture",
+  "account_id": "fixture-ig-account",
+  "credential_state": "fixture_active",
+  "budget": {"max_pages": 2, "max_items": 8},
+  "expected_candidate_identities": [
+    "instagram:fixture-ig-account:ig-post-100:ig-image-1",
+    "instagram:fixture-ig-account:ig-post-101:ig-carousel-image",
+    "instagram:fixture-ig-account:ig-post-101:ig-carousel-video",
+    "instagram:fixture-ig-account:ig-post-102:ig-reel-video",
+    "instagram:fixture-ig-account:ig-post-103:ig-image-2"
+  ],
+  "pages": [
+    {"request_cursor":null,"next_cursor":"ig-cursor-2","items":[
+      {"item_id":"ig-post-100","kind":"post","media":[
+        {"media_id":"ig-image-1","kind":"image","expected_checksum_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","variants":[
+          {"variant_id":"image-small","content_type":"image/jpeg","width":640,"height":640,"bitrate":0,"source_url_alias":"https://media.instagram-fixture.invalid/image-small"},
+          {"variant_id":"image-large","content_type":"image/jpeg","width":1440,"height":1440,"bitrate":0,"source_url_alias":"https://media.instagram-fixture.invalid/image-large"}
+        ]}
+      ]},
+      {"item_id":"ig-post-101","kind":"carousel","media":[
+        {"media_id":"ig-carousel-image","kind":"image","expected_checksum_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","variants":[
+          {"variant_id":"carousel-image","content_type":"image/webp","width":1200,"height":900,"bitrate":0,"source_url_alias":"https://media.instagram-fixture.invalid/carousel-image"}
+        ]},
+        {"media_id":"ig-carousel-video","kind":"video","expected_checksum_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","variants":[
+          {"variant_id":"carousel-hls","content_type":"application/vnd.apple.mpegurl","width":1920,"height":1080,"bitrate":7000000,"source_url_alias":"https://media.instagram-fixture.invalid/carousel-hls"},
+          {"variant_id":"carousel-video-small","content_type":"video/mp4","width":1280,"height":720,"bitrate":2000000,"source_url_alias":"https://media.instagram-fixture.invalid/carousel-video-small"},
+          {"variant_id":"carousel-video-large","content_type":"video/mp4","width":1920,"height":1080,"bitrate":4000000,"source_url_alias":"https://media.instagram-fixture.invalid/carousel-video-large"}
+        ]}
+      ]},
+      {"item_id":"ig-post-102","kind":"reel","media":[
+        {"media_id":"ig-reel-video","kind":"video","expected_checksum_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","variants":[
+          {"variant_id":"reel-mp4","content_type":"video/mp4","width":1080,"height":1920,"bitrate":3500000,"source_url_alias":"https://media.instagram-fixture.invalid/reel-mp4"}
+        ]}
+      ]}
+    ]},
+    {"request_cursor":"ig-cursor-2","next_cursor":null,"items":[
+      {"item_id":"ig-post-101","kind":"carousel","media":[
+        {"media_id":"ig-carousel-image","kind":"image","expected_checksum_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","variants":[
+          {"variant_id":"carousel-image","content_type":"image/webp","width":1200,"height":900,"bitrate":0,"source_url_alias":"https://media.instagram-fixture.invalid/carousel-image"}
+        ]},
+        {"media_id":"ig-carousel-video","kind":"video","expected_checksum_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","variants":[
+          {"variant_id":"carousel-video-large","content_type":"video/mp4","width":1920,"height":1080,"bitrate":4000000,"source_url_alias":"https://media.instagram-fixture.invalid/carousel-video-large"}
+        ]}
+      ]},
+      {"item_id":"ig-post-103","kind":"post","media":[
+        {"media_id":"ig-image-2","kind":"image","expected_checksum_sha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","variants":[
+          {"variant_id":"image-2","content_type":"image/png","width":1000,"height":1000,"bitrate":0,"source_url_alias":"https://media.instagram-fixture.invalid/image-2"}
+        ]}
+      ]}
+    ]}
+  ]
+}
