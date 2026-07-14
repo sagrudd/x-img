@@ -1,7 +1,9 @@
 # x-img milestones
 
-Status: planning baseline  
-Version: 0.1.0  
+Status: planning baseline
+
+Version: 0.1.0
+
 Updated: 2026-07-14
 
 ## Product outcome

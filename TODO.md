@@ -1,7 +1,9 @@
 # x-img TODO
 
-Status: dependency-ordered planning backlog  
-Version: 0.1.0  
+Status: dependency-ordered planning backlog
+
+Version: 0.1.0
+
 Updated: 2026-07-14
 
 ## How to use this backlog
@@ -22,11 +24,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 ## 0.1.0 — Governance and feasibility
 
-- [ ] **XIMG-001 P0 — Create and protect the public repository.**
+- [x] **XIMG-001 P0 — Create and protect the public repository.**
   Create `sagrudd/x-img`, set public visibility, MPL-2.0 license, default branch
   protections where available, description/topics, and verify a clean clone.
   Acceptance: repository URL is recorded in README; no secrets or local media
-  are present; planning baseline is pushed.
+  are present; planning baseline is pushed. Completed in `78eee75`; the `main`
+  branch requires linear history and rejects force-pushes and deletion.
 
 - [ ] **XIMG-002 P0 — Record platform-policy and content-rights decisions.**
   Review current primary X and Meta/Instagram developer terms, API terms,

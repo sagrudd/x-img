@@ -1,5 +1,7 @@
 # x-img
 
+Public repository: [github.com/sagrudd/x-img](https://github.com/sagrudd/x-img)
+
 `x-img` is a planned personal media-acquisition and review service for a small,
 explicitly configured set of X/Twitter and Instagram accounts, together with
 websites enabled through a Firefox extension.
