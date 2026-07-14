@@ -7,6 +7,10 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-037's reviewed destination row and commit-time revalidation
+  contract. It exposes all discovered stores in structured status-word rows and
+  refuses removed, renamed, unavailable, read-only, expired, over-quota,
+  untrusted-TLS, reconnect, and cross-endpoint alias states without fallback.
 - Added XIMG-036's strict endpoint/device and logical ObjectStore inventory
   contract. Synthetic fixtures prove managed local profile and paired remote
   discovery selection while rejecting unmanaged folders, mutable identities,

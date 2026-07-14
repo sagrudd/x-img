@@ -27,6 +27,7 @@ VENDORED_REQUIRED = (
     "fixtures/host-context/v1/synoptikon-valid.json",
     "fixtures/das-application/v1/authorization-cases.json",
     "fixtures/das-destinations/v1/cases.json",
+    "fixtures/das-destinations/v1/revalidation-cases.json",
 )
 SIBLING_REQUIRED = {
     "monas": ("README.md", "crates/monas-core/src/lib.rs", "crates/monas-server/src/lib.rs"),

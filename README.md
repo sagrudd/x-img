@@ -112,6 +112,11 @@ appliances, requires stable endpoint-plus-store IDs and explicit defaults, and
 rejects unmanaged folders, credentials, mutable identity, and arbitrary
 first-store selection. See [destination contracts](docs/destinations.rst).
 
+Reviewed destination selection now exposes all authority-visible endpoint/store
+rows with word-first readiness states, keeps the explicit reviewed pair, and
+fails commit-time revalidation on removal, rename, TLS, expiry, reconnect,
+read-only, quota, or alias changes rather than switching storage.
+
 The supported-toolchain, browser, Semantic Versioning, dependency, fixture,
 CI, documentation, and Definition of Done rules are maintained in the
 [release and quality policy](docs/release-quality-policy.rst). Run the

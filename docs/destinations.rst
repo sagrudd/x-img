@@ -30,9 +30,10 @@ password, S3 secret, certificate, bearer token, or long-lived broad credential.
 Selection and commit safety
 ---------------------------
 
-After pairing, the authority supplies every visible ObjectStore. A future task
-pane will show endpoint and store together, including stable IDs, labels,
-health, write capability, quota, and compatible object types. It must show
+After pairing, the authority supplies every visible ObjectStore. XIMG-037
+exposes each one as a structured destination row; its future task pane will
+show endpoint and store together, including stable IDs, labels, health, write
+capability, quota, and compatible object types. It must show
 ``Ready``, ``Read-only``, ``Unavailable``, or ``Needs reconnect`` in words;
 colour is only supplementary.
 
@@ -42,10 +43,10 @@ to one endpoint ID and one ObjectStore ID. x-img never chooses the first remote
 store, silently falls back to another store, or treats a renamed label as a new
 destination.
 
-Immediately before a real commit, the future server adapter must revalidate the
+Immediately before a real commit, the server adapter must revalidate the
 host context, pairing/TLS state, endpoint/store existence, health, writable
 capability, object type, policy, quota, and reviewed stable-ID pair. The
 catalogue provenance records endpoint ID, ObjectStore ID, object key, checksum,
-actor/session reference, and commit time. XIMG-037 implements the interactive
-selection and revalidation workflow; this task only establishes its strict
-metadata contract.
+actor/session reference, and commit time. XIMG-037 validates reviewed rows and
+revalidates the exact stable-ID pair against authority state. A rendered Yew
+task pane and live discovery/pairing transport remain future adapter work.
