@@ -14,3 +14,4 @@ workspace = true
 
 [dependencies]
 yew.workspace = true
+web-sys = { version = "0.3.77", features = ["HtmlInputElement"] }

@@ -1232,6 +1232,7 @@ dependencies = [
 name = "x-img-web"
 version = "0.2.0"
 dependencies = [
+ "web-sys",
  "yew",
 ]
 
