@@ -752,10 +752,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   and revocation through an Axum backend; Pinakotheke tests independently prove
   direct-backend and forged dispatch rejection. Neither public repository gains
   an unpublished sibling path dependency.
-- [ ] **XIMG-093 P1 — Add macOS per-user service management.** Provide
+- [x] **XIMG-093 P1 — Add macOS per-user service management.** Completed in
+  ``b948fe2``. Provide
   non-root ``launchd`` install/status/logs/restart/uninstall commands with
   absolute paths, private permissions, transactional updates, preserved state,
-  graceful shutdown, and no destructive uninstall default.
+  graceful shutdown, and no destructive uninstall default. The new service
+  commands manage separate backend and Monas agents, generate a private
+  process credential, separate Prosopikon authority, restore prior definitions
+  on failed replacement, and preserve every data root on uninstall. A real
+  isolated-home lifecycle proved install, status, health, direct-route
+  rejection, restart, log discovery, private files, agent removal, stopped
+  listeners, and retained state.
 - [ ] **XIMG-094 P0 — Prove clean-home monolith operation.** In an isolated
   temporary home, start the service, complete Monas login, select the managed
   local ObjectStore, commit and read one synthetic object through scoped DAS
