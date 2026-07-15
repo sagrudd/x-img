@@ -520,12 +520,24 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   and pinned Docker/Sphinx checks pass. See
   `docs/segmented-video-gate.rst`.
 
-- [ ] **XIMG-074 P1 — Add toolbar cache controls and diagnostics.**
+- [x] **XIMG-074 P1 — Add toolbar cache controls and diagnostics.**
   Per-site pause, hit/miss state, last error, open x-img source view, and clear
   wording about permissions without exposing secrets. Show the words
   `Previously observed` and `Stored in ObjectStore` where applicable, with
   accessible iconography/tooltips and a reversible non-obstructive status
   treatment; never watermark or mutate stored media bytes.
+  Completed in `e3dc371`: the action popup shows the active configured origin,
+  separate capture/substitution state, explicit visible-media run,
+  pause/resume, Settings, and paired x-img Websites-context navigation. One
+  replaceable diagnostic per configured origin records only a worded
+  hit/miss/error reason and observed/stored booleans; removed origins are
+  pruned and page/media URLs, aliases, queries, checksums, cookies, credentials,
+  and payloads are excluded. ``◉ Previously observed`` and
+  ``✓ Stored in ObjectStore`` use words, icons, and an explanatory tooltip;
+  media bytes are never modified. Failures say ``Origin served`` and never
+  disrupt the page. Rust, clippy, wasm, JavaScript, least-privilege/privacy,
+  contracts, and pinned Docker/Sphinx checks pass. See
+  `docs/firefox-toolbar.rst`.
 
 ## 0.8.0–1.0.0 — Hardening and release
 
