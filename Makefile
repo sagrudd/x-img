@@ -4,6 +4,8 @@ SHELL := /bin/sh
 
 VERSION := $(shell cargo metadata --format-version 1 --no-deps 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')
 DIST := $(CURDIR)/dist
+BASELINE_DIST ?=
+BASELINE_VERSION ?=
 
 .PHONY: help all packages linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
 	linux-deb-x86_64 linux-deb-arm64 linux-rpm-x86_64 linux-rpm-arm64 \
@@ -18,7 +20,8 @@ help:
 	@echo "  make macos-pkg             Build macOS PKG for x86_64 and arm64 (macOS only)"
 	@echo "  make firefox               Build labelled XPIs for macOS/Windows/Linux x86_64/arm64"
 	@echo "  make verify                Verify produced package structure and checksums"
-	@echo "  make upgrade-rollback      Exercise native package and metadata rollback acceptance"
+	@echo "  make upgrade-rollback BASELINE_DIST=... BASELINE_VERSION=..."
+	@echo "                              Exercise genuine package upgrade/downgrade acceptance"
 	@echo "  make quality               Run local source, audit, and package checks"
 	@echo "  make clean                 Remove dist/ and packaging scratch"
 
@@ -73,7 +76,7 @@ verify:
 	python3 packaging/check.py --dist "$(DIST)" --version $(VERSION)
 
 upgrade-rollback: verify
-	scripts/release/check_upgrade_rollback.sh
+	BASELINE_DIST="$(BASELINE_DIST)" BASELINE_VERSION="$(BASELINE_VERSION)" scripts/release/check_upgrade_rollback.sh
 
 quality:
 	scripts/quality/check.sh

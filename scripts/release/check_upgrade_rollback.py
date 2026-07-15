@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 import hashlib
+import argparse
 import json
 import pathlib
-import platform
 import subprocess
 import tempfile
 
@@ -24,7 +24,15 @@ def digest(path: pathlib.Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def docker_lifecycle(image: str, package: pathlib.Path, install: str, remove: str) -> None:
+def docker_lifecycle(
+    image: str,
+    docker_platform: str,
+    baseline: pathlib.Path,
+    candidate: pathlib.Path,
+    baseline_version: str,
+    candidate_version: str,
+    package_kind: str,
+) -> None:
     with tempfile.TemporaryDirectory(prefix="x-img-release-state-") as temporary:
         state = pathlib.Path(temporary)
         sentinel = state / "metadata-snapshot.json"
@@ -42,24 +50,52 @@ def docker_lifecycle(image: str, package: pathlib.Path, install: str, remove: st
             + "\n"
         )
         before = digest(sentinel)
-        script = (
-            "set -eu; "
-            f"{install} /packages/{package.name}; "
-            "test \"$(x-img --version)\" = \"x-img 0.2.0\"; "
-            "grep -q '\"product_version\": \"0.2.0\"' /usr/share/x-img/monas/product-bootstrap.json; "
-            f"{install} /packages/{package.name}; "
-            f"{remove}; "
-            "test -f /var/lib/x-img/metadata-snapshot.json"
+        if package_kind == "deb":
+            install_baseline = f"dpkg -i /baseline/{baseline.name}"
+            install_candidate = f"dpkg -i /candidate/{candidate.name}"
+            rollback = f"dpkg -i --force-downgrade /baseline/{baseline.name}"
+            remove = "dpkg -r x-img"
+        else:
+            install_baseline = f"rpm -Uvh /baseline/{baseline.name}"
+            install_candidate = f"rpm -Uvh /candidate/{candidate.name}"
+            rollback = f"rpm -Uvh --oldpackage /baseline/{baseline.name}"
+            remove = "rpm -e x-img"
+        verify_baseline = (
+            f"test \"$(x-img --version)\" = \"x-img {baseline_version}\"; "
+            f"grep -q '\"product_version\": \"{baseline_version}\"' "
+            "/usr/share/x-img/monas/product-bootstrap.json"
+        )
+        verify_candidate = (
+            f"test \"$(x-img --version)\" = \"x-img {candidate_version}\"; "
+            f"grep -q '\"product_version\": \"{candidate_version}\"' "
+            "/usr/share/x-img/monas/product-bootstrap.json"
+        )
+        script = "; ".join(
+            [
+                "set -eu",
+                install_baseline,
+                verify_baseline,
+                install_candidate,
+                verify_candidate,
+                rollback,
+                verify_baseline,
+                remove,
+                "test -f /var/lib/x-img/metadata-snapshot.json",
+            ]
         )
         run(
             "docker",
             "run",
             "--rm",
+            "--platform",
+            docker_platform,
             "--network=none",
             "--tmpfs",
             "/tmp",
             "-v",
-            f"{package.parent}:/packages:ro",
+            f"{baseline.parent}:/baseline:ro",
+            "-v",
+            f"{candidate.parent}:/candidate:ro",
             "-v",
             f"{state}:/var/lib/x-img",
             image,
@@ -68,10 +104,14 @@ def docker_lifecycle(image: str, package: pathlib.Path, install: str, remove: st
             script,
         )
         if digest(sentinel) != before:
-            raise SystemExit(f"package lifecycle changed x-img metadata: {package.name}")
+            raise SystemExit(f"package lifecycle changed x-img metadata: {candidate.name}")
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--baseline-dist", type=pathlib.Path, required=True)
+    parser.add_argument("--baseline-version", required=True)
+    args = parser.parse_args()
     version = json.loads(
         subprocess.check_output(
             ["cargo", "metadata", "--format-version", "1", "--no-deps"], cwd=ROOT
@@ -79,18 +119,26 @@ def main() -> int:
     )["packages"][0]["version"]
     run("python3", "packaging/check.py", "--dist", str(ROOT / "dist"), "--version", version)
 
-    machine = platform.machine().lower()
-    if machine in {"arm64", "aarch64"}:
-        directory, deb_arch, rpm_arch = "arm64", "arm64", "aarch64"
-    elif machine in {"x86_64", "amd64"}:
-        directory, deb_arch, rpm_arch = "x86_64", "amd64", "x86_64"
-    else:
-        raise SystemExit(f"unsupported lifecycle-test architecture: {machine}")
-
-    deb = ROOT / "dist/linux" / directory / f"x-img-{version}-linux-{deb_arch}.deb"
-    rpm = ROOT / "dist/linux" / directory / f"x-img-{version}-linux-{rpm_arch}.rpm"
-    docker_lifecycle(DEBIAN_IMAGE, deb, "dpkg -i", "dpkg -r x-img")
-    docker_lifecycle(FEDORA_IMAGE, rpm, "rpm -Uvh --replacepkgs", "rpm -e x-img")
+    matrix = (
+        ("x86_64", "amd64", "x86_64", "linux/amd64"),
+        ("arm64", "arm64", "aarch64", "linux/arm64"),
+    )
+    for directory, deb_arch, rpm_arch, docker_platform in matrix:
+        baseline_deb = args.baseline_dist / "linux" / directory / f"x-img-{args.baseline_version}-linux-{deb_arch}.deb"
+        candidate_deb = ROOT / "dist/linux" / directory / f"x-img-{version}-linux-{deb_arch}.deb"
+        baseline_rpm = args.baseline_dist / "linux" / directory / f"x-img-{args.baseline_version}-linux-{rpm_arch}.rpm"
+        candidate_rpm = ROOT / "dist/linux" / directory / f"x-img-{version}-linux-{rpm_arch}.rpm"
+        for package in (baseline_deb, candidate_deb, baseline_rpm, candidate_rpm):
+            if not package.is_file():
+                raise SystemExit(f"missing upgrade/rollback package: {package}")
+        docker_lifecycle(
+            DEBIAN_IMAGE, docker_platform, baseline_deb, candidate_deb,
+            args.baseline_version, version, "deb"
+        )
+        docker_lifecycle(
+            FEDORA_IMAGE, docker_platform, baseline_rpm, candidate_rpm,
+            args.baseline_version, version, "rpm"
+        )
 
     run("cargo", "+1.97.0", "test", "-p", "x-img-core", "migration_backup")
     run(
