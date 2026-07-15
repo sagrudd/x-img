@@ -503,10 +503,22 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   and pinned local Docker/Sphinx checks passed. See
   `docs/mp4-substitution.rst`.
 
-- [ ] **XIMG-073 P0 — Gate segmented video substitution by adapter.**
+- [x] **XIMG-073 P0 — Gate segmented video substitution by adapter.**
   Implement HLS/DASH only where manifest and segment canonicalization are proven.
   Unsupported streams remain origin-served and visibly diagnosed. Normalized
   Pinakotheke renditions only are eligible for ready/playable substitution.
+  Completed in `3b90b5d`: the server-side v1 gate requires exact origin,
+  adapter/version, HLS/DASH kind, separately versioned manifest and segment
+  canonicalization, synthetic fixture and real-Firefox evidence, explicit
+  display/open, no DRM/encryption, and a matching Ready normalized profile.
+  Missing or mismatched evidence is worded ``Origin served`` and never selects
+  another adapter, endpoint, store, or source. The generic Firefox adapter
+  conservatively recognizes manifest URLs and blob/MSE sources, performs no
+  lookup/rewrite/traversal, leaves playback untouched, and shows one bounded
+  URL-free diagnostic in settings. No segmented adapter is falsely advertised
+  as approved. Rust, clippy, wasm, JavaScript, strict JSON/privacy, contracts,
+  and pinned Docker/Sphinx checks pass. See
+  `docs/segmented-video-gate.rst`.
 
 - [ ] **XIMG-074 P1 — Add toolbar cache controls and diagnostics.**
   Per-site pause, hit/miss state, last error, open x-img source view, and clear
