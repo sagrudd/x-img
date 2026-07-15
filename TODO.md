@@ -738,7 +738,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 - [ ] **XIMG-092 P0 — Compose Monas authentication into the monolith.** Mount
   the Pinakotheke product through Monas/Prosopikon, inject authenticated host
   context into product APIs, and prove login/session/logout and direct-route
-  rejection without adding Pinakotheke-owned credentials or cookies.
+  rejection without adding Pinakotheke-owned credentials or cookies. The first
+  backend ingress quantum is implemented in ``74f035e``: an optional private
+  process-local dispatch credential admits only strict
+  ``x-img.host-context.v1`` Monas context, strips both dispatch headers before
+  product handling, rejects direct/forged/invalid requests, and reports the
+  configured boundary honestly in readiness. Remaining work is Monas-owned:
+  add the authenticated Pinakotheke forwarding mount, mint and retain the
+  matching process credential, inject actor/authorization/correlation context,
+  then prove real registration/login/session/logout and direct-backend
+  rejection before closing this item.
 - [ ] **XIMG-093 P1 — Add macOS per-user service management.** Provide
   non-root ``launchd`` install/status/logs/restart/uninstall commands with
   absolute paths, private permissions, transactional updates, preserved state,
