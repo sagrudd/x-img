@@ -402,6 +402,10 @@ Goal: serve previously committed media from the object store on enabled sites.
   DASObjectStore stream and an explicit-site Firefox replacement. Production
   HTTPS/CORS/CORP/type/length/ETag headers are contract-tested; installed
   Firefox proves ephemeral display and CSP/CORS/metadata fail-open behavior.
+- XIMG-072 extends that exact reviewed-object path to normalized MP4. Native
+  Firefox owns streaming and decoding while Axum preserves authorization,
+  conditional and single-range semantics; installed Firefox proves concurrent
+  range, cancellation, seek, pause/resume, and origin fallback behavior.
 
 Exit criteria:
 

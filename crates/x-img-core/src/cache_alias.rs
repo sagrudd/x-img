@@ -85,6 +85,7 @@ pub enum CacheBypassReason {
     EndpointOffline,
     ObjectUnavailable,
     NotAnImage,
+    NotNormalizedMp4,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -169,6 +170,54 @@ impl CacheLookupService {
         delivery_id: &str,
         now_epoch_seconds: u64,
     ) -> CacheLookupOutcome<'_> {
+        let outcome = self.authorize_delivery(actor_id, pairing_id, delivery_id, now_epoch_seconds);
+        match outcome {
+            CacheLookupOutcome::Hit(record)
+                if matches!(
+                    record.representation,
+                    CacheRepresentation::ThumbnailImage | CacheRepresentation::OriginalImage
+                ) =>
+            {
+                CacheLookupOutcome::Hit(record)
+            }
+            CacheLookupOutcome::Hit(_) => {
+                CacheLookupOutcome::OriginFallback(CacheBypassReason::NotAnImage)
+            }
+            other => other,
+        }
+    }
+
+    /// Resolves only a verified normalized MP4 for native Firefox range
+    /// playback. Source video and other representations remain origin-served.
+    #[must_use]
+    pub fn authorize_video_delivery(
+        &self,
+        actor_id: &str,
+        pairing_id: &str,
+        delivery_id: &str,
+        now_epoch_seconds: u64,
+    ) -> CacheLookupOutcome<'_> {
+        let outcome = self.authorize_delivery(actor_id, pairing_id, delivery_id, now_epoch_seconds);
+        match outcome {
+            CacheLookupOutcome::Hit(record)
+                if record.representation == CacheRepresentation::NormalizedMp4 =>
+            {
+                CacheLookupOutcome::Hit(record)
+            }
+            CacheLookupOutcome::Hit(_) => {
+                CacheLookupOutcome::OriginFallback(CacheBypassReason::NotNormalizedMp4)
+            }
+            other => other,
+        }
+    }
+
+    fn authorize_delivery(
+        &self,
+        actor_id: &str,
+        pairing_id: &str,
+        delivery_id: &str,
+        now_epoch_seconds: u64,
+    ) -> CacheLookupOutcome<'_> {
         let Some(authorization) = self.authorizations.get(pairing_id) else {
             return CacheLookupOutcome::OriginFallback(CacheBypassReason::PairingInvalid);
         };
@@ -198,12 +247,6 @@ impl CacheLookupService {
         }
         if now_epoch_seconds > record.valid_until_epoch_seconds {
             return CacheLookupOutcome::OriginFallback(CacheBypassReason::Stale);
-        }
-        if !matches!(
-            record.representation,
-            CacheRepresentation::ThumbnailImage | CacheRepresentation::OriginalImage
-        ) {
-            return CacheLookupOutcome::OriginFallback(CacheBypassReason::NotAnImage);
         }
         match record.availability {
             CacheObjectAvailability::Ready => CacheLookupOutcome::Hit(record),
@@ -720,6 +763,28 @@ mod tests {
         assert_eq!(
             service.authorize_image_delivery("actor-1", "pair-1", "missing", 1_000),
             CacheLookupOutcome::Miss
+        );
+    }
+
+    #[test]
+    fn video_delivery_accepts_only_explicitly_opened_normalized_mp4() {
+        let mut video = record(2);
+        video.canonical_alias = "https://cdn.example.invalid/media/2.mp4".into();
+        video.object.object_key = "video/2.mp4".into();
+        video.representation = CacheRepresentation::NormalizedMp4;
+        video.eligibility = CacheEligibility::ExplicitlyOpenedOriginal;
+        video.content_type = "video/mp4".into();
+        let mut index = CacheAliasIndex::new(4).unwrap();
+        index.admit(video).unwrap();
+        index.admit(record(1)).unwrap();
+        let service = CacheLookupService::new(index, [authorization()]).unwrap();
+        assert!(matches!(
+            service.authorize_video_delivery("actor-1", "pair-1", "delivery-2", 1_000),
+            CacheLookupOutcome::Hit(_)
+        ));
+        assert_eq!(
+            service.authorize_video_delivery("actor-1", "pair-1", "delivery-1", 1_000),
+            CacheLookupOutcome::OriginFallback(CacheBypassReason::NotNormalizedMp4)
         );
     }
 }

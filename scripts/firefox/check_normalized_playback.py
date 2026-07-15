@@ -57,8 +57,10 @@ class PlaybackHandler(http.server.BaseHTTPRequestHandler):
     def _page(self) -> None:
         page = b"""<!doctype html><meta charset=utf-8><title>starting</title>
 <video id=v muted playsinline preload=auto src=/video></video>
+<video id=f muted playsinline preload=metadata></video>
 <script>
 const v = document.getElementById('v');
+const f = document.getElementById('f');
 let resumed = false;
 function event(name) { fetch('/event', {method: 'POST', body: name}); }
 v.addEventListener('error', () => event('error'));
@@ -75,6 +77,18 @@ v.addEventListener('pause', () => { event('pause'); setTimeout(() => v.play().ca
 fetch('/video', {headers: {Range: 'bytes=0-511'}})
   .then(r => r.status === 206 ? event('range') : event('error'))
   .catch(() => event('error'));
+Promise.all([
+  fetch('/video', {headers: {Range: 'bytes=0-255'}}),
+  fetch('/video', {headers: {Range: 'bytes=256-511'}})
+]).then(rs => rs.every(r => r.status === 206) ? event('concurrent') : event('error'));
+fetch('/video', {headers: {'If-None-Match': '"firefox-normalized-playback-fixture"'}})
+  .then(r => r.status === 304 ? event('conditional') : event('error'));
+const controller = new AbortController();
+fetch('/video', {headers: {Range: 'bytes=0-511'}, signal: controller.signal}).catch(() => event('cancel'));
+controller.abort();
+f.addEventListener('error', () => { f.src='/video'; f.load(); }, {once:true});
+f.addEventListener('loadedmetadata', () => event('fallback'), {once:true});
+f.src='/missing-video'; f.load();
 </script>"""
         self.send_response(200)
         self.send_header("content-type", "text/html; charset=utf-8")
@@ -84,6 +98,11 @@ fetch('/video', {headers: {Range: 'bytes=0-511'}})
 
     def _video(self) -> None:
         total = self.video.stat().st_size
+        if self.headers.get("if-none-match") == '"firefox-normalized-playback-fixture"':
+            self.send_response(304)
+            self.send_header("etag", '"firefox-normalized-playback-fixture"')
+            self.end_headers()
+            return
         requested = self.headers.get("range")
         start, end = 0, total - 1
         if requested:
@@ -150,7 +169,10 @@ def main() -> int:
     thread.start()
     profile = tempfile.mkdtemp(prefix="x-img-firefox-playback-")
     browser: subprocess.Popen[str] | None = None
-    required = {"loadedmetadata", "seeked", "play", "pause", "resume", "range"}
+    required = {
+        "loadedmetadata", "seeked", "play", "pause", "resume", "range",
+        "concurrent", "conditional", "cancel", "fallback",
+    }
     try:
         browser = subprocess.Popen(
             [
@@ -170,7 +192,7 @@ def main() -> int:
             if "error" in PlaybackHandler.events:
                 raise RuntimeError("Firefox reported a media error")
             if required.issubset(PlaybackHandler.events) and PlaybackHandler.ranges:
-                print("Firefox normalized playback passed: metadata, range, seek, pause/resume")
+                print("Firefox normalized playback passed: range, concurrent, conditional, cancellation, seek, pause/resume, fallback")
                 return 0
             time.sleep(0.1)
         missing = ", ".join(sorted(required - PlaybackHandler.events))

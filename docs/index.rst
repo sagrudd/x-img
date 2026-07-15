@@ -31,6 +31,7 @@ Configuration
    object-read
    cache-alias-lookup
    image-substitution
+   mp4-substitution
    x-oauth
    x-followed-accounts
    x-media-discovery

@@ -28,7 +28,9 @@ use x_img_core::{
         AuthorizedObjectReader, ObjectReadBackend, ObjectReadBackendError, ObjectReadRequest,
         ObjectReadResult, ValidatedObjectRead,
     },
-    playback_delivery::{DirectPlaybackError, DirectPlaybackResponse, DirectPlaybackService},
+    playback_delivery::{
+        DirectPlaybackError, DirectPlaybackResponse, DirectPlaybackService, parse_single_range,
+    },
     viewed_media::{CapturePlan, CapturePlanError, CapturePlanRequest, CapturePlanService},
 };
 
@@ -172,6 +174,15 @@ pub fn router_with_image_substitution(
     cache_aliases: CacheLookupService,
     backend: HostObjectReadBackend,
 ) -> Router {
+    router_with_cache_substitution(cache_aliases, backend)
+}
+
+/// Returns the external-cache composition for progressive images and verified
+/// normalized MP4 renditions. Segmented media remains outside this router.
+pub fn router_with_cache_substitution(
+    cache_aliases: CacheLookupService,
+    backend: HostObjectReadBackend,
+) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/context", get(context))
@@ -182,6 +193,10 @@ pub fn router_with_image_substitution(
         .route(
             "/api/cache/v1/images/{pairing_id}/{delivery_id}",
             get(deliver_cached_image),
+        )
+        .route(
+            "/api/cache/v1/videos/{pairing_id}/{delivery_id}",
+            get(deliver_cached_video),
         )
         .with_state(None::<CapturePlans>)
         .layer(Extension(Arc::new(Mutex::new(cache_aliases))))
@@ -286,8 +301,14 @@ async fn cache_alias_lookup(
                 content_length: Some(hit.content_length),
                 object_checksum: Some(hit.object.checksum.clone()),
                 delivery_path: Some(format!(
-                    "/api/cache/v1/images/{}/{}",
-                    request.pairing_id, hit.delivery_id
+                    "/api/cache/v1/{}/{}/{}",
+                    if hit.representation == CacheRepresentation::NormalizedMp4 {
+                        "videos"
+                    } else {
+                        "images"
+                    },
+                    request.pairing_id,
+                    hit.delivery_id
                 )),
             },
             CacheLookupOutcome::Miss => cache_fallback("miss", None),
@@ -322,6 +343,134 @@ fn cache_bypass_reason(reason: CacheBypassReason) -> &'static str {
         CacheBypassReason::EndpointOffline => "endpoint_offline",
         CacheBypassReason::ObjectUnavailable => "object_unavailable",
         CacheBypassReason::NotAnImage => "not_an_image",
+        CacheBypassReason::NotNormalizedMp4 => "not_normalized_mp4",
+    }
+}
+
+async fn deliver_cached_video(
+    Path((pairing_id, delivery_id)): Path<(String, String)>,
+    headers: HeaderMap,
+    context: Option<Extension<AuthenticatedHostContext>>,
+    cache_aliases: Option<Extension<CacheAliases>>,
+    delivery: Option<Extension<ImageDelivery>>,
+) -> Result<Response, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    if !context.permits(XIMG_ACCESS) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .as_secs();
+    let record = {
+        let service = cache_aliases.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+        let service = service
+            .lock()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        match service.authorize_video_delivery(context.actor_id(), &pairing_id, &delivery_id, now) {
+            CacheLookupOutcome::Hit(record) => record.clone(),
+            CacheLookupOutcome::Miss => return Err(StatusCode::NOT_FOUND),
+            CacheLookupOutcome::OriginFallback(_) => return Err(StatusCode::FORBIDDEN),
+        }
+    };
+    let range = match headers
+        .get(header::RANGE)
+        .and_then(|value| value.to_str().ok())
+    {
+        Some(value) => match parse_single_range(value, record.content_length) {
+            Ok(range) => Some(range),
+            Err(_) => {
+                return Response::builder()
+                    .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                    .header(
+                        header::CONTENT_RANGE,
+                        format!("bytes */{}", record.content_length),
+                    )
+                    .header(header::ACCEPT_RANGES, "bytes")
+                    .header(header::CACHE_CONTROL, "private, no-store")
+                    .header("access-control-allow-origin", &record.site_origin)
+                    .header("access-control-allow-credentials", "true")
+                    .header("cross-origin-resource-policy", "cross-origin")
+                    .header(header::VARY, "origin")
+                    .body(Body::empty())
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        },
+        None => None,
+    };
+    let if_none_match = headers
+        .get(header::IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let request = ObjectReadRequest {
+        object: record.object,
+        range,
+        if_none_match_etag: if_none_match,
+    };
+    let delivery = delivery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let result = {
+        let mut reader = delivery
+            .lock()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        reader.open(&request).map_err(|_| StatusCode::BAD_GATEWAY)?
+    };
+    match result {
+        ValidatedObjectRead::NotModified { etag } => Response::builder()
+            .status(StatusCode::NOT_MODIFIED)
+            .header(header::ETAG, etag)
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CACHE_CONTROL, "private, no-store")
+            .header("access-control-allow-origin", &record.site_origin)
+            .header("access-control-allow-credentials", "true")
+            .header(
+                "access-control-expose-headers",
+                "etag, content-length, accept-ranges, content-range",
+            )
+            .header("cross-origin-resource-policy", "cross-origin")
+            .header("x-content-type-options", "nosniff")
+            .header(header::VARY, "origin")
+            .body(Body::empty())
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        ValidatedObjectRead::Content { metadata, stream } => {
+            if metadata.content_type != "video/mp4"
+                || metadata.total_length != record.content_length
+                || metadata.content_range != range
+            {
+                return Err(StatusCode::BAD_GATEWAY);
+            }
+            let mut response = Response::builder()
+                .status(if range.is_some() {
+                    StatusCode::PARTIAL_CONTENT
+                } else {
+                    StatusCode::OK
+                })
+                .header(header::CONTENT_TYPE, metadata.content_type)
+                .header(header::CONTENT_LENGTH, metadata.content_length)
+                .header(header::ETAG, metadata.etag)
+                .header(header::ACCEPT_RANGES, "bytes")
+                .header(header::CACHE_CONTROL, "private, no-store")
+                .header("access-control-allow-origin", &record.site_origin)
+                .header("access-control-allow-credentials", "true")
+                .header(
+                    "access-control-expose-headers",
+                    "etag, content-length, accept-ranges, content-range",
+                )
+                .header("cross-origin-resource-policy", "cross-origin")
+                .header("x-content-type-options", "nosniff")
+                .header(header::VARY, "origin");
+            if let Some(range) = metadata.content_range {
+                response = response.header(
+                    header::CONTENT_RANGE,
+                    format!(
+                        "bytes {}-{}/{}",
+                        range.start, range.end_inclusive, metadata.total_length
+                    ),
+                );
+            }
+            response
+                .body(stream)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -506,8 +655,8 @@ mod tests {
     };
 
     use super::{
-        HostObjectReadBackend, router, router_with_cache_aliases, router_with_capture_plans,
-        router_with_direct_playback, router_with_image_substitution,
+        HostObjectReadBackend, router, router_with_cache_aliases, router_with_cache_substitution,
+        router_with_capture_plans, router_with_direct_playback, router_with_image_substitution,
     };
 
     const CHECKSUM: &str =
@@ -580,6 +729,28 @@ mod tests {
                 availability: CacheObjectAvailability::Ready,
             })
             .expect("synthetic alias is eligible");
+        index
+            .admit(CacheAliasRecord {
+                delivery_id: "video-delivery-1".into(),
+                instance_id: "ximg-instance-1".into(),
+                site_origin: "https://example.invalid".into(),
+                canonical_alias: "https://media.example.invalid/video-1.mp4".into(),
+                adapter_id: "generic-observed-image".into(),
+                adapter_version: "1.0.0".into(),
+                representation: CacheRepresentation::NormalizedMp4,
+                eligibility: CacheEligibility::ExplicitlyOpenedOriginal,
+                object: AuthorizedObjectReference {
+                    endpoint_id: "synthetic-endpoint".into(),
+                    object_store_id: "synthetic-store".into(),
+                    object_key: "videos/video-1.mp4".into(),
+                    checksum: CHECKSUM.into(),
+                },
+                content_type: "video/mp4".into(),
+                content_length: PLAYBACK_BYTES.len() as u64,
+                valid_until_epoch_seconds: u64::MAX,
+                availability: CacheObjectAvailability::Ready,
+            })
+            .expect("normalized video alias is eligible");
         CacheLookupService::new(
             index,
             [CacheLookupAuthorization {
@@ -968,6 +1139,125 @@ mod tests {
                 .expect("image streams")
                 .as_ref(),
             IMAGE
+        );
+    }
+
+    fn cache_video_backend() -> HostObjectReadBackend {
+        HostObjectReadBackend::new(Box::new(|request| {
+            if request.if_none_match_etag.as_deref() == Some(ETAG) {
+                return Ok(ObjectReadResult::NotModified { etag: ETAG.into() });
+            }
+            let range = request.range;
+            let (start, end) = range.map_or((0, PLAYBACK_BYTES.len() as u64 - 1), |range| {
+                (range.start, range.end_inclusive)
+            });
+            let bytes = PLAYBACK_BYTES[start as usize..=end as usize].to_vec();
+            Ok(ObjectReadResult::Content {
+                metadata: ObjectContentMetadata {
+                    content_type: "video/mp4".into(),
+                    content_length: bytes.len() as u64,
+                    total_length: PLAYBACK_BYTES.len() as u64,
+                    checksum: CHECKSUM.into(),
+                    etag: ETAG.into(),
+                    content_range: range,
+                },
+                stream: Body::from(bytes),
+            })
+        }))
+    }
+
+    #[tokio::test]
+    async fn cached_video_preserves_ranges_conditionals_and_concurrent_streams() {
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .expect("synthetic host context is valid");
+        let app = router_with_cache_substitution(cache_aliases(), cache_video_backend())
+            .layer(Extension(context));
+        let request = |range: &'static str| {
+            Request::builder()
+                .uri("/api/cache/v1/videos/pair-cache-1/video-delivery-1")
+                .header("range", range)
+                .body(Body::empty())
+                .expect("request builds")
+        };
+        let (first, second) = tokio::join!(
+            app.clone().oneshot(request("bytes=0-7")),
+            app.clone().oneshot(request("bytes=8-15"))
+        );
+        let first = first.expect("router is infallible");
+        let second = second.expect("router is infallible");
+        assert_eq!(first.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(second.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(first.headers()["content-range"], "bytes 0-7/26");
+        assert_eq!(second.headers()["content-range"], "bytes 8-15/26");
+        assert_eq!(first.headers()["accept-ranges"], "bytes");
+        assert_eq!(first.headers()["content-type"], "video/mp4");
+        assert_eq!(
+            to_bytes(first.into_body(), 64).await.expect("first stream"),
+            &PLAYBACK_BYTES[0..=7]
+        );
+        assert_eq!(
+            to_bytes(second.into_body(), 64)
+                .await
+                .expect("second stream"),
+            &PLAYBACK_BYTES[8..=15]
+        );
+
+        let conditional = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/cache/v1/videos/pair-cache-1/video-delivery-1")
+                    .header("if-none-match", ETAG)
+                    .body(Body::empty())
+                    .expect("request builds"),
+            )
+            .await
+            .expect("router is infallible");
+        assert_eq!(conditional.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(conditional.headers()["etag"], ETAG);
+
+        let invalid = app
+            .oneshot(request("bytes=0-1,4-5"))
+            .await
+            .expect("router is infallible");
+        assert_eq!(invalid.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        assert_eq!(invalid.headers()["content-range"], "bytes */26");
+    }
+
+    #[tokio::test]
+    async fn cache_lookup_returns_a_video_specific_delivery_path() {
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .expect("synthetic host context is valid");
+        let response = router_with_cache_aliases(cache_aliases())
+            .layer(Extension(context))
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/extension/v1/cache-aliases/lookup")
+                    .header("content-type", "application/json")
+                    .body(cache_lookup_body(
+                        "https://media.example.invalid/video-1.mp4",
+                    ))
+                    .expect("request builds"),
+            )
+            .await
+            .expect("router is infallible");
+        let body: serde_json::Value = serde_json::from_slice(
+            &to_bytes(response.into_body(), 4_096)
+                .await
+                .expect("bounded response"),
+        )
+        .expect("JSON response");
+        assert_eq!(body["media_class"], "normalized_mp4");
+        assert_eq!(
+            body["delivery_path"],
+            "/api/cache/v1/videos/pair-cache-1/video-delivery-1"
         );
     }
 }

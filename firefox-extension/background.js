@@ -10,7 +10,9 @@ async function matchingAdapter(url) {
   return registry.adapters.find(adapter =>
     adapter.origins.includes(target.origin)
       && !adapter.exclude_paths.some(path => target.pathname.startsWith(path))
-      && (adapter.capabilities.observed_thumbnail || adapter.capabilities.image_substitution),
+      && (adapter.capabilities.observed_thumbnail
+        || adapter.capabilities.image_substitution
+        || adapter.capabilities.mp4_substitution),
   ) || null;
 }
 
@@ -118,21 +120,128 @@ function displayedImages() {
     .slice(0, 32);
 }
 
+function displayedVideos() {
+  return [...document.querySelectorAll("video")]
+    .filter(video => {
+      const style = window.getComputedStyle(video);
+      const rect = video.getBoundingClientRect();
+      return video.currentSrc
+        && video.readyState >= HTMLMediaElement.HAVE_METADATA
+        && style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity) > 0
+        && rect.width > 0 && rect.height > 0
+        && rect.bottom > 0 && rect.right > 0
+        && rect.top < window.innerHeight && rect.left < window.innerWidth;
+    })
+    .map(video => ({ url: video.currentSrc }))
+    .slice(0, 8);
+}
+
+async function substituteDisplayedVideo(candidate) {
+  const canonical = rawUrl => {
+    const url = new URL(rawUrl);
+    url.search = "";
+    url.hash = "";
+    return url.href;
+  };
+  const video = [...document.querySelectorAll("video")].find(item => {
+    const rect = item.getBoundingClientRect();
+    return item.currentSrc
+      && canonical(item.currentSrc) === candidate.canonicalAlias
+      && rect.width > 0 && rect.height > 0
+      && rect.bottom > 0 && rect.right > 0
+      && rect.top < window.innerHeight && rect.left < window.innerWidth;
+  });
+  if (!video) return { outcome: "origin", reason: "video_not_visible" };
+
+  const original = {
+    src: video.getAttribute("src"),
+    crossOrigin: video.getAttribute("crossorigin"),
+    sources: [...video.querySelectorAll("source")].map(source => source.getAttribute("src")),
+    time: video.currentTime,
+    paused: video.paused,
+  };
+  let settled = false;
+  const restore = () => {
+    if (settled) return;
+    settled = true;
+    if (original.src === null) video.removeAttribute("src"); else video.setAttribute("src", original.src);
+    if (original.crossOrigin === null) video.removeAttribute("crossorigin"); else video.setAttribute("crossorigin", original.crossOrigin);
+    [...video.querySelectorAll("source")].forEach((source, index) => {
+      const sourceUrl = original.sources[index];
+      if (sourceUrl === null || sourceUrl === undefined) source.removeAttribute("src"); else source.setAttribute("src", sourceUrl);
+    });
+    video.load();
+  };
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("replacement timeout")), 8000);
+      const loaded = () => { cleanup(); resolve(); };
+      const failed = () => { cleanup(); reject(new Error("replacement rejected")); };
+      const cleanup = () => {
+        clearTimeout(timer);
+        video.removeEventListener("loadedmetadata", loaded);
+        video.removeEventListener("error", failed);
+      };
+      video.addEventListener("loadedmetadata", loaded, { once: true });
+      video.addEventListener("error", failed, { once: true });
+      video.setAttribute("crossorigin", "use-credentials");
+      video.querySelectorAll("source").forEach(source => source.removeAttribute("src"));
+      video.setAttribute("src", candidate.deliveryUrl);
+      video.load();
+    });
+    if (video.currentSrc !== candidate.deliveryUrl || video.duration <= 0) {
+      throw new Error("replacement metadata mismatch");
+    }
+    if (Number.isFinite(original.time) && original.time > 0) {
+      video.currentTime = Math.min(original.time, Math.max(0, video.duration - 0.01));
+    }
+    if (!original.paused) await video.play();
+    settled = true;
+    return { outcome: "objectstore" };
+  } catch (_) {
+    restore();
+    return { outcome: "origin", reason: "delivery_failed" };
+  }
+}
+
+async function lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias) {
+  const response = await fetch(`${instanceUrl}/api/extension/v1/cache-aliases/lookup`, {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      schema_version: "x-img.cache-alias-lookup.v1",
+      pairing_id: pairId,
+      instance_id: instanceId,
+      origin,
+      canonical_alias: alias,
+      adapter_id: adapter.id,
+      adapter_version: adapter.version,
+    }),
+  });
+  if (!response.ok) return null;
+  const hit = await response.json();
+  return hit.schema_version === "x-img.cache-alias-result.v1" && hit.outcome === "hit"
+    ? hit : null;
+}
+
 browser.action.onClicked.addListener(async tab => {
   try {
     if (!tab.id || !tab.url) return;
     const origin = new URL(tab.url).origin;
     const { instanceUrl, instanceId, pairId, sites = [] } = await browser.storage.local.get(["instanceUrl", "instanceId", "pairId", "sites"]);
     const rule = sites.find(site => site.origin === origin);
-    if (!rule?.media.includes("images") || (!rule.capture && !rule.substitution)
+    if (!rule || (!rule.capture && !rule.substitution)
       || !instanceUrl || !instanceId || !pairId) return;
     const adapter = await matchingAdapter(tab.url);
     if (!adapter) return;
-    const [{ result = [] }] = await browser.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: displayedImages,
-    });
-    for (const observed of result) {
+    const images = rule.media.includes("images")
+      ? (await browser.scripting.executeScript({ target: { tabId: tab.id }, func: displayedImages }))[0].result || []
+      : [];
+    for (const observed of images) {
       if (rule.capture && adapter.capabilities.observed_thumbnail) {
         await fetch(`${instanceUrl}/api/extension/v1/capture-plans`, {
           method: "POST",
@@ -154,25 +263,8 @@ browser.action.onClicked.addListener(async tab => {
       }
       if (rule.substitution && adapter.capabilities.image_substitution) {
         const alias = canonicalAlias(observed.url);
-        const response = await fetch(`${instanceUrl}/api/extension/v1/cache-aliases/lookup`, {
-          method: "POST",
-          credentials: "include",
-          cache: "no-store",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            schema_version: "x-img.cache-alias-lookup.v1",
-            pairing_id: pairId,
-            instance_id: instanceId,
-            origin,
-            canonical_alias: alias,
-            adapter_id: adapter.id,
-            adapter_version: adapter.version,
-          }),
-        });
-        if (!response.ok) continue;
-        const hit = await response.json();
-        if (hit.schema_version !== "x-img.cache-alias-result.v1" || hit.outcome !== "hit"
-          || !hit.media_class?.endsWith("_image") || !hit.delivery_path) continue;
+        const hit = await lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias);
+        if (!hit || !hit.media_class?.endsWith("_image") || !hit.delivery_path) continue;
         const deliveryUrl = new URL(hit.delivery_path, instanceUrl);
         if (deliveryUrl.origin !== instanceUrl) continue;
         await browser.scripting.executeScript({
@@ -185,6 +277,24 @@ browser.action.onClicked.addListener(async tab => {
             contentLength: hit.content_length,
             objectChecksum: hit.object_checksum,
           }],
+        });
+      }
+    }
+    if (rule.substitution && rule.media.includes("videos") && adapter.capabilities.mp4_substitution) {
+      const videos = (await browser.scripting.executeScript({
+        target: { tabId: tab.id }, func: displayedVideos,
+      }))[0].result || [];
+      for (const observed of videos) {
+        const alias = canonicalAlias(observed.url);
+        const hit = await lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias);
+        if (!hit || hit.media_class !== "normalized_mp4" || hit.content_type !== "video/mp4"
+          || !hit.delivery_path) continue;
+        const deliveryUrl = new URL(hit.delivery_path, instanceUrl);
+        if (deliveryUrl.origin !== instanceUrl) continue;
+        await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: substituteDisplayedVideo,
+          args: [{ canonicalAlias: alias, deliveryUrl: deliveryUrl.href }],
         });
       }
     }

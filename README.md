@@ -136,6 +136,12 @@ MIME type, length, checksum ETag, and bounded payload before using an ephemeral
 blob URL, and restores the ordinary origin image once on any failure. See
 [image substitution](docs/image-substitution.rst).
 
+Verified normalized MP4 aliases can use the same opted-in external cache while
+preserving native Firefox range, seek, pause/resume, cancellation, and
+conditional-request behavior. Only explicitly opened, ready normalized
+renditions qualify; any delivery failure restores the origin video once. See
+[normalized MP4 substitution](docs/mp4-substitution.rst).
+
 Verified website captures can now enter the same `New` review queue as account
 media. Their site, page, media alias, discovery time, and adapter provenance
 are retained; a matching committed connector alias reuses its canonical

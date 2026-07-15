@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-072 normalized MP4 external-cache delivery. Exact reviewed video
+  records support authenticated full, conditional, and single-range streams;
+  the opted-in Firefox path uses native video playback and restores the origin
+  once on failure. Real Firefox proves concurrent ranges, cancellation, seek,
+  pause/resume, conditional requests, and fallback with ephemeral media.
 - Added XIMG-071's host-authenticated image substitution path. Stable delivery
   IDs preserve the exact reviewed ObjectStore identity; the Firefox client
   validates MIME, length, checksum ETag, size, CORS/CORP delivery, and restores
