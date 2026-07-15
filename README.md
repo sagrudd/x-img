@@ -78,6 +78,11 @@ catalogue visibility is tombstoned first, while durable object removal requires
 a separately approved exact-object request and matching DASObjectStore
 verification. See [deletion and compliance reconciliation](docs/deletion-compliance.rst).
 
+Operational readiness now has separate coarse public health and authenticated,
+redacted component/metric/audit snapshots. The bounded typed schema cannot hold
+URLs, browsing history, credentials, sessions, object keys, or media payloads;
+see [health, metrics, and audit](docs/operations.rst).
+
 The CLI now strictly validates, lists, and atomically replaces local versioned
 account/site configuration; it performs no network access or source refresh.
 See [configuration documentation](docs/configuration.rst) for commands and

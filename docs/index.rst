@@ -52,6 +52,7 @@ Configuration
    identity-migration
    migration-export-restore
    deletion-compliance
+   operations
 
 Release and quality
 -------------------

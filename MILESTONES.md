@@ -460,6 +460,9 @@ Exit criteria:
   policy approval; exact authority removal is separately requested, retryable,
   checksum-bound, and never reported complete before DASObjectStore verifies it;
 - structured logs, metrics, health, and audit events contain no secrets;
+- public liveness is coarse while authenticated operations expose bounded typed
+  component states, aggregate counts, and fixed audit codes with no free-form
+  request, browsing, credential, session, ObjectStore-key, or payload fields;
 - dependency, license, vulnerability, and extension-permission audits pass; and
 - package/install documentation covers Monas, DASObjectStore, Firefox, and
   upgrades.

@@ -7,6 +7,9 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-083's bounded redacted operations model and Axum surfaces. Public
+  health is coarse; host-authenticated snapshots expose only typed component
+  state, saturating aggregate counters, fixed audit codes, and eviction count.
 - Added XIMG-082's approved deletion/compliance reconciliation contract.
   Catalogue tombstoning is separate from exact DASObjectStore removal,
   approval scope is mandatory, pending retries converge, mismatched authority

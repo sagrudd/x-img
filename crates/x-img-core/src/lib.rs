@@ -18,6 +18,7 @@ pub mod instagram_discovery;
 pub mod migration_backup;
 pub mod object_ingest;
 pub mod object_read;
+pub mod operations;
 pub mod playback_delivery;
 pub mod reconciliation;
 pub mod review_admission;

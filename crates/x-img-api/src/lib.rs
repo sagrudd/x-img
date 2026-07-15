@@ -28,6 +28,7 @@ use x_img_core::{
         AuthorizedObjectReader, ObjectReadBackend, ObjectReadBackendError, ObjectReadRequest,
         ObjectReadResult, ValidatedObjectRead,
     },
+    operations::{OperationalTelemetry, OperationsSnapshot},
     playback_delivery::{
         DirectPlaybackError, DirectPlaybackResponse, DirectPlaybackService, parse_single_range,
     },
@@ -38,6 +39,7 @@ type CapturePlans = Arc<Mutex<CapturePlanService>>;
 type PlaybackDelivery = Arc<Mutex<DirectPlaybackService<HostObjectReadBackend>>>;
 type CacheAliases = Arc<Mutex<CacheLookupService>>;
 type ImageDelivery = Arc<Mutex<AuthorizedObjectReader<HostObjectReadBackend>>>;
+type Operations = Arc<Mutex<OperationalTelemetry>>;
 
 const CACHE_LOOKUP_SCHEMA_VERSION: &str = "x-img.cache-alias-lookup.v1";
 const CACHE_RESULT_SCHEMA_VERSION: &str = "x-img.cache-alias-result.v1";
@@ -64,6 +66,20 @@ struct CacheAliasLookupResponse {
     content_length: Option<u64>,
     object_checksum: Option<String>,
     delivery_path: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicHealthResponse {
+    schema_version: &'static str,
+    status: &'static str,
+    product: &'static str,
+    version: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+struct OperationsResponse {
+    schema_version: &'static str,
+    snapshot: OperationsSnapshot,
 }
 
 /// Server-side callback used to bridge a host's scoped DASObjectStore read
@@ -130,6 +146,17 @@ pub fn router_with_capture_plans(capture_plans: CapturePlanService) -> Router {
         )
         .route("/api/playback/v1/{playback_id}", get(deliver_playback))
         .with_state(Some(Arc::new(Mutex::new(capture_plans))))
+}
+
+/// Returns a host composition with authenticated redacted operational details.
+/// Public health remains a coarse process-liveness response.
+pub fn router_with_operations(operations: Arc<Mutex<OperationalTelemetry>>) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route("/context", get(context))
+        .route("/api/operations/v1/snapshot", get(operations_snapshot))
+        .with_state(None::<CapturePlans>)
+        .layer(Extension(operations))
 }
 
 /// Returns a host composition with a direct, authorized normalized-video
@@ -205,8 +232,32 @@ pub fn router_with_cache_substitution(
         ))))
 }
 
-async fn health() -> &'static str {
-    "x-img API scaffold"
+async fn health() -> Json<PublicHealthResponse> {
+    Json(PublicHealthResponse {
+        schema_version: "x-img.public-health.v1",
+        status: "alive",
+        product: x_img_core::build_info().product.name,
+        version: x_img_core::build_info().product.version,
+    })
+}
+
+async fn operations_snapshot(
+    context: Option<Extension<AuthenticatedHostContext>>,
+    operations: Option<Extension<Operations>>,
+) -> Result<Json<OperationsResponse>, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    if !context.permits(XIMG_ACCESS) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    let operations = operations.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let snapshot = operations
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .snapshot();
+    Ok(Json(OperationsResponse {
+        schema_version: "x-img.operations-snapshot.v1",
+        snapshot,
+    }))
 }
 
 async fn context(
@@ -630,6 +681,8 @@ fn playback_status(error: DirectPlaybackError) -> StatusCode {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
     use axum::{
         Extension,
         body::{Body, to_bytes},
@@ -646,6 +699,7 @@ mod tests {
             AuthorizedObjectReader, AuthorizedObjectReference, ObjectContentMetadata,
             ObjectReadResult,
         },
+        operations::{Component, EventCode, EventOutcome, HealthState, OperationalTelemetry},
         playback_delivery::{DirectPlaybackGrant, DirectPlaybackService},
         video_profile::NormalizedVideoState,
         viewed_media::{
@@ -657,6 +711,7 @@ mod tests {
     use super::{
         HostObjectReadBackend, router, router_with_cache_aliases, router_with_cache_substitution,
         router_with_capture_plans, router_with_direct_playback, router_with_image_substitution,
+        router_with_operations,
     };
 
     const CHECKSUM: &str =
@@ -825,6 +880,67 @@ mod tests {
     #[test]
     fn creates_a_router_without_starting_a_listener() {
         let _router = router();
+    }
+
+    #[tokio::test]
+    async fn public_health_is_coarse_and_operations_require_host_context() {
+        let health = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(health.status(), StatusCode::OK);
+        let health_body = to_bytes(health.into_body(), 4096).await.unwrap();
+        let health_json: serde_json::Value = serde_json::from_slice(&health_body).unwrap();
+        assert_eq!(health_json["status"], "alive");
+        assert!(health_json.get("components").is_none());
+        assert!(health_json.get("audit").is_none());
+
+        let mut telemetry = OperationalTelemetry::default();
+        telemetry.set_health(Component::HostContext, HealthState::Ready);
+        telemetry.record(
+            Component::ObjectStore,
+            EventCode::ObjectUnavailable,
+            EventOutcome::Pending,
+        );
+        let operations = Arc::new(Mutex::new(telemetry));
+        let direct = router_with_operations(Arc::clone(&operations))
+            .oneshot(
+                Request::builder()
+                    .uri("/api/operations/v1/snapshot")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(direct.status(), StatusCode::UNAUTHORIZED);
+
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .unwrap();
+        let admitted = router_with_operations(operations)
+            .layer(Extension(context))
+            .oneshot(
+                Request::builder()
+                    .uri("/api/operations/v1/snapshot")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(admitted.status(), StatusCode::OK);
+        let body = to_bytes(admitted.into_body(), 16 * 1024).await.unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        assert!(text.contains("object_unavailable"));
+        for prohibited in ["http://", "https://", "cookie", "authorization", "session"] {
+            assert!(!text.contains(prohibited));
+        }
     }
 
     #[tokio::test]
