@@ -63,6 +63,35 @@ rejects missing or stale checksum and release manifests. ``make quality``
 checks packaging sources alongside the existing local quality and release
 audits without requiring hosted CI.
 
+Pinakotheke cutover mode
+------------------------
+
+Packaging has one strict product switch. ``PRODUCT=x-img`` is the default and
+keeps 0.9 artifact names, installation paths, bootstrap, SBOM identity, and
+Firefox manifest unchanged. After the workspace version and coordinated
+identity have moved to 1.0.0, the release operator uses:
+
+.. code-block:: console
+
+   make packages PRODUCT=pinakotheke
+
+Canonical mode produces ``pinakotheke-*`` DEB, RPM, PKG, XPI, checksum,
+manifest, and SBOM identities. Native packages install ``pinakotheke`` as the
+canonical command and retain ``x-img`` as the compatibility alias. They consume
+the reviewed Pinakotheke Monas bootstrap candidate; Firefox consumes the
+canonical manifest candidate while retaining its shipped Gecko ID. Linux
+package metadata explicitly replaces/conflicts with the old package rather than
+allowing two installations to own ``/usr/bin/x-img``.
+
+The 0.9 workspace cannot build a falsely labelled 1.0 native release because
+the container verifies the Rust workspace version. The safe preparation check
+builds a temporary canonical XPI, checks every candidate source and alias, and
+retains no output:
+
+.. code-block:: console
+
+   python3 packaging/check_v1_plan.py
+
 Troubleshooting
 ---------------
 

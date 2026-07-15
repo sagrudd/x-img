@@ -518,6 +518,9 @@ and legacy registrations plus historical object/audit identities stay intact.
 The Firefox cutover candidate retains the shipped Gecko ID and least-privilege
 surface; its executable upgrade proof preserves pairing, site opt-ins,
 endpoint, and ObjectStore selection instead of resetting extension storage.
+All package families, Firefox XPIs, SBOM, checksums, and typed artifact manifests
+now support a version-locked canonical product mode while retaining x-img as the
+0.9 default and v1 CLI compatibility alias.
 
 Exit criteria:
 

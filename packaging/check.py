@@ -23,10 +23,14 @@ def digest(path: pathlib.Path) -> str:
     return value.hexdigest()
 
 
-def check_sources(version: str) -> None:
-    manifest = json.loads((ROOT / "firefox-extension/manifest.json").read_text())
+def check_sources(version: str, product: str) -> None:
+    manifest_path = (ROOT / "firefox-extension/manifest.json" if product == "x-img" else
+                     ROOT / "packaging/firefox/pinakotheke-manifest.v1.candidate.json")
+    manifest = json.loads(manifest_path.read_text())
     assert manifest["version"] == version
-    bootstrap = json.loads((ROOT / "contracts/monas/x-img-product-bootstrap.v1.json").read_text())
+    bootstrap_path = (ROOT / "contracts/monas/x-img-product-bootstrap.v1.json" if product == "x-img" else
+                      ROOT / "contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json")
+    bootstrap = json.loads(bootstrap_path.read_text())
     assert bootstrap["product_version"] == version
     assert (ROOT / "LICENSE").is_file()
     makefile = (ROOT / "Makefile").read_text()
@@ -63,22 +67,23 @@ def main() -> int:
     parser.add_argument("--version", required=True)
     parser.add_argument("--source-only", action="store_true")
     parser.add_argument("--write-checksums", action="store_true")
+    parser.add_argument("--product", choices=("x-img", "pinakotheke"), default="x-img")
     args = parser.parse_args()
-    check_sources(args.version)
+    check_sources(args.version, args.product)
     if args.source_only:
         print("packaging sources passed")
         return 0
     expected = [
-        args.dist / f"x-img-{args.version}.cdx.json",
-        args.dist / "linux/x86_64" / f"x-img-{args.version}-linux-amd64.deb",
-        args.dist / "linux/x86_64" / f"x-img-{args.version}-linux-x86_64.rpm",
-        args.dist / "linux/arm64" / f"x-img-{args.version}-linux-arm64.deb",
-        args.dist / "linux/arm64" / f"x-img-{args.version}-linux-aarch64.rpm",
-        args.dist / "macos/x86_64" / f"x-img-{args.version}-macos-x86_64.pkg",
-        args.dist / "macos/arm64" / f"x-img-{args.version}-macos-arm64.pkg",
+        args.dist / f"{args.product}-{args.version}.cdx.json",
+        args.dist / "linux/x86_64" / f"{args.product}-{args.version}-linux-amd64.deb",
+        args.dist / "linux/x86_64" / f"{args.product}-{args.version}-linux-x86_64.rpm",
+        args.dist / "linux/arm64" / f"{args.product}-{args.version}-linux-arm64.deb",
+        args.dist / "linux/arm64" / f"{args.product}-{args.version}-linux-aarch64.rpm",
+        args.dist / "macos/x86_64" / f"{args.product}-{args.version}-macos-x86_64.pkg",
+        args.dist / "macos/arm64" / f"{args.product}-{args.version}-macos-arm64.pkg",
     ]
     expected.extend(
-        args.dist / "firefox" / os_name / arch / f"x-img-{args.version}-firefox-{os_name}-{arch}.xpi"
+        args.dist / "firefox" / os_name / arch / f"{args.product}-{args.version}-firefox-{os_name}-{arch}.xpi"
         for os_name, arch in HOSTS
     )
     missing = [path.relative_to(args.dist) for path in expected if not path.is_file()]
@@ -89,12 +94,12 @@ def main() -> int:
     if not artifacts:
         raise SystemExit("no package artifacts found; build a package target first")
     for os_name, arch in HOSTS:
-        xpi = args.dist / "firefox" / os_name / arch / f"x-img-{args.version}-firefox-{os_name}-{arch}.xpi"
+        xpi = args.dist / "firefox" / os_name / arch / f"{args.product}-{args.version}-firefox-{os_name}-{arch}.xpi"
         if xpi.exists():
             with zipfile.ZipFile(xpi) as archive:
                 assert "manifest.json" in archive.namelist()
                 assert json.loads(archive.read("manifest.json"))["version"] == args.version
-    sbom = json.loads((args.dist / f"x-img-{args.version}.cdx.json").read_text())
+    sbom = json.loads((args.dist / f"{args.product}-{args.version}.cdx.json").read_text())
     assert sbom["bomFormat"] == "CycloneDX"
     assert sbom["specVersion"] == "1.6"
     assert sbom["metadata"]["component"]["version"] == args.version
@@ -102,7 +107,7 @@ def main() -> int:
     checksum_path = args.dist / "SHA256SUMS"
     release_manifest = {
         "schema_version": "x-img.release-artifacts.v1",
-        "product": "x-img",
+        "product": args.product,
         "version": args.version,
         "artifacts": [artifact_record(path, args.dist) for path in artifacts],
     }

@@ -5,6 +5,7 @@ ARG VERSION
 ARG RUST_TARGET
 ARG DEB_ARCH
 ARG RPM_ARCH
+ARG PRODUCT_NAME=x-img
 WORKDIR /workspace
 RUN apt-get update && apt-get install -y --no-install-recommends rpm ca-certificates \
     gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu libc6-dev-arm64-cross libc6-dev-amd64-cross \
@@ -21,15 +22,20 @@ RUN rustup target add "$RUST_TARGET" && \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
     cargo build --locked --release -p x-img-cli --target "$RUST_TARGET"
 RUN set -eu; \
-    mkdir -p /tmp/deb/DEBIAN /tmp/deb/usr/bin /tmp/deb/usr/share/x-img/monas /tmp/deb/usr/share/doc/x-img /out; \
-    install -m 0755 "target/$RUST_TARGET/release/x-img" /tmp/deb/usr/bin/x-img; \
-    install -m 0644 contracts/monas/x-img-product-bootstrap.v1.json /tmp/deb/usr/share/x-img/monas/product-bootstrap.json; \
-    install -m 0644 LICENSE /tmp/deb/usr/share/doc/x-img/LICENSE; \
-    printf 'Package: x-img\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: %s\nMaintainer: x-img maintainers\nDescription: x-img metadata CLI and Monas product contract\n' "$VERSION" "$DEB_ARCH" > /tmp/deb/DEBIAN/control; \
-    dpkg-deb --root-owner-group --build /tmp/deb "/out/x-img-${VERSION}-linux-${DEB_ARCH}.deb"; \
+    test "$PRODUCT_NAME" = x-img || test "$PRODUCT_NAME" = pinakotheke; \
+    bootstrap=contracts/monas/x-img-product-bootstrap.v1.json; binary=x-img; \
+    if [ "$PRODUCT_NAME" = pinakotheke ]; then bootstrap=contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json; binary=pinakotheke; fi; \
+    mkdir -p /tmp/deb/DEBIAN /tmp/deb/usr/bin "/tmp/deb/usr/share/$PRODUCT_NAME/monas" "/tmp/deb/usr/share/doc/$PRODUCT_NAME" /out; \
+    install -m 0755 "target/$RUST_TARGET/release/$binary" "/tmp/deb/usr/bin/$PRODUCT_NAME"; \
+    if [ "$PRODUCT_NAME" = pinakotheke ]; then install -m 0755 "target/$RUST_TARGET/release/x-img" /tmp/deb/usr/bin/x-img; fi; \
+    install -m 0644 "$bootstrap" "/tmp/deb/usr/share/$PRODUCT_NAME/monas/product-bootstrap.json"; \
+    install -m 0644 LICENSE "/tmp/deb/usr/share/doc/$PRODUCT_NAME/LICENSE"; \
+    printf 'Package: %s\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: %s\nMaintainer: Pinakotheke maintainers\nDescription: %s metadata CLI and Monas product contract\n' "$PRODUCT_NAME" "$VERSION" "$DEB_ARCH" "$PRODUCT_NAME" > /tmp/deb/DEBIAN/control; \
+    if [ "$PRODUCT_NAME" = pinakotheke ]; then printf 'Provides: x-img\nConflicts: x-img\nReplaces: x-img\n' >> /tmp/deb/DEBIAN/control; fi; \
+    dpkg-deb --root-owner-group --build /tmp/deb "/out/${PRODUCT_NAME}-${VERSION}-linux-${DEB_ARCH}.deb"; \
     mkdir -p /tmp/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}; \
-    rpmbuild -bb --target "$RPM_ARCH" --define "_topdir /tmp/rpmbuild" --define "ximg_version $VERSION" --define "ximg_binary /workspace/target/$RUST_TARGET/release/x-img" packaging/x-img.spec; \
-    find /tmp/rpmbuild/RPMS -name '*.rpm' -exec cp {} "/out/x-img-${VERSION}-linux-${RPM_ARCH}.rpm" \;
+    rpmbuild -bb --target "$RPM_ARCH" --define "_topdir /tmp/rpmbuild" --define "ximg_version $VERSION" --define "product_name $PRODUCT_NAME" --define "product_binary /workspace/target/$RUST_TARGET/release/$binary" --define "legacy_binary /workspace/target/$RUST_TARGET/release/x-img" --define "product_bootstrap /workspace/$bootstrap" packaging/x-img.spec; \
+    find /tmp/rpmbuild/RPMS -name '*.rpm' -exec cp {} "/out/${PRODUCT_NAME}-${VERSION}-linux-${RPM_ARCH}.rpm" \;
 
 FROM scratch AS export
 COPY --from=build /out/ /

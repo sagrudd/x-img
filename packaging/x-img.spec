@@ -1,23 +1,29 @@
 # SPDX-License-Identifier: MPL-2.0
 %global __strip /bin/true
-Name: x-img
+Name: %{product_name}
 Version: %{ximg_version}
 Release: 1%{?dist}
-Summary: x-img metadata CLI and Monas product contract
+Summary: %{product_name} metadata CLI and Monas product contract
 License: MPL-2.0
-URL: https://github.com/sagrudd/x-img
+URL: https://github.com/sagrudd/%{product_name}
 
 %description
-x-img command-line metadata tools and the versioned Monas product bootstrap.
+%{product_name} command-line metadata tools and the versioned Monas product bootstrap.
 Media bytes are not included and remain under DASObjectStore authority.
 
 %install
-mkdir -p %{buildroot}/usr/bin %{buildroot}/usr/share/x-img/monas %{buildroot}/usr/share/doc/x-img
-install -m 0755 %{ximg_binary} %{buildroot}/usr/bin/x-img
-install -m 0644 /workspace/contracts/monas/x-img-product-bootstrap.v1.json %{buildroot}/usr/share/x-img/monas/product-bootstrap.json
-install -m 0644 /workspace/LICENSE %{buildroot}/usr/share/doc/x-img/LICENSE
+mkdir -p %{buildroot}/usr/bin %{buildroot}/usr/share/%{product_name}/monas %{buildroot}/usr/share/doc/%{product_name}
+install -m 0755 %{product_binary} %{buildroot}/usr/bin/%{product_name}
+install -m 0644 %{product_bootstrap} %{buildroot}/usr/share/%{product_name}/monas/product-bootstrap.json
+install -m 0644 /workspace/LICENSE %{buildroot}/usr/share/doc/%{product_name}/LICENSE
+%if "%{product_name}" == "pinakotheke"
+install -m 0755 %{legacy_binary} %{buildroot}/usr/bin/x-img
+%endif
 
 %files
+/usr/bin/%{product_name}
+%if "%{product_name}" == "pinakotheke"
 /usr/bin/x-img
-/usr/share/x-img/monas/product-bootstrap.json
-/usr/share/doc/x-img/LICENSE
+%endif
+/usr/share/%{product_name}/monas/product-bootstrap.json
+/usr/share/doc/%{product_name}/LICENSE

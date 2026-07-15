@@ -78,6 +78,11 @@ def current_checks(*, github: bool) -> list[Check]:
               extension_candidate.get("browser_specific_settings", {}).get("gecko", {}).get("id") ==
               extension.get("browser_specific_settings", {}).get("gecko", {}).get("id"),
               "canonical Firefox candidate retains the published Gecko identity"),
+        Check("packaging-candidate", contains("Makefile", "PRODUCT ?= x-img") and
+              contains("packaging/Dockerfile.linux", "PRODUCT_NAME=x-img") and
+              contains("packaging/build-macos-pkg.sh", "release/pinakotheke") and
+              contains("packaging/build-firefox.py", '"pinakotheke"'),
+              "canonical package plan retains an explicit legacy-default switch"),
     ]
     if github:
         checks.append(github_check())

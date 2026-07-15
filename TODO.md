@@ -656,6 +656,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Pinakotheke Firefox manifest candidate retaining the shipped Gecko ID,
   permissions, CSP, and entry points. Executable synthetic upgrade proof
   preserves pairing, site opt-ins, endpoint, and ObjectStore selection exactly.
+  The fifth delivery slice parameterizes every package family, Firefox XPI,
+  SBOM, checksum, and artifact manifest behind an explicit product switch.
+  ``x-img`` remains the 0.9 default; canonical mode is version-locked, installs
+  ``pinakotheke`` plus the ``x-img`` CLI alias, and consumes reviewed candidates.
 
 ## Post-1.0
 

@@ -11,6 +11,7 @@ import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "firefox-extension"
+PINAKOTHEKE_MANIFEST = ROOT / "packaging/firefox/pinakotheke-manifest.v1.candidate.json"
 
 
 def main() -> int:
@@ -19,19 +20,22 @@ def main() -> int:
     parser.add_argument("--arch", required=True, choices=["x86_64", "arm64"])
     parser.add_argument("--version", required=True)
     parser.add_argument("--dist", required=True, type=pathlib.Path)
+    parser.add_argument("--product", choices=("x-img", "pinakotheke"), default="x-img")
     args = parser.parse_args()
-    manifest = json.loads((SOURCE / "manifest.json").read_text())
+    manifest_path = PINAKOTHEKE_MANIFEST if args.product == "pinakotheke" else SOURCE / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
     if manifest.get("version") != args.version:
         raise SystemExit("Firefox manifest and workspace versions differ")
     destination = args.dist / "firefox" / args.os / args.arch
     destination.mkdir(parents=True, exist_ok=True)
-    output = destination / f"x-img-{args.version}-firefox-{args.os}-{args.arch}.xpi"
+    output = destination / f"{args.product}-{args.version}-firefox-{args.os}-{args.arch}.xpi"
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for source in sorted(path for path in SOURCE.iterdir() if path.is_file()):
             info = zipfile.ZipInfo(source.name, (1980, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
-            archive.writestr(info, source.read_bytes(), compresslevel=9)
+            content = json.dumps(manifest, separators=(",", ":")).encode() if source.name == "manifest.json" else source.read_bytes()
+            archive.writestr(info, content, compresslevel=9)
     print(output)
     return 0
 

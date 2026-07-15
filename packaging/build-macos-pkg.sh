@@ -4,7 +4,9 @@ set -eu
 
 arch=${1:?usage: build-macos-pkg.sh x86_64|arm64 VERSION DIST}
 version=${2:?usage: build-macos-pkg.sh x86_64|arm64 VERSION DIST}
-dist=${3:?usage: build-macos-pkg.sh x86_64|arm64 VERSION DIST}
+dist=${3:?usage: build-macos-pkg.sh x86_64|arm64 VERSION DIST [PRODUCT]}
+product=${4:-x-img}
+case "$product" in x-img|pinakotheke) ;; *) echo "unsupported product: $product" >&2; exit 2 ;; esac
 [ "$(uname -s)" = Darwin ] || { echo "macOS PKG builds require macOS and pkgbuild" >&2; exit 2; }
 command -v pkgbuild >/dev/null || { echo "pkgbuild is required (install Xcode command-line tools)" >&2; exit 2; }
 case "$arch" in
@@ -17,9 +19,16 @@ rustup target add "$target"
 cargo +1.97.0 build --locked --release -p x-img-cli --target "$target"
 root="target/package-macos/$arch/root"
 rm -rf "$root"
-mkdir -p "$root/usr/local/bin" "$root/usr/local/share/x-img/monas" "$root/usr/local/share/doc/x-img" "$dist/macos/$arch"
-install -m 0755 "target/$target/release/x-img" "$root/usr/local/bin/x-img"
-install -m 0644 contracts/monas/x-img-product-bootstrap.v1.json "$root/usr/local/share/x-img/monas/product-bootstrap.json"
-install -m 0644 LICENSE "$root/usr/local/share/doc/x-img/LICENSE"
-COPYFILE_DISABLE=1 pkgbuild --root "$root" --identifier com.github.sagrudd.x-img --version "$version" \
-  --install-location / "$dist/macos/$arch/x-img-$version-macos-$arch.pkg"
+mkdir -p "$root/usr/local/bin" "$root/usr/local/share/$product/monas" "$root/usr/local/share/doc/$product" "$dist/macos/$arch"
+bootstrap=contracts/monas/x-img-product-bootstrap.v1.json
+if [ "$product" = pinakotheke ]; then
+  bootstrap=contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json
+  install -m 0755 "target/$target/release/pinakotheke" "$root/usr/local/bin/pinakotheke"
+  install -m 0755 "target/$target/release/x-img" "$root/usr/local/bin/x-img"
+else
+  install -m 0755 "target/$target/release/x-img" "$root/usr/local/bin/x-img"
+fi
+install -m 0644 "$bootstrap" "$root/usr/local/share/$product/monas/product-bootstrap.json"
+install -m 0644 LICENSE "$root/usr/local/share/doc/$product/LICENSE"
+COPYFILE_DISABLE=1 pkgbuild --root "$root" --identifier "com.github.sagrudd.$product" --version "$version" \
+  --install-location / "$dist/macos/$arch/$product-$version-macos-$arch.pkg"

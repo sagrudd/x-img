@@ -16,6 +16,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", required=True)
     parser.add_argument("--dist", type=pathlib.Path, required=True)
+    parser.add_argument("--product", choices=("x-img", "pinakotheke"), default="x-img")
     args = parser.parse_args()
     metadata = json.loads(
         subprocess.check_output(
@@ -40,8 +41,8 @@ def main() -> int:
     components.append(
         {
             "type": "application",
-            "bom-ref": f"pkg:generic/x-img-firefox@{args.version}",
-            "name": "x-img-firefox",
+            "bom-ref": f"pkg:generic/{args.product}-firefox@{args.version}",
+            "name": f"{args.product}-firefox",
             "version": args.version,
             "licenses": [{"expression": "MPL-2.0"}],
         }
@@ -54,17 +55,17 @@ def main() -> int:
         "metadata": {
             "component": {
                 "type": "application",
-                "bom-ref": f"pkg:github/sagrudd/x-img@{args.version}",
-                "name": "x-img",
+                "bom-ref": f"pkg:github/sagrudd/{args.product}@{args.version}",
+                "name": args.product,
                 "version": args.version,
-                "purl": f"pkg:github/sagrudd/x-img@{args.version}",
+                "purl": f"pkg:github/sagrudd/{args.product}@{args.version}",
                 "licenses": [{"expression": "MPL-2.0"}],
             }
         },
         "components": components,
     }
     args.dist.mkdir(parents=True, exist_ok=True)
-    destination = args.dist / f"x-img-{args.version}.cdx.json"
+    destination = args.dist / f"{args.product}-{args.version}.cdx.json"
     destination.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
     print(destination)
     return 0
