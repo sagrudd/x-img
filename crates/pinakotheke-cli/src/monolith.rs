@@ -107,13 +107,14 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
     let runtime = tokio::runtime::Runtime::new()?;
     runtime.block_on(async move {
         let listener = tokio::net::TcpListener::bind(address).await?;
+        let storage_ready = crate::local_objectstore::is_ready(&layout.root);
         println!(
             "Pinakotheke {} listening on http://{address}",
             env!("CARGO_PKG_VERSION")
         );
         println!("metadata root: {}", layout.root.display());
         println!("readiness: http://{address}/ready");
-        x_img_api::serve(listener).await
+        x_img_api::serve_monolith(listener, storage_ready).await
     })?;
     Ok(())
 }

@@ -26,6 +26,8 @@ path = "src/bin/pinakotheke.rs"
 
 [dependencies]
 clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 x-img-api = { package = "pinakotheke-api", path = "../pinakotheke-api" }
 x-img-core = { package = "pinakotheke-core", path = "../pinakotheke-core" }

@@ -6,6 +6,7 @@ use std::{ffi::OsString, path::PathBuf};
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use x_img_core::{ConfigStore, build_info};
 
+mod local_objectstore;
 mod monolith;
 
 /// Canonical command name used by the v1 entry point.
@@ -76,6 +77,11 @@ enum Command {
     },
     /// Run the local Pinakotheke monolith in the foreground.
     Serve(monolith::ServeArgs),
+    /// Provision and inspect monolith storage authorities.
+    Storage {
+        #[command(subcommand)]
+        command: local_objectstore::StorageCommand,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Subcommand)]
@@ -128,6 +134,7 @@ pub fn run(invocation: Invocation, cli: Cli) -> Result<(), Box<dyn std::error::E
         ),
         Some(Command::Config { command }) => run_config(command)?,
         Some(Command::Serve(arguments)) => monolith::serve(arguments)?,
+        Some(Command::Storage { command }) => local_objectstore::run(command)?,
     }
     Ok(())
 }

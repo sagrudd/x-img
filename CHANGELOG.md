@@ -13,6 +13,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Add the first XIMG-090 ``pinakotheke serve`` monolith slice with a private
   per-user metadata root, loopback-safe Axum listener, graceful shutdown, and
   honest component readiness.
+- Add XIMG-091's reviewed local DASObjectStore profile plan, authority-owned
+  provisioning and discovery, stable secret-free destination selection, and
+  honest monolith storage readiness.
 
 ## [1.0.0] - 2026-07-15
 

@@ -120,7 +120,15 @@ pub struct HostObjectReadBackend {
 
 /// Serves the initial local monolith until interrupted.
 pub async fn serve(listener: tokio::net::TcpListener) -> io::Result<()> {
-    axum::serve(listener, monolith_router())
+    serve_monolith(listener, false).await
+}
+
+/// Serves the monolith with the caller's verified local storage readiness.
+pub async fn serve_monolith(
+    listener: tokio::net::TcpListener,
+    dasobjectstore_ready: bool,
+) -> io::Result<()> {
+    axum::serve(listener, monolith_router_with_storage(dasobjectstore_ready))
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })
@@ -166,10 +174,18 @@ pub fn router() -> Router {
 /// and honest dependency readiness. Authenticated product APIs are added only
 /// when Monas can inject a verified host context.
 pub fn monolith_router() -> Router {
+    monolith_router_with_storage(false)
+}
+
+/// Returns the local surface with a previously verified DASObjectStore state.
+pub fn monolith_router_with_storage(dasobjectstore_ready: bool) -> Router {
     Router::new()
         .route("/", get(monolith_landing))
         .route("/health", get(health))
-        .route("/ready", get(monolith_readiness))
+        .route(
+            "/ready",
+            get(move || async move { monolith_readiness(dasobjectstore_ready).await }),
+        )
 }
 
 async fn monolith_landing() -> Html<&'static str> {
@@ -178,7 +194,7 @@ async fn monolith_landing() -> Html<&'static str> {
     )
 }
 
-async fn monolith_readiness() -> Json<MonolithReadinessResponse> {
+async fn monolith_readiness(dasobjectstore_ready: bool) -> Json<MonolithReadinessResponse> {
     Json(MonolithReadinessResponse {
         schema_version: "pinakotheke.monolith-readiness.v1",
         status: "not_ready",
@@ -196,8 +212,16 @@ async fn monolith_readiness() -> Json<MonolithReadinessResponse> {
             },
             MonolithComponentReadiness {
                 component: "dasobjectstore",
-                status: "Not configured",
-                detail: "Media ingest and object reads are unavailable",
+                status: if dasobjectstore_ready {
+                    "Ready"
+                } else {
+                    "Not configured"
+                },
+                detail: if dasobjectstore_ready {
+                    "Managed endpoint and ObjectStore identity are selected"
+                } else {
+                    "Media ingest and object reads are unavailable"
+                },
             },
         ],
     })
@@ -827,9 +851,10 @@ mod tests {
     };
 
     use super::{
-        HostObjectReadBackend, monolith_router, router, router_with_cache_aliases,
-        router_with_cache_substitution, router_with_capture_plans, router_with_direct_playback,
-        router_with_image_substitution, router_with_operations, router_with_synoptikon_catalogue,
+        HostObjectReadBackend, monolith_router, monolith_router_with_storage, router,
+        router_with_cache_aliases, router_with_cache_substitution, router_with_capture_plans,
+        router_with_direct_playback, router_with_image_substitution, router_with_operations,
+        router_with_synoptikon_catalogue,
     };
 
     const CHECKSUM: &str =
@@ -1071,6 +1096,24 @@ mod tests {
         assert_eq!(json["components"][0]["status"], "Ready");
         assert_eq!(json["components"][1]["status"], "Not configured");
         assert_eq!(json["components"][2]["status"], "Not configured");
+    }
+
+    #[tokio::test]
+    async fn monolith_reports_a_verified_local_objectstore_without_claiming_authentication() {
+        let response = monolith_router_with_storage(true)
+            .oneshot(
+                Request::builder()
+                    .uri("/ready")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = to_bytes(response.into_body(), 8192).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["status"], "not_ready");
+        assert_eq!(json["components"][1]["status"], "Not configured");
+        assert_eq!(json["components"][2]["status"], "Ready");
     }
 
     #[tokio::test]

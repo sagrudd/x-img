@@ -4,6 +4,11 @@ Current XIMG-200 Synoptikon integration baseline: ``../mnemosyne`` commit
 ``52810176bf95a170f93d74a6f5daa94da5c6640e``. This supersedes the earlier
 moving-source snapshot retained in the historical table below.
 
+Current XIMG-091 managed local-profile baseline: ``../DASObjectStore`` commit
+``0d71b2a197a310004b686bc2a4bff3e8fd9c6463`` (workspace ``0.84.0``). The
+canonical helper admits only the exact Pinakotheke home root, accepts reviewed
+logical-store parameters, and exposes a secret-free versioned identity.
+
 Status: proposed planning contract
 Snapshot: 2026-07-14 UTC
 TODO: XIMG-003
