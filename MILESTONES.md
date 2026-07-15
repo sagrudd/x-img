@@ -310,6 +310,12 @@ Goal: deliver the dense, fast visual browser.
 - XIMG-054 implements word-first review states and reversible batch actions
   (commit `84e11ca`), including a toggleable observed-thumbnail versus
   committed-ObjectStore-original distinction without mutating bytes.
+- XIMG-053 implements the selected-record quick-preview task pane (this run):
+  source/type/ObjectStore metadata, descriptive alt text, fit/original visual
+  state, keyboard focus trap/return, explicit unavailable-object state, and a
+  native video control only for a verified normalized ObjectStore range route.
+  Synthetic proxy visuals retain no media payload and unavailable records never
+  fall back to an origin URL.
 - XIMG-069 implements direct normalized-video delivery (this run): a
   host-authenticated Axum route maps an actor-bound ready rendition only to a
   scoped DASObjectStore stream, retaining MIME/length/ETag/single-range and

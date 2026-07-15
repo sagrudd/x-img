@@ -1246,6 +1246,7 @@ dependencies = [
 name = "x-img-web"
 version = "0.2.0"
 dependencies = [
+ "wasm-bindgen",
  "web-sys",
  "yew",
 ]

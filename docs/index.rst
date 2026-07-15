@@ -39,6 +39,7 @@ Configuration
    website-capture-review
    site-adapters
    review-admission
+   quick-preview
    video-candidates
    normalized-video-profiles
    video-normalization

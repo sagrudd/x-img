@@ -323,9 +323,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   thumbnail lazy loading, and fast filters. Acceptance: performance targets are
   documented and met against a large synthetic catalogue.
 
-- [ ] **XIMG-053 P1 — Implement quick preview and video playback.**
+- [x] **XIMG-053 P1 — Implement quick preview and video playback.**
   Acceptance: original/fit view, metadata, alt text, source link, range playback,
   focus trapping/return, and unavailable-object state pass.
+  Completed in this run: selected cards open a keyboard-controlled Mnemosyne
+  task pane with object/source/type/alt-text evidence, fit/original visual
+  control, source metadata link, explicit unavailable state, and no origin
+  fallback. Only a ready normalized ObjectStore video renders the existing
+  host-authenticated range URL. Synthetic visual proxies contain no media
+  payload; see `docs/quick-preview.rst`.
 
 - [x] **XIMG-054 P1 — Implement review queue and batch review.** Completed in
   `84e11ca`; word-first New/Reviewed/Hidden/Removed queue states, reversible

@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-053's Mnemosyne-aligned quick preview task pane. It provides
+  selected-record context, alt text, fit/original visual state, keyboard focus
+  handling, explicit unavailable-object behavior, and only attaches native
+  video controls to a ready normalized ObjectStore playback route—never an
+  origin fallback or browser-retained payload.
 - Completed XIMG-069's direct authenticated normalized-video delivery route
   and Firefox proof. Ready, actor-bound ObjectStore grants preserve
   single-range, MIME, length, ETag, conditional, and unavailable semantics

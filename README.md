@@ -168,6 +168,13 @@ media type, length, SHA-256/ETag, conditional reads, ranges, and unavailable
 states before exposing an authority stream; it never keeps a local media cache.
 See [authorized object read](docs/object-read.rst).
 
+The Web library now opens selected cards in a keyboard-controlled quick-preview
+task pane with source/type/ObjectStore metadata, visible alt text, fit/original
+view, explicit unavailable-object handling, and focus return. Only a ready
+normalized ObjectStore video receives the host-authenticated range playback
+route; there is no origin fallback. See
+[quick preview](docs/quick-preview.rst).
+
 Ready normalized videos now have an actor-bound Axum delivery route at
 `/api/playback/v1/{playback_id}`. It accepts only a server-side scoped
 DASObjectStore stream and host-injected Monas context, preserves a verified
