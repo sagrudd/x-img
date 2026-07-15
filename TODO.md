@@ -469,9 +469,22 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   over 4,096 entries measured 5.5 microseconds p95 against a 2 ms budget. See
   `docs/cache-alias-lookup.rst`.
 
-- [ ] **XIMG-071 P0 — Implement image substitution.**
+- [x] **XIMG-071 P0 — Implement image substitution.**
   Restrict to enabled sites and proven aliases; fail open without loops.
   Acceptance: HTTPS/CSP/CORS/CORP/type/length/ETag behavior passes real Firefox.
+  Completed in `9db5944`: opaque stable delivery IDs preserve the exact
+  reviewed endpoint/ObjectStore/object identity, and the authenticated Axum
+  route revalidates actor, pairing, instance, site, adapter, expiry, policy,
+  representation, and availability before streaming through the existing
+  DASObjectStore read port. The toolbar path considers only visible images on
+  an explicitly enabled site, strips query/fragment aliases, validates the
+  bounded response MIME/length/checksum ETag, uses an ephemeral blob URL, and
+  restores the original ``src``/``srcset`` once on every failure without a
+  loop. API tests prove production HTTPS/CORS/CORP/no-store header semantics;
+  installed Firefox 152 passes cross-origin display plus CSP, CORS, MIME,
+  length, and ETag fail-open using runtime-only bytes. Rust, wasm, clippy,
+  contracts, quality, privacy, and pinned local Docker/Sphinx checks pass. See
+  `docs/image-substitution.rst`.
 
 - [ ] **XIMG-072 P0 — Implement MP4 and range substitution.**
   Acceptance: seek, pause/resume, concurrent ranges, cancellation, conditional
