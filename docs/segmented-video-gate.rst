@@ -47,7 +47,7 @@ Verification
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core segmented_video
+   cargo +1.97.0 test -p pinakotheke-core segmented_video
    node --check firefox-extension/background.js
    node --check firefox-extension/options.js
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .

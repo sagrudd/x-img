@@ -179,14 +179,14 @@ integration, review, tests, commits, and the final handoff.
 
 ## Product identity and documentation
 
-- `x-img` is the planning/repository name until the coordinated v1.0.0
-  rebrand. The v1.0.0 product and brand target is **Pinakotheke**, with the
-  target GitHub repository slug `sagrudd/pinakotheke`. Do not perform a partial
-  rename. The release gate covers documentation, Rust/code identifiers,
+- **Pinakotheke** is the canonical v1.0.0 product and repository identity at
+  `sagrudd/pinakotheke`; `x-img` is retained only for documented compatibility
+  aliases and historic schema identities. The completed coordinated cutover
+  covered documentation, Rust/code identifiers,
   CLI/package/product metadata, Monas/Synoptikon/DASObjectStore adapters,
   Firefox extension identity, and repository migration, with documented
   compatibility aliases and migrations where existing names or schemas must
-  remain readable.
+  remain readable. Do not reintroduce a partial or competing identity.
 - Precise user-facing documentation is authored as a Sphinx project in `docs/`
   using Read the Docs-compatible configuration and reStructuredText entry
   points. The reproducible local authority is the pinned `docs/Dockerfile`.

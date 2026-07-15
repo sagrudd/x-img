@@ -6,7 +6,7 @@ VERSION := $(shell cargo metadata --format-version 1 --no-deps 2>/dev/null | pyt
 DIST := $(CURDIR)/dist
 BASELINE_DIST ?=
 BASELINE_VERSION ?=
-PRODUCT ?= x-img
+PRODUCT ?= pinakotheke
 
 .PHONY: help all packages linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
 	linux-deb-x86_64 linux-deb-arm64 linux-rpm-x86_64 linux-rpm-arm64 \

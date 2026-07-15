@@ -1,18 +1,18 @@
-# x-img milestones
+# Pinakotheke milestones
 
-Status: planning baseline
+Status: 1.0 release cutover
 
-Version: 0.9.0
+Version: 1.0.0
 
 Updated: 2026-07-15
 
-Product identity: `x-img` is the planning/repository name until the coordinated
-v1.0.0 migration to the Pinakotheke brand and target repository slug
-`sagrudd/pinakotheke`.
+Product identity: Pinakotheke is canonical from v1.0.0 at
+`sagrudd/pinakotheke`; `x-img` remains only where documented compatibility or
+historic schema identity requires it.
 
 ## Product outcome
 
-x-img provides one private, authenticated Web library for media acquired from:
+Pinakotheke provides one private, authenticated Web library for media acquired from:
 
 - a small JSON allowlist of X/Twitter accounts;
 - a small JSON allowlist of Instagram accounts; and

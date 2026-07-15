@@ -52,6 +52,6 @@ Verify locally
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core instagram_discovery
+   cargo +1.97.0 test -p pinakotheke-core instagram_discovery
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check

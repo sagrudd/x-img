@@ -52,13 +52,13 @@ pub fn validate_monas_product_bootstrap(bytes: &[u8]) -> Result<(), HostProductE
     validate_product_bootstrap(
         bytes,
         ProductExpectation {
-            product_id: "x-img",
+            product_id: "pinakotheke",
             product_version: env!("CARGO_PKG_VERSION"),
-            product_root: "/opt/x-img",
-            web_mount: "/products/x-img/app/",
-            api_mount: "/products/x-img/api/",
-            bootstrap_path: "/products/x-img/.well-known/mnemosyne/product-bootstrap.json",
-            visibility: "local_profile_enabled",
+            product_root: "/opt/pinakotheke",
+            web_mount: "/products/pinakotheke/app/",
+            api_mount: "/products/pinakotheke/api/",
+            bootstrap_path: "/products/pinakotheke/.well-known/mnemosyne/product-bootstrap.json",
+            visibility: "registered",
         },
     )
 }

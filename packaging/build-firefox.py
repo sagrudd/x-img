@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "firefox-extension"
-PINAKOTHEKE_MANIFEST = ROOT / "packaging/firefox/pinakotheke-manifest.v1.candidate.json"
+PINAKOTHEKE_MANIFEST = ROOT / "firefox-extension/manifest.json"
 
 
 def main() -> int:

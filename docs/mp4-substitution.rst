@@ -61,8 +61,8 @@ path dependency.
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core cache_alias
-   cargo +1.97.0 test -p x-img-api cached_video
+   cargo +1.97.0 test -p pinakotheke-core cache_alias
+   cargo +1.97.0 test -p pinakotheke-api cached_video
    python3 scripts/firefox/check_normalized_playback.py --video /ephemeral/normalized.mp4
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check

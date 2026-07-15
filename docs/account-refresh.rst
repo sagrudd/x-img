@@ -28,6 +28,6 @@ Verify locally:
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core account_refresh
+   cargo +1.97.0 test -p pinakotheke-core account_refresh
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check

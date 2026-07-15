@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 [package]
-name = "x-img-api"
+name = "pinakotheke-api"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -15,7 +15,7 @@ workspace = true
 [dependencies]
 axum.workspace = true
 serde.workspace = true
-x-img-core = { path = "../x-img-core" }
+x-img-core = { package = "pinakotheke-core", path = "../pinakotheke-core" }
 
 [dev-dependencies]
 serde_json.workspace = true

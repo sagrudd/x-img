@@ -1,13 +1,13 @@
-# x-img
+# Pinakotheke
 
-Public repository: [github.com/sagrudd/x-img](https://github.com/sagrudd/x-img)
+Public repository: [github.com/sagrudd/pinakotheke](https://github.com/sagrudd/pinakotheke)
 
-`x-img` is a planned personal acquisition and review service for a small,
+Pinakotheke is a personal acquisition and review service for a small,
 explicitly configured set of X/Twitter and Instagram accounts, user-identified
 public GEO/SRA/ENA/NCBI resources, and websites enabled through a Firefox
 extension.
 
-All sources resolve to one x-img Web instance. That instance presents a
+All sources resolve to one Pinakotheke Web instance. That instance presents a
 thumbnail-dense, ThumbsPlus-inspired library and review queue, and offers a
 single-click refresh of configured social accounts.
 
@@ -15,21 +15,21 @@ single-click refresh of configured social accounts.
 
 - Rust implementation with `clap` for CLI surfaces, `axum` for HTTP/API
   adapters, and `yew` for the Web UI.
-- Interface hosting and login are owned by sibling `../monas`; x-img must not
+- Interface hosting and login are owned by sibling `../monas`; Pinakotheke must not
   create a competing account or session system.
 - Image and video bytes are stored only in a DASObjectStore ObjectStore through
-  sibling `../DASObjectStore`; local x-img state may contain configuration,
+  sibling `../DASObjectStore`; local Pinakotheke state may contain configuration,
   identifiers, indexes, and audit records, but never durable media payloads.
 - Account and site configuration is local, explicit, versioned JSON.
 - Bioinformatics acquisition is explicit and user-initiated: an accession or
   URL becomes a reviewable transfer plan before bounded streaming to the
-  configured DASObjectStore ObjectStore. x-img does not bulk-discover or crawl
+  configured DASObjectStore ObjectStore. Pinakotheke does not bulk-discover or crawl
   public repositories.
 - Storage endpoints/devices are separate from logical ObjectStores. The
   default local folder profile is provisioned by the authorized DASObjectStore
   service; remote endpoints are paired through Monas/DASObjectStore, expose all
   stores visible to the user, and require explicit endpoint-plus-store review
-  before every write. x-img never writes an unmanaged folder or silently
+  before every write. Pinakotheke never writes an unmanaged folder or silently
   changes a reviewed destination.
 - Video-focused websites may offer a user-selected, policy-gated review pane.
   Only observed or explicitly selected candidates enter it; normalized,
@@ -56,13 +56,15 @@ single-click refresh of configured social accounts.
 
 ## Current status
 
-The unsigned `v0.9.0` evaluation release candidate is available from the
+The workspace and public repository have completed the coordinated Pinakotheke
+1.0 identity migration. Canonical 1.0 release artifacts, tag, and release notes
+remain the final release step. The unsigned `v0.9.0` x-img evaluation release
+candidate remains available from the
 [GitHub release page](https://github.com/sagrudd/x-img/releases/tag/v0.9.0),
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
-and dual-architecture upgrade/rollback evidence. It is not the coordinated
-Pinakotheke 1.0 migration.
+and dual-architecture upgrade/rollback evidence.
 
-The `0.2.0` Rust workspace scaffold is available: shared model and core
+The `1.0.0` Rust workspace provides shared model and core
 boundaries, a `clap` CLI, an Axum composition boundary, and a Yew client
 boundary compile without enabling any live source, storage, authentication, or
 media-payload integration. See [MILESTONES.md](MILESTONES.md) for release gates

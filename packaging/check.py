@@ -29,7 +29,7 @@ def check_sources(version: str, product: str) -> None:
     manifest = json.loads(manifest_path.read_text())
     assert manifest["version"] == version
     bootstrap_path = (ROOT / "contracts/monas/x-img-product-bootstrap.v1.json" if product == "x-img" else
-                      ROOT / "contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json")
+                      ROOT / "contracts/monas/x-img-product-bootstrap.v1.json")
     bootstrap = json.loads(bootstrap_path.read_text())
     assert bootstrap["product_version"] == version
     assert (ROOT / "LICENSE").is_file()

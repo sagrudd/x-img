@@ -49,8 +49,8 @@ Local proof
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core operations
-   cargo +1.97.0 test -p x-img-api public_health_is_coarse_and_operations_require_host_context
+   cargo +1.97.0 test -p pinakotheke-core operations
+   cargo +1.97.0 test -p pinakotheke-api public_health_is_coarse_and_operations_require_host_context
 
 Tests prove worst-state aggregation, fixed-capacity eviction, aggregate counts,
 absence of prohibited diagnostic fields, coarse public output, and rejection of

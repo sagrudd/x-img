@@ -1,7 +1,7 @@
-x-img documentation
-====================
+Pinakotheke documentation
+==========================
 
-x-img is a planning-stage private media acquisition and review service. This
+Pinakotheke is a private media acquisition and review service. This
 documentation records the authority, policy, storage, scheduling, pairing, and
 cache contracts that must be satisfied before implementation.
 

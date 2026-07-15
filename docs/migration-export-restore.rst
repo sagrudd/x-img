@@ -46,7 +46,7 @@ Run the focused native tests with:
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core migration_backup
+   cargo +1.97.0 test -p pinakotheke-core migration_backup
 
 They prove round-trip export/restore, repeat migration idempotency, stable
 authority identities, checksum-corruption rejection, future-major rejection,

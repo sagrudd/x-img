@@ -105,9 +105,9 @@ contact X, Instagram, a website, Monas, or DASObjectStore.
 
 .. code-block:: console
 
-   cargo run -p x-img-cli -- config validate --path instance.json
-   cargo run -p x-img-cli -- config list --path instance.json
-   cargo run -p x-img-cli -- config replace --path instance.json --input candidate.json
+   cargo run -p pinakotheke-cli -- config validate --path instance.json
+   cargo run -p pinakotheke-cli -- config list --path instance.json
+   cargo run -p pinakotheke-cli -- config replace --path instance.json --input candidate.json
 
 ``validate`` parses the complete document and fails closed on unknown fields,
 unknown schema versions, invalid opaque-reference kinds, invalid account names,

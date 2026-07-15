@@ -16,13 +16,13 @@ case "$arch" in
 esac
 
 rustup target add "$target"
-cargo +1.97.0 build --locked --release -p x-img-cli --target "$target"
+cargo +1.97.0 build --locked --release -p pinakotheke-cli --target "$target"
 root="target/package-macos/$arch/root"
 rm -rf "$root"
 mkdir -p "$root/usr/local/bin" "$root/usr/local/share/$product/monas" "$root/usr/local/share/doc/$product" "$dist/macos/$arch"
 bootstrap=contracts/monas/x-img-product-bootstrap.v1.json
 if [ "$product" = pinakotheke ]; then
-  bootstrap=contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json
+  bootstrap=contracts/monas/x-img-product-bootstrap.v1.json
   install -m 0755 "target/$target/release/pinakotheke" "$root/usr/local/bin/pinakotheke"
   install -m 0755 "target/$target/release/x-img" "$root/usr/local/bin/x-img"
 else

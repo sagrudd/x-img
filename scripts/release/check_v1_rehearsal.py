@@ -30,6 +30,10 @@ def run(
 
 
 def main() -> int:
+    if 'version = "1.0.0"' in (ROOT / "Cargo.toml").read_text(encoding="utf-8"):
+        run("python3", "scripts/release/check_v1_cutover.py", "--phase", "cutover", cwd=ROOT)
+        print("Pinakotheke v1 live tree is canonical; isolated pre-cutover rehearsal is complete")
+        return 0
     with tempfile.TemporaryDirectory(prefix="pinakotheke-v1-rehearsal-") as temporary:
         candidate = Path(temporary) / "pinakotheke"
         shutil.copytree(
@@ -52,7 +56,11 @@ def main() -> int:
         run("python3", "scripts/release/check_v1_cutover.py", "--phase", "cutover", cwd=candidate)
         run("python3", "packaging/check.py", "--source-only", "--product", "pinakotheke",
             "--version", "1.0.0", cwd=candidate)
-        child_env = {**os.environ, "PINAKOTHEKE_REHEARSAL_CHILD": "1"}
+        child_env = {
+            **os.environ,
+            "PINAKOTHEKE_REHEARSAL_CHILD": "1",
+            "CARGO_TARGET_DIR": str(ROOT / "target/v1-rehearsal"),
+        }
         run("scripts/quality/check.sh", cwd=candidate, env=child_env)
         run("scripts/audit/check.sh", cwd=candidate, env=child_env)
         run("scripts/faults/check.sh", cwd=candidate, env=child_env)

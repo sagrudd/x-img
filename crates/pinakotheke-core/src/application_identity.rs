@@ -82,7 +82,7 @@ impl std::error::Error for ApplicationIdentityError {}
 
 impl ScopedApplicationIdentity {
     pub fn parse_registration(bytes: &[u8]) -> Result<Self, ApplicationIdentityError> {
-        Self::parse_for(bytes, "x-img", true)
+        Self::parse_for(bytes, "pinakotheke", true)
     }
 
     /// Parses the inert Pinakotheke service-principal cutover candidate.
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(candidate.max_object_bytes, legacy.max_object_bytes);
         assert_eq!(candidate.max_total_bytes, legacy.max_total_bytes);
         assert_eq!(candidate.prefix, "pinakotheke/");
-        assert_eq!(legacy.prefix, "x-img/");
+        assert_eq!(legacy.prefix, "pinakotheke/");
     }
 
     #[test]

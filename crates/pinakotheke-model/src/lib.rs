@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 /// The repository identity retained until the coordinated v1.0.0 rebrand.
-pub const REPOSITORY_NAME: &str = "x-img";
+pub const REPOSITORY_NAME: &str = "Pinakotheke";
 
 /// A minimal product identity suitable for UI and host adapters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

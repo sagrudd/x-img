@@ -76,10 +76,10 @@ def security() -> None:
 
 
 def accessibility() -> None:
-    css = (ROOT / "crates/x-img-web/assets/mnemosyne-shell.css").read_text()
+    css = (ROOT / "crates/pinakotheke-web/assets/mnemosyne-shell.css").read_text()
     if ":focus-visible" not in css:
         fail("Yew shell has no visible keyboard focus rule")
-    rust = (ROOT / "crates/x-img-web/src/lib.rs").read_text()
+    rust = (ROOT / "crates/pinakotheke-web/src/lib.rs").read_text()
     for required in ['aria-label=', 'aria-current=', 'aria-pressed=', 'role="dialog"']:
         if required not in rust:
             fail(f"Yew semantic requirement missing: {required}")

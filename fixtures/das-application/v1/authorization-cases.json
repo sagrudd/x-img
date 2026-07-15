@@ -10,7 +10,7 @@
         "operation": "write",
         "endpoint_id": "fixture-local-endpoint",
         "object_store_id": "fixture-media-store",
-        "object_key": "x-img/acquisitions/fixture.jpg",
+        "object_key": "pinakotheke/acquisitions/fixture.jpg",
         "size_bytes": 512
       }
     },
@@ -23,7 +23,7 @@
         "operation": "write",
         "endpoint_id": "fixture-local-endpoint",
         "object_store_id": "fixture-media-store",
-        "object_key": "x-img/acquisitions/fixture.jpg",
+        "object_key": "pinakotheke/acquisitions/fixture.jpg",
         "size_bytes": 512
       }
     },
@@ -36,7 +36,7 @@
         "operation": "write",
         "endpoint_id": "fixture-local-endpoint",
         "object_store_id": "other-store",
-        "object_key": "x-img/acquisitions/fixture.jpg",
+        "object_key": "pinakotheke/acquisitions/fixture.jpg",
         "size_bytes": 512
       }
     },
@@ -62,7 +62,7 @@
         "operation": "write",
         "endpoint_id": "fixture-local-endpoint",
         "object_store_id": "fixture-media-store",
-        "object_key": "x-img/acquisitions/fixture.jpg",
+        "object_key": "pinakotheke/acquisitions/fixture.jpg",
         "size_bytes": 1048577
       }
     }

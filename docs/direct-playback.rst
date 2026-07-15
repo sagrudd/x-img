@@ -57,8 +57,8 @@ Verification
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core playback_delivery
-   cargo +1.97.0 test -p x-img-api direct_playback
+   cargo +1.97.0 test -p pinakotheke-core playback_delivery
+   cargo +1.97.0 test -p pinakotheke-api direct_playback
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check
 

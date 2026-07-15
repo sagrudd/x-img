@@ -1,16 +1,16 @@
 {
   "schema_version": "x-img.monas-product-bootstrap.v1",
-  "product_id": "x-img",
-  "product_version": "0.9.0",
+  "product_id": "pinakotheke",
+  "product_version": "1.0.0",
   "host": "monas",
   "host_mode": "monas_standalone",
-  "product_root": "/opt/x-img",
-  "web_mount": "/products/x-img/app/",
-  "api_mount": "/products/x-img/api/",
-  "bootstrap_path": "/products/x-img/.well-known/mnemosyne/product-bootstrap.json",
+  "product_root": "/opt/pinakotheke",
+  "web_mount": "/products/pinakotheke/app/",
+  "api_mount": "/products/pinakotheke/api/",
+  "bootstrap_path": "/products/pinakotheke/.well-known/mnemosyne/product-bootstrap.json",
   "capabilities": ["monas_mandatory_web_authentication", "dasobjectstore_required"],
   "correlation_policy": "host_generated",
-  "visibility": "local_profile_enabled",
+  "visibility": "registered",
   "external_sql_required": false,
   "object_store_required": true,
   "authentication_required": true,
@@ -21,5 +21,5 @@
     "bootstrap_schema": "mnemosyne.product_ui.bootstrap.v1",
     "host_context_owner": "host"
   },
-  "direct_login_route": "/products/x-img/api/login"
+  "direct_login_route": "/products/pinakotheke/api/login"
 }

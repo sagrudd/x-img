@@ -68,8 +68,8 @@ pairing remains HTTPS-only.
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core cache_alias
-   cargo +1.97.0 test -p x-img-api cached_image_delivery
+   cargo +1.97.0 test -p pinakotheke-core cache_alias
+   cargo +1.97.0 test -p pinakotheke-api cached_image_delivery
    scripts/firefox/check_image_substitution.py
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check

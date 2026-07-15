@@ -74,7 +74,7 @@ Verification
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core cache_alias -- --nocapture
-   cargo +1.97.0 test -p x-img-api cache_alias
+   cargo +1.97.0 test -p pinakotheke-core cache_alias -- --nocapture
+   cargo +1.97.0 test -p pinakotheke-api cache_alias
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check

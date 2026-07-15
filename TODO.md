@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 0.9.0
+Version: 1.0.0
 
 Updated: 2026-07-14
 
@@ -678,6 +678,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   helpers use canonical crate paths and active authority/Firefox documents, and
   Pinakotheke becomes the default package identity only inside the coordinated
   cutover transaction.
+  The ninth delivery slice performs the coordinated live identity migration:
+  workspace crates and version, active Monas and DASObjectStore registrations,
+  Firefox identity, packaging defaults, public documentation, and the GitHub
+  repository become canonical together. Historic ``x-img`` schemas and the
+  warning-emitting CLI alias remain compatible. Publishing verified 1.0.0
+  artifacts, tag, and release notes remains before this item can close.
 
 ## Post-1.0
 

@@ -13,14 +13,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 MATRIX = ROOT / "docs/fixtures/fault-recovery-matrix.json"
 
 CASES: dict[str, list[str]] = {
-    "ingest-backpressure-checksum": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "object_ingest::tests::rejects_length_checksum_and_backpressure_without_local_buffering", "--", "--exact"],
-    "authority-crash-boundaries": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "reconciliation::tests::crash_boundaries_converge_without_creating_duplicate_commits", "--", "--exact"],
-    "destination-authority-change": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "destination_selection::tests::revalidation_never_switches_destinations", "--", "--exact"],
-    "scheduler-cancel-budget": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "scheduler::tests::budgets_and_cancellation_are_bounded_and_release_leases", "--", "--exact"],
-    "normalizer-worker-crash": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "video_normalization::tests::ledger_requires_reconciliation_after_a_crash_and_prevents_conflicting_replay", "--", "--exact"],
-    "normalizer-scratch-failure": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "video_normalization::tests::failure_removes_the_entire_ephemeral_scratch_directory", "--", "--exact"],
-    "cache-authority-loss": ["cargo", "+1.97.0", "test", "-p", "x-img-core", "cache_alias::tests::bounds_memory_invalidates_and_surfaces_authority_unavailability", "--", "--exact"],
-    "capture-policy-unavailable": ["cargo", "+1.97.0", "test", "-p", "x-img-api", "tests::default_router_fails_open_for_unconfigured_capture_policy", "--", "--exact"],
+    "ingest-backpressure-checksum": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "object_ingest::tests::rejects_length_checksum_and_backpressure_without_local_buffering", "--", "--exact"],
+    "authority-crash-boundaries": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "reconciliation::tests::crash_boundaries_converge_without_creating_duplicate_commits", "--", "--exact"],
+    "destination-authority-change": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "destination_selection::tests::revalidation_never_switches_destinations", "--", "--exact"],
+    "scheduler-cancel-budget": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "scheduler::tests::budgets_and_cancellation_are_bounded_and_release_leases", "--", "--exact"],
+    "normalizer-worker-crash": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "video_normalization::tests::ledger_requires_reconciliation_after_a_crash_and_prevents_conflicting_replay", "--", "--exact"],
+    "normalizer-scratch-failure": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "video_normalization::tests::failure_removes_the_entire_ephemeral_scratch_directory", "--", "--exact"],
+    "cache-authority-loss": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "cache_alias::tests::bounds_memory_invalidates_and_surfaces_authority_unavailability", "--", "--exact"],
+    "capture-policy-unavailable": ["cargo", "+1.97.0", "test", "-p", "pinakotheke-api", "tests::default_router_fails_open_for_unconfigured_capture_policy", "--", "--exact"],
     "firefox-substitution-failure": [sys.executable, "scripts/firefox/check_image_substitution.py"],
 }
 

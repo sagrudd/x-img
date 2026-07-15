@@ -140,7 +140,7 @@ def main() -> int:
             args.baseline_version, version, "rpm"
         )
 
-    run("cargo", "+1.97.0", "test", "-p", "x-img-core", "migration_backup")
+    run("cargo", "+1.97.0", "test", "-p", "pinakotheke-core", "migration_backup")
     run(
         "scripts/contracts/check.sh",
         "--sibling-root",

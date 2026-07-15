@@ -57,7 +57,7 @@ Run the focused contract tests with:
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-core compliance_reconciliation
+   cargo +1.97.0 test -p pinakotheke-core compliance_reconciliation
 
 They prove catalogue-only scope, required approval, tombstone-before-delete,
 pending/retry behavior, exact-object verification, replay idempotency, and

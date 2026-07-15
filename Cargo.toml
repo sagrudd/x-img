@@ -2,21 +2,21 @@
 
 [workspace]
 members = [
-    "crates/x-img-api",
-    "crates/x-img-cli",
-    "crates/x-img-core",
-    "crates/x-img-model",
-    "crates/x-img-web",
+    "crates/pinakotheke-api",
+    "crates/pinakotheke-cli",
+    "crates/pinakotheke-core",
+    "crates/pinakotheke-model",
+    "crates/pinakotheke-web",
 ]
 resolver = "3"
 
 [workspace.package]
-version = "0.9.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.95"
 license = "MPL-2.0"
-repository = "https://github.com/sagrudd/x-img"
-authors = ["x-img maintainers"]
+repository = "https://github.com/sagrudd/pinakotheke"
+authors = ["Pinakotheke maintainers"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

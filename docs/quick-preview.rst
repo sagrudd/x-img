@@ -51,8 +51,8 @@ Verification
 
 .. code-block:: console
 
-   cargo +1.97.0 test -p x-img-web
-   cargo +1.97.0 check -p x-img-web --target wasm32-unknown-unknown
+   cargo +1.97.0 test -p pinakotheke-web
+   cargo +1.97.0 check -p pinakotheke-web --target wasm32-unknown-unknown
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check
 

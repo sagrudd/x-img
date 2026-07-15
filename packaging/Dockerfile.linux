@@ -20,11 +20,11 @@ RUN test "$(cargo metadata --format-version 1 --no-deps | python3 -c 'import jso
 RUN rustup target add "$RUST_TARGET" && \
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-    cargo build --locked --release -p x-img-cli --target "$RUST_TARGET"
+    cargo build --locked --release -p pinakotheke-cli --target "$RUST_TARGET"
 RUN set -eu; \
     test "$PRODUCT_NAME" = x-img || test "$PRODUCT_NAME" = pinakotheke; \
     bootstrap=contracts/monas/x-img-product-bootstrap.v1.json; binary=x-img; \
-    if [ "$PRODUCT_NAME" = pinakotheke ]; then bootstrap=contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json; binary=pinakotheke; fi; \
+    if [ "$PRODUCT_NAME" = pinakotheke ]; then bootstrap=contracts/monas/x-img-product-bootstrap.v1.json; binary=pinakotheke; fi; \
     mkdir -p /tmp/deb/DEBIAN /tmp/deb/usr/bin "/tmp/deb/usr/share/$PRODUCT_NAME/monas" "/tmp/deb/usr/share/doc/$PRODUCT_NAME" /out; \
     install -m 0755 "target/$RUST_TARGET/release/$binary" "/tmp/deb/usr/bin/$PRODUCT_NAME"; \
     if [ "$PRODUCT_NAME" = pinakotheke ]; then install -m 0755 "target/$RUST_TARGET/release/x-img" /tmp/deb/usr/bin/x-img; fi; \

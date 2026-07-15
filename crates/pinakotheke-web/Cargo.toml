@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 [package]
-name = "x-img-core"
+name = "pinakotheke-web"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,7 +13,6 @@ publish = false
 workspace = true
 
 [dependencies]
-serde.workspace = true
-serde_json.workspace = true
-sha2.workspace = true
-x-img-model = { path = "../x-img-model" }
+yew.workspace = true
+wasm-bindgen = "=0.2.126"
+web-sys = { version = "0.3.77", features = ["Document", "Element", "HtmlElement", "HtmlInputElement", "KeyboardEvent", "Window"] }

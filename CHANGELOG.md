@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to x-img will be documented in this file. The project uses
+All notable changes to Pinakotheke will be documented in this file. The project uses
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
@@ -25,6 +25,9 @@ All notable changes to x-img will be documented in this file. The project uses
   Pinakotheke 1.0.0 and rollback with exact metadata preservation.
 - Extend the isolated v1 cutover rehearsal through the complete renamed
   quality, audit, fault-recovery, contract, and canonical packaging toolchain.
+- Complete the coordinated Pinakotheke identity migration across the Rust
+  workspace, active authority contracts, Firefox identity, packaging defaults,
+  documentation, and canonical public repository while retaining compatibility.
 
 ## [0.9.0] - 2026-07-15
 
