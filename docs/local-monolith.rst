@@ -68,6 +68,36 @@ worded component states. In the first slice, ``pinakotheke`` is ``Ready`` while
 the overall state remains ``not_ready`` until Monas is composed. Authenticated
 product and media routes are not mounted yet.
 
+Trusted Monas dispatch boundary
+-------------------------------
+
+The XIMG-092 ingress slice accepts authenticated product requests only after a
+Monas-owned dispatcher supplies both a validated, non-secret
+``x-img.host-context.v1`` document and a process-local dispatch credential.
+The credential is not a browser session and must never be placed in a browser,
+URL, configuration JSON, or log. Pass its private mode-``0600`` file to the
+backend listener:
+
+.. code-block:: console
+
+   pinakotheke serve \
+     --monas-dispatch-token-file "$HOME/.x-img/run/monas-dispatch.token"
+
+The protected proof route is
+``/products/pinakotheke/api/context``. A direct request, a forged credential,
+an invalid context, or a context lacking ``ximg.access`` is rejected. The two
+dispatch headers are removed before product code runs. When configured,
+readiness reports the trusted dispatch boundary as ``Ready``; this means only
+that the backend is prepared for Monas dispatch, not that a login has occurred.
+
+The token file is an operator-facing integration seam for the current Monas
+revision. Monas must create and retain the matching credential, verify its own
+Prosopikon cookie, generate the correlation identifier, and inject the context.
+Pinakotheke never parses the Monas cookie or issues login, session, or logout
+state. Until the Monas forwarding mount is delivered and its login/logout flow
+is proven, XIMG-092 remains in progress and the backend should stay loopback
+only.
+
 Stop the foreground process with ``Control-C``. Axum stops accepting new work
 and completes graceful shutdown.
 

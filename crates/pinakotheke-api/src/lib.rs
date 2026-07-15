@@ -14,8 +14,9 @@ use axum::{
     Extension, Json, Router,
     body::Body,
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode, header},
-    response::{Html, Response},
+    http::{HeaderMap, Request, StatusCode, header},
+    middleware::{self, Next},
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
@@ -24,7 +25,9 @@ use x_img_core::{
         CacheBypassReason, CacheLookupOutcome, CacheLookupRequest, CacheLookupService,
         CacheRepresentation,
     },
-    host_context::{AuthenticatedHostContext, XIMG_ACCESS},
+    host_context::{
+        AuthenticatedHostContext, HostContextAdapter, MonasHostContextAdapter, XIMG_ACCESS,
+    },
     object_read::{
         AuthorizedObjectReader, ObjectReadBackend, ObjectReadBackendError, ObjectReadRequest,
         ObjectReadResult, ValidatedObjectRead,
@@ -96,6 +99,28 @@ struct MonolithComponentReadiness {
     detail: &'static str,
 }
 
+/// Process-local credential used only to authenticate Monas-to-product dispatch.
+/// It is never a browser session and must be supplied from private runtime state.
+#[derive(Clone)]
+pub struct MonasDispatchVerifier {
+    token: Arc<str>,
+}
+
+impl MonasDispatchVerifier {
+    /// Creates a verifier for a high-entropy token supplied independently to Monas.
+    pub fn new(token: String) -> io::Result<Self> {
+        if !(32..=512).contains(&token.len()) || token.chars().any(char::is_whitespace) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Monas dispatch token must be 32-512 non-whitespace characters",
+            ));
+        }
+        Ok(Self {
+            token: token.into(),
+        })
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct OperationsResponse {
     schema_version: &'static str,
@@ -120,19 +145,23 @@ pub struct HostObjectReadBackend {
 
 /// Serves the initial local monolith until interrupted.
 pub async fn serve(listener: tokio::net::TcpListener) -> io::Result<()> {
-    serve_monolith(listener, false).await
+    serve_monolith(listener, false, None).await
 }
 
 /// Serves the monolith with the caller's verified local storage readiness.
 pub async fn serve_monolith(
     listener: tokio::net::TcpListener,
     dasobjectstore_ready: bool,
+    monas_dispatch: Option<MonasDispatchVerifier>,
 ) -> io::Result<()> {
-    axum::serve(listener, monolith_router_with_storage(dasobjectstore_ready))
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
-        .await
+    axum::serve(
+        listener,
+        monolith_router_with_authorities(dasobjectstore_ready, monas_dispatch),
+    )
+    .with_graceful_shutdown(async {
+        let _ = tokio::signal::ctrl_c().await;
+    })
+    .await
 }
 
 impl HostObjectReadBackend {
@@ -179,13 +208,75 @@ pub fn monolith_router() -> Router {
 
 /// Returns the local surface with a previously verified DASObjectStore state.
 pub fn monolith_router_with_storage(dasobjectstore_ready: bool) -> Router {
+    monolith_router_with_authorities(dasobjectstore_ready, None)
+}
+
+/// Returns a monolith surface with optional trusted Monas dispatch admission.
+pub fn monolith_router_with_authorities(
+    dasobjectstore_ready: bool,
+    monas_dispatch: Option<MonasDispatchVerifier>,
+) -> Router {
+    let authentication_ready = monas_dispatch.is_some();
+    let protected = Router::new()
+        .route("/products/pinakotheke/api/context", get(context))
+        .layer(middleware::from_fn_with_state(
+            monas_dispatch,
+            admit_monas_dispatch,
+        ));
     Router::new()
         .route("/", get(monolith_landing))
         .route("/health", get(health))
         .route(
             "/ready",
-            get(move || async move { monolith_readiness(dasobjectstore_ready).await }),
+            get(move || async move {
+                monolith_readiness(dasobjectstore_ready, authentication_ready).await
+            }),
         )
+        .merge(protected)
+}
+
+async fn admit_monas_dispatch(
+    State(verifier): State<Option<MonasDispatchVerifier>>,
+    mut request: Request<Body>,
+    next: Next,
+) -> Response {
+    let Some(verifier) = verifier else {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
+    let supplied = request
+        .headers_mut()
+        .remove("x-monas-dispatch-token")
+        .and_then(|value| value.to_str().ok().map(ToOwned::to_owned));
+    let context_json = request
+        .headers_mut()
+        .remove("x-monas-host-context")
+        .and_then(|value| value.to_str().ok().map(ToOwned::to_owned));
+    if !supplied
+        .as_deref()
+        .is_some_and(|token| constant_time_equal(token.as_bytes(), verifier.token.as_bytes()))
+    {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let Some(context_json) = context_json else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    let Ok(context) = MonasHostContextAdapter.authenticate(context_json.as_bytes()) else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    request.extensions_mut().insert(context);
+    next.run(request).await
+}
+
+fn constant_time_equal(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    left.iter()
+        .zip(right)
+        .fold(0_u8, |difference, (left, right)| {
+            difference | (left ^ right)
+        })
+        == 0
 }
 
 async fn monolith_landing() -> Html<&'static str> {
@@ -194,7 +285,10 @@ async fn monolith_landing() -> Html<&'static str> {
     )
 }
 
-async fn monolith_readiness(dasobjectstore_ready: bool) -> Json<MonolithReadinessResponse> {
+async fn monolith_readiness(
+    dasobjectstore_ready: bool,
+    authentication_ready: bool,
+) -> Json<MonolithReadinessResponse> {
     Json(MonolithReadinessResponse {
         schema_version: "pinakotheke.monolith-readiness.v1",
         status: "not_ready",
@@ -207,8 +301,16 @@ async fn monolith_readiness(dasobjectstore_ready: bool) -> Json<MonolithReadines
             },
             MonolithComponentReadiness {
                 component: "monas_authentication",
-                status: "Not configured",
-                detail: "Authenticated product routes are unavailable",
+                status: if authentication_ready {
+                    "Ready"
+                } else {
+                    "Not configured"
+                },
+                detail: if authentication_ready {
+                    "Trusted Monas host dispatch is configured"
+                } else {
+                    "Authenticated product routes are unavailable"
+                },
             },
             MonolithComponentReadiness {
                 component: "dasobjectstore",
@@ -851,7 +953,8 @@ mod tests {
     };
 
     use super::{
-        HostObjectReadBackend, monolith_router, monolith_router_with_storage, router,
+        HostObjectReadBackend, MonasDispatchVerifier, monolith_router,
+        monolith_router_with_authorities, monolith_router_with_storage, router,
         router_with_cache_aliases, router_with_cache_substitution, router_with_capture_plans,
         router_with_direct_playback, router_with_image_substitution, router_with_operations,
         router_with_synoptikon_catalogue,
@@ -862,6 +965,7 @@ mod tests {
     const ETAG: &str =
         "\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"";
     const PLAYBACK_BYTES: &[u8] = b"synthetic-firefox-playback";
+    const MONAS_CONTEXT: &str = r#"{"schema_version":"x-img.host-context.v1","host":"monas","host_mode":"monas_standalone","actor_id":"synthetic-monas-user","authorizations":["ximg.access"],"correlation_id":"fixture-monas-correlation"}"#;
 
     fn direct_playback() -> DirectPlaybackService<HostObjectReadBackend> {
         let backend = HostObjectReadBackend::new(Box::new(|request| {
@@ -1114,6 +1218,56 @@ mod tests {
         assert_eq!(json["status"], "not_ready");
         assert_eq!(json["components"][1]["status"], "Not configured");
         assert_eq!(json["components"][2]["status"], "Ready");
+    }
+
+    #[tokio::test]
+    async fn monas_dispatch_requires_both_process_credential_and_valid_host_context() {
+        let token = "synthetic-monas-dispatch-token-0001";
+        let router = || {
+            monolith_router_with_authorities(
+                true,
+                Some(MonasDispatchVerifier::new(token.into()).unwrap()),
+            )
+        };
+        let direct = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/context")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(direct.status(), StatusCode::UNAUTHORIZED);
+
+        let invalid = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/context")
+                    .header(
+                        "x-monas-dispatch-token",
+                        "wrong-token-value-with-enough-length",
+                    )
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(invalid.status(), StatusCode::UNAUTHORIZED);
+
+        let admitted = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/context")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(admitted.status(), StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]

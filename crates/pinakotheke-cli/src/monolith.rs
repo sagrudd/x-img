@@ -25,6 +25,9 @@ pub(crate) struct ServeArgs {
     /// Explicitly acknowledge that a non-loopback listener has no composed authentication yet.
     #[arg(long)]
     allow_non_loopback_without_authentication: bool,
+    /// Private file containing the process-local Monas dispatch token.
+    #[arg(long)]
+    monas_dispatch_token_file: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -101,6 +104,13 @@ fn socket_address(arguments: &ServeArgs) -> io::Result<SocketAddr> {
 pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Error>> {
     let address = socket_address(&arguments)?;
     let layout = LocalRootLayout::resolve(arguments.root)?;
+    let monas_dispatch = arguments
+        .monas_dispatch_token_file
+        .as_deref()
+        .map(read_dispatch_token)
+        .transpose()?
+        .map(x_img_api::MonasDispatchVerifier::new)
+        .transpose()?;
     if !address.ip().is_loopback() {
         eprintln!("warning: unauthenticated monolith is exposed beyond loopback at {address}");
     }
@@ -114,9 +124,31 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
         );
         println!("metadata root: {}", layout.root.display());
         println!("readiness: http://{address}/ready");
-        x_img_api::serve_monolith(listener, storage_ready).await
+        x_img_api::serve_monolith(listener, storage_ready, monas_dispatch).await
     })?;
     Ok(())
+}
+
+fn read_dispatch_token(path: &Path) -> io::Result<String> {
+    let metadata = std::fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Monas dispatch token must be a regular file",
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o077 != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "Monas dispatch token file must not be accessible by group or others",
+            ));
+        }
+    }
+    let token = std::fs::read_to_string(path)?;
+    Ok(token.trim_end_matches(['\r', '\n']).to_owned())
 }
 
 #[cfg(test)]
@@ -162,6 +194,7 @@ mod tests {
             bind: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
             port: DEFAULT_PORT,
             allow_non_loopback_without_authentication: false,
+            monas_dispatch_token_file: None,
         };
         assert_eq!(
             socket_address(&denied).unwrap_err().kind(),
@@ -175,5 +208,32 @@ mod tests {
             socket_address(&reviewed).unwrap(),
             SocketAddr::from((Ipv4Addr::UNSPECIFIED, DEFAULT_PORT))
         );
+    }
+
+    #[test]
+    fn dispatch_token_requires_a_private_regular_file() {
+        let root = temporary_root();
+        std::fs::create_dir_all(&root).unwrap();
+        let token = root.join("dispatch.token");
+        std::fs::write(&token, "synthetic-dispatch-token-00000001\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&token, std::fs::Permissions::from_mode(0o600)).unwrap();
+        }
+        assert_eq!(
+            read_dispatch_token(&token).unwrap(),
+            "synthetic-dispatch-token-00000001"
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&token, std::fs::Permissions::from_mode(0o644)).unwrap();
+            assert_eq!(
+                read_dispatch_token(&token).unwrap_err().kind(),
+                io::ErrorKind::PermissionDenied
+            );
+        }
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

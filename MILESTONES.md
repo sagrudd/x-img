@@ -583,6 +583,12 @@ mode-``0600`` selection, monolith readiness, graceful shutdown, and retained
 state after profile shutdown. The pinned local Sphinx container build and run
 passed independently of hosted CI.
 
+XIMG-092 now has a fail-closed backend ingress for Monas-authenticated dispatch:
+a private process-local credential gates strict non-secret host context, direct
+requests fail, and Pinakotheke never handles the browser cookie. The matching
+Monas forwarding mount and real Prosopikon login/session/logout proof remain
+required before authentication composition is complete.
+
 Exit criteria:
 
 - ``pinakotheke serve`` starts a coherent Axum/Yew service as the invoking user,

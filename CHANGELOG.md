@@ -17,6 +17,10 @@ All notable changes to Pinakotheke will be documented in this file. The project 
   provisioning and discovery, stable secret-free destination selection, and
   honest monolith storage readiness, with bounded actionable authority failure
   diagnostics and an isolated-home Docker acceptance proof.
+- Add XIMG-092's first fail-closed Monas dispatch ingress: a private
+  process-local credential admits only strict non-secret host context, strips
+  dispatch headers before product handling, and leaves browser sessions wholly
+  owned by Monas/Prosopikon.
 
 ## [1.0.0] - 2026-07-15
 
