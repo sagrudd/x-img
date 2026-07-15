@@ -326,7 +326,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 - [x] **XIMG-053 P1 — Implement quick preview and video playback.**
   Acceptance: original/fit view, metadata, alt text, source link, range playback,
   focus trapping/return, and unavailable-object state pass.
-  Completed in this run: selected cards open a keyboard-controlled Mnemosyne
+  Completed in `d5652a0`: selected cards open a keyboard-controlled Mnemosyne
   task pane with object/source/type/alt-text evidence, fit/original visual
   control, source metadata link, explicit unavailable state, and no origin
   fallback. Only a ready normalized ObjectStore video renders the existing
