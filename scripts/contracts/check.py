@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PINS = {
     "monas": "3d21b0bc7b83fa8408d01b93347a56f43f3a96b7",
-    "DASObjectStore": "8368d34a365689e19321ecd6a35aab7c819268f6",
+    "DASObjectStore": "73d3e6398cbfb8f7ac53b8040cea7c5b718ac140",
     "mnemosyne": "9877017e3139711ed6313c53603409c53020541d",
     "mnemosyne_design_language": "5539df8f662a78ebdf7cf4c868d71831380c8cfd",
 }
@@ -73,8 +73,9 @@ def check_vendored() -> None:
     print("x-img-owned contract fixtures and public-build independence: verified")
 
 
-def check_siblings(root: Path, require: bool) -> None:
-    paths = {name: root / name for name in PINS}
+def check_siblings(root: Path, require: bool, selected: list[str]) -> None:
+    names = selected or list(PINS)
+    paths = {name: root / name for name in names}
     present = {name: path.is_dir() for name, path in paths.items()}
     if not any(present.values()):
         if require:
@@ -110,9 +111,16 @@ def main() -> None:
         action="store_true",
         help="fail rather than skip when sibling checkouts are absent",
     )
+    parser.add_argument(
+        "--sibling",
+        action="append",
+        choices=sorted(PINS),
+        default=[],
+        help="check only this sibling; repeat for multiple (default: all)",
+    )
     args = parser.parse_args()
     check_vendored()
-    check_siblings(args.sibling_root, args.require_siblings)
+    check_siblings(args.sibling_root, args.require_siblings, args.sibling)
 
 
 if __name__ == "__main__":

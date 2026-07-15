@@ -20,7 +20,7 @@ Compatibility-sensitive inspection pins:
 | --- | --- | --- |
 | `../epithema` | `619b7700536a93aacbd928e82bd6bfa9d8070877` | `crates/epithema-providers/src/ena_ngs.rs`, `sra_ngs.rs`, `ena.rs`, `sra_archive.rs`; `crates/epithema-diagnostics/src/provenance.rs`; NGS fixtures under `crates/epithema-providers/tests/fixtures/ngs/` and `crates/epithema-testkit/tests/fixtures/acceptance_anchors/` |
 | `../epic_collection` | `07ade3c4e9a7630dc2e444f5e181fe3bc121fa21` | `scripts/discover_geo.py`; `catalog/human_methylation_geo_raw.toml`, `catalog/epic_seed.toml`; `docs/literature-review.md`; `docs/TODO_DOWNLOAD.md` |
-| `../DASObjectStore` | `8368d34a365689e19321ecd6a35aab7c819268f6` | `docs/application-authentication.md`, storage/read/upload contracts, and `crates/dasobjectstore-core/src/application_auth.rs`, `object_catalogue.rs`; `crates/dasobjectstore-daemon/src/api/provider_stream.rs` |
+| `../DASObjectStore` | `73d3e6398cbfb8f7ac53b8040cea7c5b718ac140` | `docs/application-authentication.md`, storage/read/upload contracts, and `crates/dasobjectstore-core/src/application_auth.rs`, `object_catalogue.rs`; `crates/dasobjectstore-daemon/src/api/provider_stream.rs` |
 
 The public x-img build must not depend on these sibling paths. Their behavior
 is input to versioned x-img wire contracts, copied synthetic fixtures, and

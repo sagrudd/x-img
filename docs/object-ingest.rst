@@ -37,7 +37,7 @@ The backend must be authorized through the XIMG-032 scoped application identity
 and the DASObjectStore daemon. It remains responsible for token/capability
 proof, quota and health checks, authoritative stream persistence, and final
 commit. The protocol was reviewed against ``../DASObjectStore`` commit
-``8368d34a365689e19321ecd6a35aab7c819268f6``; no sibling path dependency or
+``73d3e6398cbfb8f7ac53b8040cea7c5b718ac140``; no sibling path dependency or
 live daemon exchange is used here.
 
 Ephemeral worker files

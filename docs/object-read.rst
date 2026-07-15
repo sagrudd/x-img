@@ -33,6 +33,6 @@ payload or a stale local substitution. A Firefox/site cache adapter must fail
 open to the origin when it cannot obtain a valid authority response.
 
 The contract was reviewed against ``../DASObjectStore`` commit
-``8368d34a365689e19321ecd6a35aab7c819268f6`` and its provider-stream range and
+``73d3e6398cbfb8f7ac53b8040cea7c5b718ac140`` and its provider-stream range and
 checksum model. No sibling path dependency, bearer credential, backend path,
 or live authority call is added by this task.

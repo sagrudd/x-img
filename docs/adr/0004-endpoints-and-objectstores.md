@@ -19,7 +19,7 @@ Compatibility-sensitive inspection pins:
 
 | Sibling | Commit | Relevant contracts inspected |
 | --- | --- | --- |
-| `../DASObjectStore` | `8368d34a365689e19321ecd6a35aab7c819268f6` | `docs/application-authentication.md`, endpoint inventory, profile capability, remote EasyConnect, and daemon/API contracts |
+| `../DASObjectStore` | `73d3e6398cbfb8f7ac53b8040cea7c5b718ac140` | `docs/application-authentication.md`, endpoint inventory, profile capability, remote EasyConnect, and daemon/API contracts |
 | `../monas` | `3d21b0bc7b83fa8408d01b93347a56f43f3a96b7` | `README.md`, standalone authenticated host and product-mount boundary |
 | `../mnemosyne_design_language` | `5539df8f662a78ebdf7cf4c868d71831380c8cfd` | `docs/interface-patterns.md`, `docs/brief.md`, endpoint inventory and destination-scoped task-pane patterns |
 

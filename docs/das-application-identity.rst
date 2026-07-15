@@ -6,7 +6,7 @@ hold a storage password, S3 secret, bearer token, private key, or host path.
 The public registration shape is
 ``contracts/dasobjectstore/x-img-application-identity.v1.json``. It was
 reviewed against ``../DASObjectStore`` commit
-``8368d34a365689e19321ecd6a35aab7c819268f6`` and its
+``73d3e6398cbfb8f7ac53b8040cea7c5b718ac140`` and its
 ``dasobjectstore.application_auth.v1`` contract. That pin is not a path or
 runtime dependency.
 
