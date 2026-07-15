@@ -7,6 +7,12 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-066's explicit, metadata-only video candidate planner. Observed
+  or user-selected, policy-eligible candidates expose review details and need
+  confirmation before later work; DRM, unsupported segmented delivery,
+  unobserved candidates, and non-video destinations are blocked. It records
+  aggregate origin/container/codec occurrence gaps for normalization priority
+  without publishing media, URLs, cookies, credentials, or browsing history.
 - Added XIMG-065's verified website-capture provenance handoff to the shared
   review queue. It records site/page/media/adapter evidence only after a
   verified ObjectStore commit, rejects premature or mismatched acquisitions,

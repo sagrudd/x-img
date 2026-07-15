@@ -35,6 +35,9 @@ single-click refresh of configured social accounts.
   Only observed or explicitly selected candidates enter it; normalized,
   checksum-verified, Firefox-tested renditions are stored as typed
   DASObjectStore objects before they are advertised as playable.
+  Candidate planning records aggregate unusual codec combinations for
+  prioritisation without sending individual browsing URLs, media, cookies, or
+  credentials to project diagnostics or tickets.
 - Acquisition is idempotent: once a media identity has a verified committed
   object, routine refreshes do not download it again.
 - The UI follows sibling `../mnemosyne_design_language` and retains a future

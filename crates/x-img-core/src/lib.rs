@@ -18,6 +18,7 @@ pub mod object_read;
 pub mod reconciliation;
 pub mod review_admission;
 pub mod scheduler;
+pub mod video_candidate;
 pub mod viewed_media;
 pub mod website_capture_review;
 pub mod x_discovery;

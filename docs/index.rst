@@ -39,6 +39,7 @@ Configuration
    website-capture-review
    site-adapters
    review-admission
+   video-candidates
    identity-migration
 
 Release and quality
