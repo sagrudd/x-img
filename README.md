@@ -65,7 +65,7 @@ release remains available from its historical
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
 and dual-architecture upgrade/rollback evidence.
 
-The `1.0.0` Rust workspace provides shared model and core boundaries, a `clap`
+The `1.1.0` development workspace provides shared model and core boundaries, a `clap`
 CLI, an Axum composition boundary, and a Yew client boundary. It compiles
 without enabling unconfigured source, storage, authentication, or media-payload
 integration. See [MILESTONES.md](MILESTONES.md) for release gates

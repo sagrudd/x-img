@@ -3,6 +3,10 @@
   "host": "synoptikon",
   "host_mode": "synoptikon_integrated",
   "actor_id": "synthetic-synoptikon-user",
-  "authorizations": ["ximg.access", "ximg.review"],
+  "tenant_id": "synthetic-tenant",
+  "account_id": "synthetic-account",
+  "project_id": "synthetic-project",
+  "entitlement_id": "synthetic-entitlement",
+  "authorizations": ["ximg.access", "ximg.review", "ximg.catalogue.read"],
   "correlation_id": "fixture-synoptikon-correlation"
 }

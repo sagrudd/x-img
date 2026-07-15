@@ -12,7 +12,7 @@ use std::{
 use axum::{
     Extension, Json, Router,
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode, header},
     response::Response,
     routing::{get, post},
@@ -32,6 +32,9 @@ use x_img_core::{
     playback_delivery::{
         DirectPlaybackError, DirectPlaybackResponse, DirectPlaybackService, parse_single_range,
     },
+    synoptikon_catalogue::{
+        SynoptikonCatalogueError, SynoptikonCataloguePage, SynoptikonCatalogueProjection,
+    },
     viewed_media::{CapturePlan, CapturePlanError, CapturePlanRequest, CapturePlanService},
 };
 
@@ -40,6 +43,7 @@ type PlaybackDelivery = Arc<Mutex<DirectPlaybackService<HostObjectReadBackend>>>
 type CacheAliases = Arc<Mutex<CacheLookupService>>;
 type ImageDelivery = Arc<Mutex<AuthorizedObjectReader<HostObjectReadBackend>>>;
 type Operations = Arc<Mutex<OperationalTelemetry>>;
+type SynoptikonCatalogue = Arc<SynoptikonCatalogueProjection>;
 
 const CACHE_LOOKUP_SCHEMA_VERSION: &str = "x-img.cache-alias-lookup.v1";
 const CACHE_RESULT_SCHEMA_VERSION: &str = "x-img.cache-alias-result.v1";
@@ -157,6 +161,48 @@ pub fn router_with_operations(operations: Arc<Mutex<OperationalTelemetry>>) -> R
         .route("/api/operations/v1/snapshot", get(operations_snapshot))
         .with_state(None::<CapturePlans>)
         .layer(Extension(operations))
+}
+
+/// Returns the Synoptikon-integrated, project-scoped catalogue projection.
+///
+/// The host must inject a verified Synoptikon context containing tenant,
+/// account, project, entitlement, and catalogue-read authorization. This
+/// endpoint exposes metadata and immutable DASObjectStore references only.
+pub fn router_with_synoptikon_catalogue(catalogue: SynoptikonCatalogueProjection) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route("/api/synoptikon/v1/catalogue", get(synoptikon_catalogue))
+        .layer(Extension(Arc::new(catalogue)))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CataloguePageQuery {
+    #[serde(default)]
+    offset: usize,
+    #[serde(default = "default_catalogue_limit")]
+    limit: usize,
+}
+
+const fn default_catalogue_limit() -> usize {
+    100
+}
+
+async fn synoptikon_catalogue(
+    context: Option<Extension<AuthenticatedHostContext>>,
+    catalogue: Option<Extension<SynoptikonCatalogue>>,
+    Query(query): Query<CataloguePageQuery>,
+) -> Result<Json<SynoptikonCataloguePage>, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    let catalogue = catalogue.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    catalogue
+        .page(&context, query.offset, query.limit)
+        .map(Json)
+        .map_err(|error| match error {
+            SynoptikonCatalogueError::Unauthorized => StatusCode::FORBIDDEN,
+            SynoptikonCatalogueError::InvalidScope => StatusCode::UNAUTHORIZED,
+            SynoptikonCatalogueError::InvalidPageSize => StatusCode::BAD_REQUEST,
+        })
 }
 
 /// Returns a host composition with a direct, authorized normalized-video
@@ -701,6 +747,10 @@ mod tests {
         },
         operations::{Component, EventCode, EventOutcome, HealthState, OperationalTelemetry},
         playback_delivery::{DirectPlaybackGrant, DirectPlaybackService},
+        synoptikon_catalogue::{
+            CatalogueMediaKind, CatalogueReviewState, SynoptikonCatalogueItem,
+            SynoptikonCatalogueProjection,
+        },
         video_profile::NormalizedVideoState,
         viewed_media::{
             AdapterKind, CAPTURE_REQUEST_SCHEMA_VERSION, CaptureKind, CapturePairing,
@@ -711,7 +761,7 @@ mod tests {
     use super::{
         HostObjectReadBackend, router, router_with_cache_aliases, router_with_cache_substitution,
         router_with_capture_plans, router_with_direct_playback, router_with_image_substitution,
-        router_with_operations,
+        router_with_operations, router_with_synoptikon_catalogue,
     };
 
     const CHECKSUM: &str =
@@ -875,6 +925,59 @@ mod tests {
             })
             .expect("synthetic request serializes"),
         )
+    }
+
+    fn synoptikon_catalogue() -> SynoptikonCatalogueProjection {
+        SynoptikonCatalogueProjection::new(vec![SynoptikonCatalogueItem {
+            catalogue_id: "media-1".into(),
+            project_id: "synthetic-project".into(),
+            media_kind: CatalogueMediaKind::Image,
+            review_state: CatalogueReviewState::Accepted,
+            source_label: "Synthetic fixture".into(),
+            discovered_at_epoch_seconds: 1,
+            endpoint_id: "endpoint-1".into(),
+            object_store_id: "store-1".into(),
+            object_key: "objects/media-1".into(),
+            checksum: CHECKSUM.into(),
+            content_type: "image/png".into(),
+            content_length: 12,
+        }])
+    }
+
+    #[tokio::test]
+    async fn synoptikon_catalogue_is_project_scoped_and_host_authenticated() {
+        let context = x_img_core::host_context::SynoptikonHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/synoptikon-valid.json"
+            ))
+            .expect("valid Synoptikon context");
+        let response = router_with_synoptikon_catalogue(synoptikon_catalogue())
+            .layer(Extension(context))
+            .oneshot(
+                Request::builder()
+                    .uri("/api/synoptikon/v1/catalogue?limit=100")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), 8192).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["project_id"], "synthetic-project");
+        assert_eq!(json["items"][0]["catalogue_id"], "media-1");
+        assert!(json["items"][0].get("source_url").is_none());
+
+        let denied = router_with_synoptikon_catalogue(synoptikon_catalogue())
+            .oneshot(
+                Request::builder()
+                    .uri("/api/synoptikon/v1/catalogue")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[test]

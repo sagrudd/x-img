@@ -24,6 +24,7 @@ pub mod reconciliation;
 pub mod review_admission;
 pub mod scheduler;
 pub mod segmented_video;
+pub mod synoptikon_catalogue;
 pub mod video_candidate;
 pub mod video_normalization;
 pub mod video_profile;
@@ -244,7 +245,7 @@ mod tests {
 
     #[test]
     fn summary_contains_the_workspace_version() {
-        assert_eq!(build_info().summary(), "Pinakotheke 1.0.0");
+        assert_eq!(build_info().summary(), "Pinakotheke 1.1.0");
     }
 
     #[test]

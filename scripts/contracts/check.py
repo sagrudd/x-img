@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PINS = {
     "monas": "3d21b0bc7b83fa8408d01b93347a56f43f3a96b7",
     "DASObjectStore": "76f6411eab1e2c486c0bc1b4695b71f09307d9df",
-    "mnemosyne": "9877017e3139711ed6313c53603409c53020541d",
+    "mnemosyne": "52810176bf95a170f93d74a6f5daa94da5c6640e",
     "mnemosyne_design_language": "5539df8f662a78ebdf7cf4c868d71831380c8cfd",
 }
 VENDORED_REQUIRED = (
@@ -28,6 +28,7 @@ VENDORED_REQUIRED = (
     "fixtures/monas/v1/invalid-anonymous-api.json",
     "fixtures/host-context/v1/monas-valid.json",
     "fixtures/host-context/v1/synoptikon-valid.json",
+    "contracts/synoptikon/pinakotheke-product-manifest.v1.json",
     "fixtures/das-application/v1/authorization-cases.json",
     "fixtures/das-destinations/v1/cases.json",
     "fixtures/das-destinations/v1/revalidation-cases.json",

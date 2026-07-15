@@ -22,6 +22,7 @@ EXCLUDED_PARTS = {".git", ".codex", "_build", "target", "node_modules"}
 SUPPORTED_SCHEMA_MAJOR = 1
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
 SCHEMA_VERSION = re.compile(r"^x-img\.[a-z0-9-]+\.v(\d+)$")
+COPIED_WIRE_SCHEMA_VERSIONS = {"mnemosyne.product.manifest.v1": 1}
 
 
 class Findings:
@@ -180,6 +181,8 @@ def check_json(findings: Findings) -> None:
                 elif path.name == "invalid-future-major.json" and value <= SUPPORTED_SCHEMA_MAJOR:
                     findings.add(path, "future-major rejection fixture must use an unsupported schema_major")
             if key != "schema_version" or not isinstance(value, str):
+                continue
+            if value in COPIED_WIRE_SCHEMA_VERSIONS:
                 continue
             match = SCHEMA_VERSION.fullmatch(value)
             if not match:

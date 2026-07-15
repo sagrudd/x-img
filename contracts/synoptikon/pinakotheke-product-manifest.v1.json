@@ -1,0 +1,26 @@
+{
+  "schema_version": "mnemosyne.product.manifest.v1",
+  "product": {"id": "pinakotheke", "name": "Pinakotheke", "version": "1.1.0"},
+  "compatibility": {"min_synoptikon_version": "0.2.0", "max_synoptikon_version": null},
+  "modes": {"standalone": true, "synoptikon_integrated": true},
+  "support": {
+    "standalone": {"supported": true, "package_formats": ["deb", "rpm", "source"], "local_authentication": false, "local_hardware": true},
+    "synoptikon_integrated": {"supported": true, "requires_entitlement": true, "uses_synoptikon_accounts": true, "uses_synoptikon_audit": true},
+    "migration": {"supported": true, "directions": ["standalone_to_synoptikon"], "dry_run_required": true}
+  },
+  "required_synoptikon_api": {"min_version": "0.2.0", "max_version": null},
+  "surfaces": {
+    "api": {"enabled": true, "base_path": "/products/pinakotheke/api", "health_path": "/products/pinakotheke/health"},
+    "web": {"enabled": true, "base_path": "/products/pinakotheke/app", "health_path": null},
+    "cli": {"enabled": true, "base_path": null, "health_path": null}
+  },
+  "data_model": {
+    "persistence": "hybrid",
+    "owned_entities": ["catalogue_reference", "acquisition_state", "review_state", "site_policy"],
+    "migration_support": true,
+    "storage": {"sqlite": "optional", "artifact_store": {"required": true, "authority": "das_object_store", "contract": "dasobjectstore.application_auth.v1"}}
+  },
+  "workflow_model": {"enabled": false, "workflow_kinds": [], "execution_providers": ["none"]},
+  "capabilities": ["host_product_ui_adapter", "monas_product_ui_adapter", "synoptikon_project_catalogue", "synoptikon_audit_routing", "dasobjectstore_artifact_authority"],
+  "platform_dependencies": [{"id": "dasobjectstore", "required": true}]
+}

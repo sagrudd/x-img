@@ -1,5 +1,9 @@
 # XIMG-003 compatibility matrix
 
+Current XIMG-200 Synoptikon integration baseline: ``../mnemosyne`` commit
+``52810176bf95a170f93d74a6f5daa94da5c6640e``. This supersedes the earlier
+moving-source snapshot retained in the historical table below.
+
 Status: proposed planning contract
 Snapshot: 2026-07-14 UTC
 TODO: XIMG-003

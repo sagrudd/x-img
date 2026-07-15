@@ -26,6 +26,30 @@ pub struct AuthenticatedHostContext {
     authorizations: BTreeSet<String>,
     correlation_id: String,
     host_mode: HostMode,
+    synoptikon_scope: Option<SynoptikonScope>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SynoptikonScope {
+    tenant_id: String,
+    account_id: String,
+    project_id: String,
+    entitlement_id: String,
+}
+
+impl SynoptikonScope {
+    pub fn tenant_id(&self) -> &str {
+        &self.tenant_id
+    }
+    pub fn account_id(&self) -> &str {
+        &self.account_id
+    }
+    pub fn project_id(&self) -> &str {
+        &self.project_id
+    }
+    pub fn entitlement_id(&self) -> &str {
+        &self.entitlement_id
+    }
 }
 
 impl AuthenticatedHostContext {
@@ -43,6 +67,10 @@ impl AuthenticatedHostContext {
 
     pub fn permits(&self, authorization: &str) -> bool {
         self.authorizations.contains(authorization)
+    }
+
+    pub fn synoptikon_scope(&self) -> Option<&SynoptikonScope> {
+        self.synoptikon_scope.as_ref()
     }
 }
 
@@ -118,6 +146,10 @@ fn parse_verified_context(
         "actor_id",
         "authorizations",
         "correlation_id",
+        "tenant_id",
+        "account_id",
+        "project_id",
+        "entitlement_id",
     ];
     for key in object.keys() {
         if !allowed.contains(&key.as_str()) {
@@ -155,6 +187,25 @@ fn parse_verified_context(
         })
         .collect::<Result<BTreeSet<_>, _>>()?;
 
+    let synoptikon_scope = match host_mode {
+        HostMode::MonasStandalone => {
+            for key in ["tenant_id", "account_id", "project_id", "entitlement_id"] {
+                if object.contains_key(key) {
+                    return Err(HostContextError::Invalid(format!(
+                        "`{key}` is not valid in Monas standalone context"
+                    )));
+                }
+            }
+            None
+        }
+        HostMode::SynoptikonIntegrated => Some(SynoptikonScope {
+            tenant_id: required_identifier(object, "tenant_id")?,
+            account_id: required_identifier(object, "account_id")?,
+            project_id: required_identifier(object, "project_id")?,
+            entitlement_id: required_identifier(object, "entitlement_id")?,
+        }),
+    };
+
     if !authorizations.contains(XIMG_ACCESS) {
         return Err(HostContextError::Unauthorized);
     }
@@ -163,6 +214,7 @@ fn parse_verified_context(
         authorizations,
         correlation_id,
         host_mode,
+        synoptikon_scope,
     })
 }
 
@@ -228,6 +280,13 @@ mod tests {
         assert_eq!(context.actor_id(), "synthetic-synoptikon-user");
         assert_eq!(context.host_mode(), HostMode::SynoptikonIntegrated);
         assert!(context.permits("ximg.review"));
+        assert_eq!(
+            context
+                .synoptikon_scope()
+                .expect("project scope")
+                .project_id(),
+            "synthetic-project"
+        );
     }
 
     #[test]

@@ -3,6 +3,14 @@
 All notable changes to Pinakotheke will be documented in this file. The project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Add the XIMG-200 Synoptikon product manifest, strict tenant/account/project
+  host scope, and bounded authenticated catalogue projection over immutable
+  DASObjectStore references.
+
 ## [1.0.0] - 2026-07-15
 
 - Add an executable Pinakotheke v1 preflight and no-partial-cutover release

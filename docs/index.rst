@@ -25,6 +25,7 @@ Configuration
    bioinformatics-commit
    monas-product
    host-context
+   synoptikon-integration
    das-application-identity
    destinations
    object-ingest
