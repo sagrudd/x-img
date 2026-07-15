@@ -7,6 +7,12 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-064's host-authenticated Firefox viewed-media capture-plan
+  boundary. It admits bounded, actually viewport-displayed thumbnail metadata
+  only after paired actor, exact-origin policy, adapter, and scheduler checks;
+  query components are redacted and no browser payload, source cookie,
+  authorization header, form data, or credential is accepted. The extension
+  remains fail-open and does not automatically open originals.
 - Reframed Instagram as an explicit Firefox site-policy path; the dedicated
   Instagram API connector is now optional future work.
 - Added XIMG-061's host-mediated extension pairing contract.

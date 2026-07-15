@@ -18,6 +18,7 @@ pub mod object_read;
 pub mod reconciliation;
 pub mod review_admission;
 pub mod scheduler;
+pub mod viewed_media;
 pub mod x_discovery;
 pub mod x_followed_accounts;
 pub mod x_oauth;

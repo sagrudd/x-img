@@ -110,6 +110,13 @@ forwards cookies or credentials, never automates browsing, and fails open to
 the origin. A dedicated Instagram API connector is optional future work, not a
 requirement for this path.
 
+Firefox observed-image capture is now admitted through a narrow,
+host-authenticated metadata-only plan endpoint. The extension submits only
+viewport-displayed images after a toolbar click; x-img checks the paired actor,
+site policy, adapter, and candidate bound before adding a redacted plan to the
+common scheduler. It does not accept browser media bytes or mark anything as
+stored. See [Firefox capture plans](docs/firefox-capture.rst).
+
 One authenticated refresh action now has a fixture-tested orchestration model:
 it selects all enabled social accounts, coalesces repeat presses, exposes
 per-account bounded progress and terminal states, supports cancellation/retry,

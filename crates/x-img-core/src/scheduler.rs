@@ -182,6 +182,40 @@ impl Scheduler {
         Ok(RefreshOutcome::Started { job_id })
     }
 
+    /// Adds new, distinct source scopes to an already active global job.
+    ///
+    /// This lets independently observed extension events share the common
+    /// actor-scoped scheduler job without silently dropping later candidates.
+    pub fn admit_sources(
+        &mut self,
+        actor_scope: &str,
+        sources: impl IntoIterator<Item = SourceScope>,
+    ) -> Result<String, SchedulerError> {
+        let job = self
+            .active
+            .get_mut(actor_scope)
+            .ok_or(SchedulerError::NoActiveRefresh)?;
+        if job.state != GlobalState::Active {
+            return Err(SchedulerError::GlobalNotActive);
+        }
+        for scope in sources {
+            if job.children.contains_key(&scope) {
+                return Err(SchedulerError::DuplicateSource);
+            }
+            job.children.insert(
+                scope.clone(),
+                ChildJob {
+                    scope,
+                    state: ChildState::Pending,
+                    lease: None,
+                    requests_used: 0,
+                    bytes_used: 0,
+                },
+            );
+        }
+        Ok(job.job_id.clone())
+    }
+
     /// Claims one pending child if capacity and per-source exclusivity permit it.
     pub fn claim(
         &mut self,
@@ -371,6 +405,19 @@ mod tests {
             scheduler.claim("actor", &scope("account-b"), "worker-b", 11, 20),
             Err(SchedulerError::CapacityLimited)
         );
+    }
+
+    #[test]
+    fn active_capture_job_accepts_a_distinct_later_source() {
+        let mut scheduler = Scheduler::default();
+        scheduler
+            .request_refresh("actor", [scope("first")], budget())
+            .expect("initial job");
+        let job_id = scheduler
+            .admit_sources("actor", [scope("second")])
+            .expect("later source");
+        assert_eq!(job_id, "refresh-0");
+        assert_eq!(scheduler.active("actor").expect("job").children.len(), 2);
     }
     #[test]
     fn budgets_and_cancellation_are_bounded_and_release_leases() {
