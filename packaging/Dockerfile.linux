@@ -6,10 +6,14 @@ ARG RUST_TARGET
 ARG DEB_ARCH
 ARG RPM_ARCH
 WORKDIR /workspace
-RUN apt-get update && apt-get install -y --no-install-recommends rpm ca-certificates gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends rpm ca-certificates \
+    gcc-aarch64-linux-gnu gcc-x86-64-linux-gnu libc6-dev-arm64-cross libc6-dev-amd64-cross \
+    && rm -rf /var/lib/apt/lists/*
 COPY Cargo.toml Cargo.lock LICENSE ./
 COPY crates ./crates
-COPY contracts/monas/x-img-product-bootstrap.v1.json ./contracts/monas/x-img-product-bootstrap.v1.json
+COPY contracts ./contracts
+COPY examples ./examples
+COPY fixtures ./fixtures
 COPY packaging/x-img.spec ./packaging/x-img.spec
 RUN test "$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')" = "$VERSION"
 RUN rustup target add "$RUST_TARGET" && \

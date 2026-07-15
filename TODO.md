@@ -601,14 +601,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 - [ ] **XIMG-085 P1 — Package Monas product and Firefox extension.**
   Partial handoff (2026-07-15): the Makefile and packaging sources now define
   Linux x86_64/arm64 DEB+RPM, macOS x86_64/arm64 PKG, and six deterministic
-  host/architecture-labelled Firefox XPIs. Firefox all-six and both unsigned
-  macOS packages built locally and their contents/checksums passed. The first
-  emulated amd64 Linux attempt exposed a QEMU ``rustc`` crash; the recipes now
-  use native-container GNU cross-linkers instead. Final Linux artifact proof is
-  pending because Docker Desktop's content store exhausted disk and failed to
-  restart cleanly after generated-cache cleanup. Do not mark complete until all
-  twelve artifacts pass ``make checksums verify``; signing/notarization and a
-  packageable daemon/complete Monas appliance remain later release gates.
+  host/architecture-labelled Firefox XPIs. All twelve unsigned artifacts built
+  locally and passed ``make checksums verify``. Linux uses native-container GNU
+  cross-linkers, explicit target libc development packages, and target-aware
+  RPM metadata, avoiding emulated ``rustc`` and host/target strip mismatches.
+  Signing/notarization and a packageable daemon/complete Monas appliance remain
+  later release gates, so this item remains open rather than overstating the
+  current CLI-plus-Monas-bootstrap package boundary.
 - [ ] **XIMG-086 P1 — Run production-like upgrade/rollback acceptance.**
 - [ ] **XIMG-087 P1 — Publish 0.9.0 release candidate.**
 - [ ] **XIMG-088 P0 — Close all release blockers and publish 1.0.0.**

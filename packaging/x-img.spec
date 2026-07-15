@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: MPL-2.0
+%global __strip /bin/true
 Name: x-img
 Version: %{ximg_version}
 Release: 1%{?dist}
 Summary: x-img metadata CLI and Monas product contract
 License: MPL-2.0
 URL: https://github.com/sagrudd/x-img
-BuildArch: %{_arch}
 
 %description
 x-img command-line metadata tools and the versioned Monas product bootstrap.
