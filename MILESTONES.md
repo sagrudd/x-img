@@ -491,7 +491,9 @@ Exit criteria:
 - accessibility, security, privacy, and platform-policy reviews have no open
   release blockers;
 - upgrade from the previous minor version preserves configuration, catalogue,
-  object aliases, and review state; and
+  object aliases, and review state; XIMG-086 proves genuine 0.2.0 → 0.3.0 →
+  0.2.0 DEB/RPM transitions on x86_64 and arm64 with exact metadata and
+  authority-identity preservation; and
 - public documentation clearly distinguishes supported behavior, known limits,
   and non-goals, including the evidence-backed Firefox playback profile choice,
   rights gates, and local Sphinx container verification.

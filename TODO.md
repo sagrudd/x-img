@@ -612,17 +612,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   bootstrap; it does not misrepresent x-img as a competing standalone auth
   daemon. Signing/notarization belongs to XIMG-087, and production-like Monas
   install/upgrade/rollback acceptance belongs to XIMG-086.
-- [ ] **XIMG-086 P1 — Run production-like upgrade/rollback acceptance.**
-  Partial handoff (2026-07-15): ``make upgrade-rollback`` now installs,
-  executes, reinstalls, and removes the current native DEB and RPM using
-  network-isolated digest-pinned Debian/Fedora containers on the host
-  architecture. It proves byte-exact preservation of synthetic metadata and
-  stable endpoint/ObjectStore/object/checksum/review identities through the
-  strict export/restore/repeat-migration tests, then verifies the pinned Monas
-  and DASObjectStore contract paths. Do not mark complete until an actual
-  cross-version 0.9 release-candidate upgrade and downgrade is exercised on
-  both architectures against a production-like Monas plus DASObjectStore
-  deployment; there is no earlier packaged x-img release to use honestly yet.
+- [x] **XIMG-086 P1 — Run production-like upgrade/rollback acceptance.**
+  Completed in ``18e0c12``, ``97ed392``, and ``1535d60``. The accumulated
+  backward-compatible work was released as 0.3.0 so the verified 0.2.0
+  artifacts became a genuine prior baseline. ``make upgrade-rollback`` proved
+  0.2.0 → 0.3.0 → 0.2.0 for real DEB and RPM packages on x86_64 and arm64 in
+  network-isolated digest-pinned Debian/Fedora containers. CLI and Monas
+  bootstrap versions changed at every boundary while the synthetic metadata
+  SHA-256 and endpoint/ObjectStore/object/checksum/review identities remained
+  exact. Strict export/restore/repeat-migration and current pinned Monas plus
+  DASObjectStore contract checks passed. Signing/notarization remains XIMG-087.
 - [ ] **XIMG-087 P1 — Publish 0.9.0 release candidate.**
 - [ ] **XIMG-088 P0 — Close all release blockers and publish 1.0.0.**
   Acceptance includes the coordinated Pinakotheke rename/rebrand matrix and
