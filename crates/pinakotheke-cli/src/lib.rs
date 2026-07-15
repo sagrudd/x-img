@@ -6,6 +6,7 @@ use std::{ffi::OsString, path::PathBuf};
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use x_img_core::{ConfigStore, build_info};
 
+mod launchd;
 mod local_objectstore;
 mod monolith;
 
@@ -82,6 +83,11 @@ enum Command {
         #[command(subcommand)]
         command: local_objectstore::StorageCommand,
     },
+    /// Manage the composed per-user macOS service.
+    Service {
+        #[command(subcommand)]
+        command: launchd::ServiceCommand,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Subcommand)]
@@ -135,6 +141,7 @@ pub fn run(invocation: Invocation, cli: Cli) -> Result<(), Box<dyn std::error::E
         Some(Command::Config { command }) => run_config(command)?,
         Some(Command::Serve(arguments)) => monolith::serve(arguments)?,
         Some(Command::Storage { command }) => local_objectstore::run(command)?,
+        Some(Command::Service { command }) => launchd::run(command)?,
     }
     Ok(())
 }

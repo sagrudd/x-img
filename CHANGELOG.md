@@ -24,6 +24,10 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Complete XIMG-092 against Monas ``0.2.0`` with the authenticated canonical
   product mount, streaming loopback forwarding, cookie stripping, strict host
   context injection, and session revocation proof.
+- Add XIMG-093's non-root macOS launchd lifecycle for the coordinated
+  Pinakotheke backend and Monas host, including private credential generation,
+  guarded transactional replacement, status/restart/log access, and
+  data-preserving uninstall.
 
 ## [1.0.0] - 2026-07-15
 

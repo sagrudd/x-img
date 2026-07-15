@@ -117,6 +117,38 @@ never parses the cookie or issues login, session, or logout state. Keep port
 Stop the foreground process with ``Control-C``. Axum stops accepting new work
 and completes graceful shutdown.
 
+Per-user macOS service
+----------------------
+
+Review and install the two coordinated user agents:
+
+.. code-block:: console
+
+   pinakotheke service plan
+   pinakotheke service install \
+     --pinakotheke-binary /absolute/path/to/pinakotheke \
+     --monas-binary /absolute/path/to/monas-server
+
+Installation requires absolute executable regular files, generates a private
+dispatch credential, keeps the backend on port 8732, and exposes Monas on port
+8731. Prosopikon remains under ``~/.config/monas/prosopikon``; Pinakotheke
+metadata and logs remain under ``~/.x-img``; DASObjectStore retains its own
+authority roots.
+
+.. code-block:: console
+
+   pinakotheke service status
+   pinakotheke service logs
+   pinakotheke service logs --follow
+   pinakotheke service restart
+   pinakotheke service uninstall
+
+Existing definitions are never overwritten implicitly. After review, use
+``install --replace``; replacement restores the prior pair if launchd admission
+fails. Uninstall removes only the service definitions. Configuration,
+credentials, logs, catalogue state, Prosopikon users, and ObjectStore data are
+preserved.
+
 Network safety
 --------------
 
@@ -129,6 +161,5 @@ authentication. Do not expose this first slice to an untrusted network.
 Next slices
 -----------
 
-XIMG-092 composes Monas/Prosopikon authentication and host context.
-XIMG-093 adds per-user macOS ``launchd`` management, and XIMG-094 proves a
+XIMG-094 proves a
 clean-home authenticated ingest/read/restart flow end to end.

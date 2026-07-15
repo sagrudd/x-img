@@ -591,6 +591,11 @@ streaming loopback mount, private process-credential configuration, strict
 context injection, and registration/login/session/logout admission/revocation
 proof.
 
+XIMG-093 adds a tested non-root macOS launchd lifecycle for the separate
+Pinakotheke backend and Monas host agents. Private credential creation,
+transactional guarded replacement, status/restart/log access, and
+data-preserving uninstall were exercised in an isolated home.
+
 Exit criteria:
 
 - ``pinakotheke serve`` starts a coherent Axum/Yew service as the invoking user,
