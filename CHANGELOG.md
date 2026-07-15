@@ -3,7 +3,7 @@
 All notable changes to Pinakotheke will be documented in this file. The project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] - 2026-07-15
 
 - Add an executable Pinakotheke v1 preflight and no-partial-cutover release
   gate that reports canonical identity blockers without exposing private data.
