@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MPL-2.0
 """Validate x-img-owned contracts, optionally against pinned sibling sources."""
 
 from __future__ import annotations

@@ -1,0 +1,22 @@
+[advisories]
+version = 2
+ignore = [
+  { id = "RUSTSEC-2024-0370", reason = "Transitive Yew macro build dependency; no maintained compatible replacement is available in Yew 0.23. Track for the next Yew release." },
+  { id = "RUSTSEC-2025-0141", reason = "Transitive gloo-worker serialization dependency; advisory is unmaintained status, not a vulnerability. x-img does not use worker serialization directly." },
+]
+
+[licenses]
+version = 2
+confidence-threshold = 0.8
+allow = ["Apache-2.0", "BSD-3-Clause", "BSL-1.0", "MIT", "MPL-2.0", "Unicode-3.0"]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -83,6 +83,11 @@ redacted component/metric/audit snapshots. The bounded typed schema cannot hold
 URLs, browsing history, credentials, sessions, object keys, or media payloads;
 see [health, metrics, and audit](docs/operations.rst).
 
+The reproducible release audit is ``scripts/audit/check.sh``. It checks privacy,
+security, accessibility, Firefox permissions/CSP, MPL/SPDX coverage, locked
+dependency advisories/licenses/sources, JavaScript syntax, and every product
+version mirror; see [release audits](docs/release-audits.rst).
+
 The CLI now strictly validates, lists, and atomically replaces local versioned
 account/site configuration; it performs no network access or source refresh.
 See [configuration documentation](docs/configuration.rst) for commands and

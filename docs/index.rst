@@ -53,6 +53,7 @@ Configuration
    migration-export-restore
    deletion-compliance
    operations
+   release-audits
 
 Release and quality
 -------------------

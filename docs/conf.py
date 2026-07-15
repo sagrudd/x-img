@@ -1,5 +1,6 @@
 """Sphinx configuration for the x-img planning documentation."""
 
+# SPDX-License-Identifier: MPL-2.0
 project = "x-img"
 copyright = "2026, x-img maintainers"
 author = "x-img maintainers"

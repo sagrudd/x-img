@@ -1,0 +1,14 @@
+{
+  "schema": "x-img.release-audit-matrix",
+  "schema_major": 1,
+  "fixture_kind": "synthetic",
+  "checked_at": "2026-07-15",
+  "audits": [
+    {"id": "privacy", "gate": "tracked files contain no credential signature or durable payload fixture"},
+    {"id": "security", "gate": "unsafe Rust, dynamic script execution, weak extension CSP, and excess Firefox permissions are rejected"},
+    {"id": "accessibility", "gate": "Yew focus visibility and semantic extension documents/status regions are present"},
+    {"id": "licenses", "gate": "repository sources carry MPL-2.0 notices and dependency licenses satisfy deny.toml"},
+    {"id": "dependencies", "gate": "locked dependencies, advisories, duplicate policy, and registry sources satisfy cargo-deny"},
+    {"id": "versions", "gate": "Rust, Sphinx, planning, and Firefox manifest versions match the workspace authority"}
+  ]
+}

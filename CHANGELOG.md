@@ -7,6 +7,9 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-084's single-command local release audit covering privacy,
+  security, accessibility, extension permissions/CSP, licenses, locked Rust
+  dependencies/advisories/sources, JavaScript syntax, and version mirrors.
 - Added XIMG-083's bounded redacted operations model and Axum surfaces. Public
   health is coarse; host-authenticated snapshots expose only typed component
   state, saturating aggregate counters, fixed audit codes, and eviction count.

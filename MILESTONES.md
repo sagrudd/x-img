@@ -464,6 +464,9 @@ Exit criteria:
   component states, aggregate counts, and fixed audit codes with no free-form
   request, browsing, credential, session, ObjectStore-key, or payload fields;
 - dependency, license, vulnerability, and extension-permission audits pass; and
+- ``scripts/audit/check.sh`` and its strict six-category matrix provide local
+  audit evidence, with narrow reasoned transitive-Yew advisory exceptions and
+  duplicate-generation warnings remaining explicit in ``deny.toml``;
 - package/install documentation covers Monas, DASObjectStore, Firefox, and
   upgrades.
 - video jobs enforce bounded streaming, cancellation, resumable transfer where

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MPL-2.0
 """Dependency-free planning quality checks for x-img.
 
 These checks intentionally validate repository invariants, not full JSON Schema
@@ -244,7 +245,11 @@ def check_versions(findings: Findings) -> None:
         if not match or match.group(1) != expected:
             findings.add(conf, f"Sphinx release must match canonical version {expected}")
 
-    for manifest in list(ROOT.glob("extension/**/manifest.json")) + list(ROOT.glob("firefox/**/manifest.json")):
+    for manifest in (
+        list(ROOT.glob("extension/**/manifest.json"))
+        + list(ROOT.glob("firefox/**/manifest.json"))
+        + list(ROOT.glob("firefox-extension/manifest.json"))
+    ):
         try:
             value = json.loads(manifest.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys).get("version")
         except (ValueError, json.JSONDecodeError):
