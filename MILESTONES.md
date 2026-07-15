@@ -306,6 +306,9 @@ Goal: deliver the dense, fast visual browser.
   first-version synthetic browser; catalogue-backed structured filters follow.
 - XIMG-055 implements visible refresh progress (commit `a48fc13`) with a single
   action, per-account state, partial failure, retry, and new-item summary.
+- XIMG-054 implements word-first review states and reversible batch actions
+  (commit `84e11ca`), including a toggleable observed-thumbnail versus
+  committed-ObjectStore-original distinction without mutating bytes.
 
 Exit criteria:
 

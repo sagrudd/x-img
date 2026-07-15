@@ -326,13 +326,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Acceptance: original/fit view, metadata, alt text, source link, range playback,
   focus trapping/return, and unavailable-object state pass.
 
-- [ ] **XIMG-054 P1 — Implement review queue and batch review.**
-  Filters and words distinguish new/reviewed/hidden/removed; actions are scoped
-  and undoable where feasible. Acceptance: colour is never the sole signal;
-  `Previously observed` thumbnail status is distinct from `Stored in ObjectStore`
-  committed-original status using accessible words/iconography, colour,
-  tooltip, a reversible non-obstructive frame/badge/overlay, and a user toggle;
-  stored bytes are never watermarked or mutated.
+- [x] **XIMG-054 P1 — Implement review queue and batch review.** Completed in
+  `84e11ca`; word-first New/Reviewed/Hidden/Removed queue states, reversible
+  batch review/hide actions, and a user-toggleable accessible observed-thumbnail
+  versus committed-ObjectStore-original overlay are implemented. Stored bytes
+  are never altered; persistence remains the review-admission API follow-up.
 
 - [x] **XIMG-055 P1 — Implement refresh controls and progress.** Completed in
   `a48fc13`; one Refresh accounts control renders word-first per-account
