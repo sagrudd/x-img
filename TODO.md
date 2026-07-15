@@ -696,7 +696,19 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 ## Post-1.0
 
-- [ ] **XIMG-200 P3 — Add Synoptikon host/catalogue integration.**
+- [x] **XIMG-200 P3 — Add Synoptikon host/catalogue integration.** Completed
+  in ``d0005bb``. A public ``mnemosyne.product.manifest.v1`` registration now
+  declares dual-host support, Synoptikon entitlement/account/audit ownership,
+  and DASObjectStore artifact authority without an unpublished dependency.
+  Verified Synoptikon contexts require tenant, account, project, and entitlement
+  scope plus ``ximg.catalogue.read``. The host-composed Axum endpoint returns a
+  deterministic project-isolated page of review metadata and immutable
+  DASObjectStore references, capped at 200 items, with no payload, source URL,
+  browser history, or credential fields. Native workspace tests, strict clippy,
+  version/privacy/security audits, the pinned Mnemosyne contract check, and the
+  local Docker Sphinx build/run passed. Post-1.0 development is now 1.1.0 and
+  the quality runner preserves but no longer incorrectly executes the one-time
+  1.0 cutover gate against later versions.
 - [ ] **XIMG-201 P3 — Add approved site adapters through the registry.**
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**

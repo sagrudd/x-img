@@ -560,7 +560,9 @@ Exit criteria:
 
 ## Post-1.0 candidates
 
-- Synoptikon catalogue/plugin integration through the preserved host adapter;
+- Synoptikon catalogue/plugin integration through the preserved host adapter
+  is delivered for 1.1 development by XIMG-200 as a project-scoped read-only
+  projection; deployment catalogue enrollment remains host-owned;
 - additional explicitly approved site adapters;
 - perceptual duplicate grouping without weakening exact source provenance;
 - user-defined collections, tags, and saved searches; and
