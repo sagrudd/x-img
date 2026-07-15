@@ -58,6 +58,7 @@ Release and quality
    :maxdepth: 1
 
    release-quality-policy
+   fault-injection-recovery
 
 The local documentation container is the reproducible verification authority:
 

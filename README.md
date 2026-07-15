@@ -63,6 +63,11 @@ media-payload integration. See [MILESTONES.md](MILESTONES.md) for release gates
 and [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
 
+The release hardening path now includes one deterministic fault/recovery
+command, ``scripts/faults/check.sh``. It covers critical authority, ingest,
+scheduler, normalizer, and Firefox fail-open boundaries using synthetic data;
+see [fault injection and recovery](docs/fault-injection-recovery.rst).
+
 The CLI now strictly validates, lists, and atomically replaces local versioned
 account/site configuration; it performs no network access or source refresh.
 See [configuration documentation](docs/configuration.rst) for commands and

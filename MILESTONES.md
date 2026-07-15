@@ -444,6 +444,10 @@ Exit criteria:
 
 - bounded workers, backpressure, rate/cost budgets, retries, reconciliation,
   graceful shutdown, and job leases pass fault-injection tests;
+- the versioned synthetic fault matrix and ``scripts/faults/check.sh`` provide
+  the local release evidence for ingest, crash replay, destination stability,
+  scheduler cancellation, normalization cleanup, authority loss, and Firefox
+  substitution fail-open behavior;
 - account refresh, extension capture, and cache serve share one scheduler and
   cannot create conflicting claims;
 - schema migration, export, restore, and DASObjectStore loss/unavailability

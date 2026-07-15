@@ -1,0 +1,17 @@
+{
+  "schema": "x-img.fault-recovery-matrix",
+  "schema_major": 1,
+  "fixture_kind": "synthetic",
+  "checked_at": "2026-07-15",
+  "cases": [
+    {"id":"ingest-backpressure-checksum","fault":"backpressure or corrupt/short stream","invariant":"no verified commit and no local payload retention"},
+    {"id":"authority-crash-boundaries","fault":"crash before or after authority verification","invariant":"zero or one immutable commit; replay never duplicates"},
+    {"id":"destination-authority-change","fault":"reviewed endpoint/ObjectStore becomes invalid","invariant":"reject without destination fallback or silent switch"},
+    {"id":"scheduler-cancel-budget","fault":"budget exhaustion or cancellation while leased","invariant":"lease released and no child falsely completed"},
+    {"id":"normalizer-worker-crash","fault":"worker ends during normalize/probe/ingest","invariant":"reconciliation required; no output assumed committed"},
+    {"id":"normalizer-scratch-failure","fault":"container/probe/ingest failure","invariant":"bounded ephemeral scratch is removed"},
+    {"id":"cache-authority-loss","fault":"endpoint offline or object unavailable","invariant":"origin fallback without selecting another store"},
+    {"id":"capture-policy-unavailable","fault":"capture service has no configured policy","invariant":"503 metadata response and ordinary page remains independent"},
+    {"id":"firefox-substitution-failure","fault":"CSP/CORS/MIME/length/ETag delivery failure","invariant":"original image restored once; no retained browser profile or bytes"}
+  ]
+}

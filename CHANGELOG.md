@@ -7,6 +7,10 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-080's deterministic fault/recovery acceptance suite. Nine
+  synthetic cases prove bounded ingest, idempotent crash reconciliation,
+  destination stability, scheduler cancellation, normalizer cleanup, cache and
+  capture authority failures, and real-Firefox substitution fail-open behavior.
 - Added XIMG-074's Firefox cache popup with per-site pause/resume, explicit run,
   current hit/miss/error reason, host source-view link, clear permission text,
   and accessible ``Previously observed`` versus ``Stored in ObjectStore``
