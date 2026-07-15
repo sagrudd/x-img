@@ -129,6 +129,13 @@ site policy, adapter, and candidate bound before adding a redacted plan to the
 common scheduler. It does not accept browser media bytes or mark anything as
 stored. See [Firefox capture plans](docs/firefox-capture.rst).
 
+For an explicitly enabled site, a toolbar action can now replace a visible
+proven alias with its exact reviewed DASObjectStore image. The authenticated
+delivery route streams bytes without local persistence; Firefox validates the
+MIME type, length, checksum ETag, and bounded payload before using an ephemeral
+blob URL, and restores the ordinary origin image once on any failure. See
+[image substitution](docs/image-substitution.rst).
+
 Verified website captures can now enter the same `New` review queue as account
 media. Their site, page, media alias, discovery time, and adapter provenance
 are retained; a matching committed connector alias reuses its canonical

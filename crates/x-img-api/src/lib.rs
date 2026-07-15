@@ -24,7 +24,10 @@ use x_img_core::{
         CacheRepresentation,
     },
     host_context::{AuthenticatedHostContext, XIMG_ACCESS},
-    object_read::{ObjectReadBackend, ObjectReadBackendError, ObjectReadRequest, ObjectReadResult},
+    object_read::{
+        AuthorizedObjectReader, ObjectReadBackend, ObjectReadBackendError, ObjectReadRequest,
+        ObjectReadResult, ValidatedObjectRead,
+    },
     playback_delivery::{DirectPlaybackError, DirectPlaybackResponse, DirectPlaybackService},
     viewed_media::{CapturePlan, CapturePlanError, CapturePlanRequest, CapturePlanService},
 };
@@ -32,6 +35,7 @@ use x_img_core::{
 type CapturePlans = Arc<Mutex<CapturePlanService>>;
 type PlaybackDelivery = Arc<Mutex<DirectPlaybackService<HostObjectReadBackend>>>;
 type CacheAliases = Arc<Mutex<CacheLookupService>>;
+type ImageDelivery = Arc<Mutex<AuthorizedObjectReader<HostObjectReadBackend>>>;
 
 const CACHE_LOOKUP_SCHEMA_VERSION: &str = "x-img.cache-alias-lookup.v1";
 const CACHE_RESULT_SCHEMA_VERSION: &str = "x-img.cache-alias-result.v1";
@@ -161,6 +165,31 @@ pub fn router_with_cache_aliases(cache_aliases: CacheLookupService) -> Router {
         .layer(Extension(Arc::new(Mutex::new(cache_aliases))))
 }
 
+/// Returns a host composition capable of lookup and exact, authenticated image
+/// delivery. Payloads stream from DASObjectStore and are never persisted by
+/// x-img; every delivery repeats pairing and object metadata validation.
+pub fn router_with_image_substitution(
+    cache_aliases: CacheLookupService,
+    backend: HostObjectReadBackend,
+) -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route("/context", get(context))
+        .route(
+            "/api/extension/v1/cache-aliases/lookup",
+            post(cache_alias_lookup),
+        )
+        .route(
+            "/api/cache/v1/images/{pairing_id}/{delivery_id}",
+            get(deliver_cached_image),
+        )
+        .with_state(None::<CapturePlans>)
+        .layer(Extension(Arc::new(Mutex::new(cache_aliases))))
+        .layer(Extension(Arc::new(Mutex::new(
+            AuthorizedObjectReader::new(backend),
+        ))))
+}
+
 async fn health() -> &'static str {
     "x-img API scaffold"
 }
@@ -244,23 +273,23 @@ async fn cache_alias_lookup(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(
         match cache_aliases.lookup(context.actor_id(), &request) {
-            CacheLookupOutcome::Hit(hit) => {
-                let digest = hit.object.checksum.trim_start_matches("sha256:");
-                CacheAliasLookupResponse {
-                    schema_version: CACHE_RESULT_SCHEMA_VERSION,
-                    outcome: "hit",
-                    reason: None,
-                    media_class: Some(match hit.representation {
-                        CacheRepresentation::ThumbnailImage => "thumbnail_image",
-                        CacheRepresentation::OriginalImage => "original_image",
-                        CacheRepresentation::NormalizedMp4 => "normalized_mp4",
-                    }),
-                    content_type: Some(hit.content_type.clone()),
-                    content_length: Some(hit.content_length),
-                    object_checksum: Some(hit.object.checksum.clone()),
-                    delivery_path: Some(format!("/api/cache/v1/objects/{digest}")),
-                }
-            }
+            CacheLookupOutcome::Hit(hit) => CacheAliasLookupResponse {
+                schema_version: CACHE_RESULT_SCHEMA_VERSION,
+                outcome: "hit",
+                reason: None,
+                media_class: Some(match hit.representation {
+                    CacheRepresentation::ThumbnailImage => "thumbnail_image",
+                    CacheRepresentation::OriginalImage => "original_image",
+                    CacheRepresentation::NormalizedMp4 => "normalized_mp4",
+                }),
+                content_type: Some(hit.content_type.clone()),
+                content_length: Some(hit.content_length),
+                object_checksum: Some(hit.object.checksum.clone()),
+                delivery_path: Some(format!(
+                    "/api/cache/v1/images/{}/{}",
+                    request.pairing_id, hit.delivery_id
+                )),
+            },
             CacheLookupOutcome::Miss => cache_fallback("miss", None),
             CacheLookupOutcome::OriginFallback(reason) => {
                 cache_fallback("origin_fallback", Some(cache_bypass_reason(reason)))
@@ -292,6 +321,91 @@ fn cache_bypass_reason(reason: CacheBypassReason) -> &'static str {
         CacheBypassReason::Stale => "stale",
         CacheBypassReason::EndpointOffline => "endpoint_offline",
         CacheBypassReason::ObjectUnavailable => "object_unavailable",
+        CacheBypassReason::NotAnImage => "not_an_image",
+    }
+}
+
+async fn deliver_cached_image(
+    Path((pairing_id, delivery_id)): Path<(String, String)>,
+    headers: HeaderMap,
+    context: Option<Extension<AuthenticatedHostContext>>,
+    cache_aliases: Option<Extension<CacheAliases>>,
+    image_delivery: Option<Extension<ImageDelivery>>,
+) -> Result<Response, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    if !context.permits(XIMG_ACCESS) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .as_secs();
+    let record = {
+        let cache_aliases = cache_aliases.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+        let cache_aliases = cache_aliases
+            .lock()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        match cache_aliases.authorize_image_delivery(
+            context.actor_id(),
+            &pairing_id,
+            &delivery_id,
+            now,
+        ) {
+            CacheLookupOutcome::Hit(record) => record.clone(),
+            CacheLookupOutcome::Miss => return Err(StatusCode::NOT_FOUND),
+            CacheLookupOutcome::OriginFallback(_) => return Err(StatusCode::FORBIDDEN),
+        }
+    };
+    let if_none_match = headers
+        .get(header::IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let request = ObjectReadRequest {
+        object: record.object,
+        range: None,
+        if_none_match_etag: if_none_match,
+    };
+    let image_delivery = image_delivery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let mut image_delivery = image_delivery
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    match image_delivery
+        .open(&request)
+        .map_err(|_| StatusCode::BAD_GATEWAY)?
+    {
+        ValidatedObjectRead::NotModified { etag } => Response::builder()
+            .status(StatusCode::NOT_MODIFIED)
+            .header(header::ETAG, etag)
+            .header(header::CACHE_CONTROL, "private, no-store")
+            .header("access-control-allow-origin", &record.site_origin)
+            .header("access-control-allow-credentials", "true")
+            .header("access-control-expose-headers", "etag, content-length")
+            .header("cross-origin-resource-policy", "cross-origin")
+            .header("x-content-type-options", "nosniff")
+            .header(header::VARY, "origin")
+            .body(Body::empty())
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
+        ValidatedObjectRead::Content { metadata, stream } => {
+            if metadata.content_type != record.content_type
+                || metadata.content_length != record.content_length
+            {
+                return Err(StatusCode::BAD_GATEWAY);
+            }
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, metadata.content_type)
+                .header(header::CONTENT_LENGTH, metadata.content_length)
+                .header(header::ETAG, metadata.etag)
+                .header(header::CACHE_CONTROL, "private, no-store")
+                .header("access-control-allow-origin", &record.site_origin)
+                .header("access-control-allow-credentials", "true")
+                .header("access-control-expose-headers", "etag, content-length")
+                .header("cross-origin-resource-policy", "cross-origin")
+                .header("x-content-type-options", "nosniff")
+                .header(header::VARY, "origin")
+                .body(stream)
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -393,7 +507,7 @@ mod tests {
 
     use super::{
         HostObjectReadBackend, router, router_with_cache_aliases, router_with_capture_plans,
-        router_with_direct_playback,
+        router_with_direct_playback, router_with_image_substitution,
     };
 
     const CHECKSUM: &str =
@@ -446,6 +560,7 @@ mod tests {
         let mut index = CacheAliasIndex::new(8).expect("bounded index");
         index
             .admit(CacheAliasRecord {
+                delivery_id: "image-delivery-1".into(),
                 instance_id: "ximg-instance-1".into(),
                 site_origin: "https://example.invalid".into(),
                 canonical_alias: "https://media.example.invalid/image-1.jpg".into(),
@@ -460,7 +575,7 @@ mod tests {
                     checksum: CHECKSUM.into(),
                 },
                 content_type: "image/jpeg".into(),
-                content_length: 1_024,
+                content_length: 15,
                 valid_until_epoch_seconds: u64::MAX,
                 availability: CacheObjectAvailability::Ready,
             })
@@ -761,10 +876,7 @@ mod tests {
         assert_eq!(body["media_class"], "thumbnail_image");
         assert_eq!(
             body["delivery_path"],
-            format!(
-                "/api/cache/v1/objects/{}",
-                CHECKSUM.trim_start_matches("sha256:")
-            )
+            "/api/cache/v1/images/pair-cache-1/image-delivery-1"
         );
         assert!(body.get("canonical_alias").is_none());
         assert!(body.get("endpoint_id").is_none());
@@ -799,5 +911,63 @@ mod tests {
         assert_eq!(body["outcome"], "origin_fallback");
         assert_eq!(body["reason"], "invalid_request");
         assert!(!String::from_utf8_lossy(&bytes).contains("signature"));
+    }
+
+    #[tokio::test]
+    async fn cached_image_delivery_streams_exact_authorized_object_with_browser_headers() {
+        const IMAGE: &[u8] = b"synthetic-image";
+        let backend = HostObjectReadBackend::new(Box::new(|request| {
+            assert_eq!(request.object.object_key, "images/image-1.jpg");
+            Ok(ObjectReadResult::Content {
+                metadata: ObjectContentMetadata {
+                    content_type: "image/jpeg".into(),
+                    content_length: IMAGE.len() as u64,
+                    total_length: IMAGE.len() as u64,
+                    checksum: CHECKSUM.into(),
+                    etag: ETAG.into(),
+                    content_range: None,
+                },
+                stream: Body::from(IMAGE),
+            })
+        }));
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .expect("synthetic host context is valid");
+        let response = router_with_image_substitution(cache_aliases(), backend)
+            .layer(Extension(context))
+            .oneshot(
+                Request::builder()
+                    .uri("/api/cache/v1/images/pair-cache-1/image-delivery-1")
+                    .body(Body::empty())
+                    .expect("request must build"),
+            )
+            .await
+            .expect("router is infallible");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["content-type"], "image/jpeg");
+        assert_eq!(response.headers()["content-length"], "15");
+        assert_eq!(response.headers()["etag"], ETAG);
+        assert_eq!(
+            response.headers()["access-control-allow-origin"],
+            "https://example.invalid"
+        );
+        assert_eq!(
+            response.headers()["cross-origin-resource-policy"],
+            "cross-origin"
+        );
+        assert_eq!(
+            response.headers()["access-control-expose-headers"],
+            "etag, content-length"
+        );
+        assert_eq!(response.headers()["cache-control"], "private, no-store");
+        assert_eq!(
+            to_bytes(response.into_body(), 128)
+                .await
+                .expect("image streams")
+                .as_ref(),
+            IMAGE
+        );
     }
 }

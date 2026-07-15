@@ -398,6 +398,10 @@ Goal: serve previously committed media from the object store on enabled sites.
   adapter/pairing policy, eviction/invalidation, stale/offline/unavailable
   origin-fallback states, query-free privacy, and a measured 4,096-entry p95
   below the 2 ms budget. XIMG-071/XIMG-072 consume its delivery metadata.
+- XIMG-071 connects a reviewed image hit to one exact, reauthorized
+  DASObjectStore stream and an explicit-site Firefox replacement. Production
+  HTTPS/CORS/CORP/type/length/ETag headers are contract-tested; installed
+  Firefox proves ephemeral display and CSP/CORS/metadata fail-open behavior.
 
 Exit criteria:
 

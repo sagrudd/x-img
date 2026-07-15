@@ -30,6 +30,7 @@ Configuration
    object-ingest
    object-read
    cache-alias-lookup
+   image-substitution
    x-oauth
    x-followed-accounts
    x-media-discovery

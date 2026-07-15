@@ -7,6 +7,11 @@ All notable changes to x-img will be documented in this file. The project uses
 
 ### Planning
 
+- Added XIMG-071's host-authenticated image substitution path. Stable delivery
+  IDs preserve the exact reviewed ObjectStore identity; the Firefox client
+  validates MIME, length, checksum ETag, size, CORS/CORP delivery, and restores
+  the origin once on any failure. A real Firefox loopback harness proves
+  replacement and CSP/CORS/type/length/ETag fail-open without retained media.
 - Added XIMG-070's bounded cache-alias index and host-authenticated lookup
   endpoint. Immutable ObjectStore hits require server-owned same-instance,
   origin, adapter, pairing, expiry, substitution, and observation/open gates;

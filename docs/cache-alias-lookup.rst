@@ -43,8 +43,9 @@ A hit returns only the media class, verified MIME/length/checksum, and an x-img
 delivery path.  It does not echo the alias or disclose a page URL.  A miss,
 paused policy, invalid pairing, stale entry, offline endpoint, unavailable
 object, malformed canonical alias, or adapter mismatch returns a bounded
-``origin_fallback`` result.  XIMG-071 and XIMG-072 consume this result for image
-and normalized-MP4 delivery; until then the delivery path is not intercepted.
+``origin_fallback`` result.  :doc:`image-substitution` consumes the opaque,
+record-bound delivery path for images; XIMG-072 will add normalized-MP4
+delivery.
 
 Signed URL handling
 -------------------

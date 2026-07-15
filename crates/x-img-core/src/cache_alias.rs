@@ -35,6 +35,7 @@ pub enum CacheObjectAvailability {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CacheAliasRecord {
+    pub delivery_id: String,
     pub instance_id: String,
     pub site_origin: String,
     pub canonical_alias: String,
@@ -83,6 +84,7 @@ pub enum CacheBypassReason {
     Stale,
     EndpointOffline,
     ObjectUnavailable,
+    NotAnImage,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -118,6 +120,7 @@ pub struct CacheAliasIndex {
     capacity: usize,
     len: usize,
     by_origin: BTreeMap<String, BTreeMap<String, CacheAliasRecord>>,
+    by_delivery: BTreeMap<String, (String, String)>,
     insertion_order: VecDeque<(String, String)>,
 }
 
@@ -156,6 +159,63 @@ impl CacheLookupService {
         self.index.lookup(actor_id, request, authorization)
     }
 
+    /// Resolves a delivery grant back to the exact reviewed object and repeats
+    /// the pairing/policy checks immediately before a DASObjectStore read.
+    #[must_use]
+    pub fn authorize_image_delivery(
+        &self,
+        actor_id: &str,
+        pairing_id: &str,
+        delivery_id: &str,
+        now_epoch_seconds: u64,
+    ) -> CacheLookupOutcome<'_> {
+        let Some(authorization) = self.authorizations.get(pairing_id) else {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::PairingInvalid);
+        };
+        if !identifier(actor_id)
+            || !identifier(delivery_id)
+            || authorization.revoked
+            || now_epoch_seconds >= authorization.expires_at_epoch_seconds
+            || authorization.actor_id != actor_id
+            || authorization.pairing_id != pairing_id
+        {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::PairingInvalid);
+        }
+        if !authorization.substitution_enabled {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::SubstitutionPaused);
+        }
+        let Some(record) = self.index.record_by_delivery(delivery_id) else {
+            return CacheLookupOutcome::Miss;
+        };
+        if record.instance_id != authorization.instance_id {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::WrongInstance);
+        }
+        if record.site_origin != authorization.site_origin
+            || record.adapter_id != authorization.adapter_id
+            || record.adapter_version != authorization.adapter_version
+        {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::AdapterMismatch);
+        }
+        if now_epoch_seconds > record.valid_until_epoch_seconds {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::Stale);
+        }
+        if !matches!(
+            record.representation,
+            CacheRepresentation::ThumbnailImage | CacheRepresentation::OriginalImage
+        ) {
+            return CacheLookupOutcome::OriginFallback(CacheBypassReason::NotAnImage);
+        }
+        match record.availability {
+            CacheObjectAvailability::Ready => CacheLookupOutcome::Hit(record),
+            CacheObjectAvailability::EndpointOffline => {
+                CacheLookupOutcome::OriginFallback(CacheBypassReason::EndpointOffline)
+            }
+            CacheObjectAvailability::ObjectUnavailable => {
+                CacheLookupOutcome::OriginFallback(CacheBypassReason::ObjectUnavailable)
+            }
+        }
+    }
+
     pub fn index_mut(&mut self) -> &mut CacheAliasIndex {
         &mut self.index
     }
@@ -170,6 +230,7 @@ impl CacheAliasIndex {
             capacity,
             len: 0,
             by_origin: BTreeMap::new(),
+            by_delivery: BTreeMap::new(),
             insertion_order: VecDeque::with_capacity(capacity),
         })
     }
@@ -186,6 +247,9 @@ impl CacheAliasIndex {
             }
             return Err(CacheAliasError::ImmutableAliasConflict);
         }
+        if self.by_delivery.contains_key(&record.delivery_id) {
+            return Err(CacheAliasError::ImmutableAliasConflict);
+        }
 
         while self.len >= self.capacity {
             let Some((origin, alias)) = self.insertion_order.pop_front() else {
@@ -195,6 +259,10 @@ impl CacheAliasIndex {
         }
         self.insertion_order
             .push_back((record.site_origin.clone(), record.canonical_alias.clone()));
+        self.by_delivery.insert(
+            record.delivery_id.clone(),
+            (record.site_origin.clone(), record.canonical_alias.clone()),
+        );
         self.by_origin
             .entry(record.site_origin.clone())
             .or_default()
@@ -288,10 +356,11 @@ impl CacheAliasIndex {
     }
 
     pub fn invalidate_origin(&mut self, site_origin: &str) -> usize {
-        let removed = self
-            .by_origin
-            .remove(site_origin)
-            .map_or(0, |aliases| aliases.len());
+        let removed_records = self.by_origin.remove(site_origin).unwrap_or_default();
+        let removed = removed_records.len();
+        for record in removed_records.values() {
+            self.by_delivery.remove(&record.delivery_id);
+        }
         self.len = self.len.saturating_sub(removed);
         self.insertion_order
             .retain(|(origin, _)| origin != site_origin);
@@ -308,27 +377,36 @@ impl CacheAliasIndex {
         self.len == 0
     }
 
+    fn record_by_delivery(&self, delivery_id: &str) -> Option<&CacheAliasRecord> {
+        let (origin, alias) = self.by_delivery.get(delivery_id)?;
+        self.by_origin.get(origin)?.get(alias)
+    }
+
     fn remove(&mut self, site_origin: &str, canonical_alias: &str) -> bool {
         let Some(aliases) = self.by_origin.get_mut(site_origin) else {
             return false;
         };
-        let removed = aliases.remove(canonical_alias).is_some();
-        if removed {
+        let removed = aliases.remove(canonical_alias);
+        if let Some(record) = &removed {
+            self.by_delivery.remove(&record.delivery_id);
+        }
+        if removed.is_some() {
             self.len = self.len.saturating_sub(1);
         }
         if aliases.is_empty() {
             self.by_origin.remove(site_origin);
         }
-        removed
+        removed.is_some()
     }
 }
 
-fn immutable_identity(record: &CacheAliasRecord) -> (&str, &AuthorizedObjectReference) {
-    (&record.instance_id, &record.object)
+fn immutable_identity(record: &CacheAliasRecord) -> (&str, &str, &AuthorizedObjectReference) {
+    (&record.delivery_id, &record.instance_id, &record.object)
 }
 
 fn validate_record(record: &CacheAliasRecord) -> Result<(), CacheAliasError> {
     for (field, value) in [
+        ("delivery_id", record.delivery_id.as_str()),
         ("instance_id", record.instance_id.as_str()),
         ("adapter_id", record.adapter_id.as_str()),
         ("endpoint_id", record.object.endpoint_id.as_str()),
@@ -469,6 +547,7 @@ mod tests {
 
     fn record(index: usize) -> CacheAliasRecord {
         CacheAliasRecord {
+            delivery_id: format!("delivery-{index}"),
             instance_id: "ximg-instance-1".into(),
             site_origin: "https://site.example.invalid".into(),
             canonical_alias: format!("https://cdn.example.invalid/media/{index}.jpg"),
@@ -621,5 +700,26 @@ mod tests {
         let p95 = samples[samples.len() * 95 / 100];
         eprintln!("4,096-entry/10,000-query cache alias p95: {p95:?}");
         assert!(p95.as_millis() < 2, "p95 alias lookup was {p95:?}");
+    }
+
+    #[test]
+    fn delivery_revalidates_pairing_and_resolves_the_exact_image_object() {
+        let mut index = CacheAliasIndex::new(4).unwrap();
+        index.admit(record(1)).unwrap();
+        let service = CacheLookupService::new(index, [authorization()]).unwrap();
+        let CacheLookupOutcome::Hit(hit) =
+            service.authorize_image_delivery("actor-1", "pair-1", "delivery-1", 1_000)
+        else {
+            panic!("expected authorized image delivery");
+        };
+        assert_eq!(hit.object.object_key, "images/1.jpg");
+        assert_eq!(
+            service.authorize_image_delivery("other-actor", "pair-1", "delivery-1", 1_000),
+            CacheLookupOutcome::OriginFallback(CacheBypassReason::PairingInvalid)
+        );
+        assert_eq!(
+            service.authorize_image_delivery("actor-1", "pair-1", "missing", 1_000),
+            CacheLookupOutcome::Miss
+        );
     }
 }
