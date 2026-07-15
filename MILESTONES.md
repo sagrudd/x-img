@@ -558,6 +558,44 @@ Exit criteria:
 - rollback and recovery procedures have been exercised on a production-like
   Monas plus DASObjectStore deployment.
 
+## 1.1.0 — Pinakotheke monolith and local-first service
+
+Goal: make Pinakotheke useful as one coherent, locally runnable macOS service
+without weakening the Monas authentication or DASObjectStore byte-authority
+boundaries. ``pinakotheke-monolith`` is the distribution and process-composition
+framework: users install and operate one product experience, while its embedded
+or supervised components retain narrow authority interfaces.
+
+The default development and per-user installation root is ``~/.x-img`` with
+separate ``config``, metadata-only ``state``, ``run``, and ``logs`` directories.
+A dedicated ``~/.x-img/dasobjectstore`` subtree may hold a DASObjectStore-managed
+local development profile, but Pinakotheke must never treat that subtree as an
+ordinary writable media folder. Secret DASObjectStore configuration and keys
+remain in an OS-private configuration root such as
+``~/.config/dasobjectstore``.
+
+Exit criteria:
+
+- ``pinakotheke serve`` starts a coherent Axum/Yew service as the invoking user,
+  binds loopback by default, refuses an unreviewed public bind, and uses a
+  validated per-user root;
+- startup reports component readiness for Pinakotheke, Monas authentication,
+  and the selected endpoint plus logical ObjectStore without exposing secrets;
+- local media writes and reads use scoped DASObjectStore application contracts,
+  never direct filesystem access, even when the managed store is physically
+  below ``~/.x-img/dasobjectstore``;
+- the first-run flow provisions or discovers a named local ObjectStore, records
+  stable endpoint/store IDs, and keeps configuration, catalogue metadata,
+  runtime files, logs, credentials, and durable media in their correct
+  authority domains;
+- macOS supports foreground use and an optional per-user ``launchd`` service
+  with status, log, upgrade, rollback, and non-destructive uninstall behavior;
+- local authentication remains Monas/Prosopikon-owned; the monolith does not
+  invent Pinakotheke passwords, cookies, or a parallel session issuer; and
+- a clean-home end-to-end test proves first start, login, ObjectStore selection,
+  one synthetic ingest/read/restart reconciliation, and clean shutdown without
+  root privileges or hosted CI.
+
 ## Post-1.0 candidates
 
 - Synoptikon catalogue/plugin integration through the preserved host adapter

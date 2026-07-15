@@ -696,6 +696,32 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 ## Post-1.0
 
+- [ ] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Add
+  ``pinakotheke serve`` with a loopback-only default, validated ``~/.x-img``
+  root layout, Axum listener, coarse health/readiness, graceful shutdown, and
+  tests proving non-loopback binds require an explicit reviewed override. The
+  first slice may expose only public health plus unavailable component status;
+  it must not fake Monas authentication or DASObjectStore readiness.
+- [ ] **XIMG-091 P0 — Provision the managed local DASObjectStore profile.** Add
+  an explicit bounded macOS development profile rooted at
+  ``~/.x-img/dasobjectstore`` with private credentials under
+  ``~/.config/dasobjectstore``. Provision/discover a named logical ObjectStore
+  through DASObjectStore authority, retain stable endpoint/store IDs, and never
+  write media by treating the managed root as an ordinary directory.
+- [ ] **XIMG-092 P0 — Compose Monas authentication into the monolith.** Mount
+  the Pinakotheke product through Monas/Prosopikon, inject authenticated host
+  context into product APIs, and prove login/session/logout and direct-route
+  rejection without adding Pinakotheke-owned credentials or cookies.
+- [ ] **XIMG-093 P1 — Add macOS per-user service management.** Provide
+  non-root ``launchd`` install/status/logs/restart/uninstall commands with
+  absolute paths, private permissions, transactional updates, preserved state,
+  graceful shutdown, and no destructive uninstall default.
+- [ ] **XIMG-094 P0 — Prove clean-home monolith operation.** In an isolated
+  temporary home, start the service, complete Monas login, select the managed
+  local ObjectStore, commit and read one synthetic object through scoped DAS
+  contracts, restart and reconcile exactly once, then shut down cleanly. Record
+  bounded local evidence and do not rely on GitHub Actions.
+
 - [x] **XIMG-200 P3 — Add Synoptikon host/catalogue integration.** Completed
   in ``d0005bb``. A public ``mnemosyne.product.manifest.v1`` registration now
   declares dual-host support, Synoptikon entitlement/account/audit ownership,
