@@ -41,6 +41,7 @@ def main() -> int:
             "python3", "scripts/release/prepare_v1_cutover.py",
             "--root", str(candidate), "--apply", cwd=candidate,
         )
+        run("git", "init", "-q", cwd=candidate)
         run("cargo", "+1.97.0", "generate-lockfile", "--offline", cwd=candidate)
         run(
             "cargo", "+1.97.0", "metadata", "--format-version", "1",
@@ -51,6 +52,14 @@ def main() -> int:
         run("python3", "scripts/release/check_v1_cutover.py", "--phase", "cutover", cwd=candidate)
         run("python3", "packaging/check.py", "--source-only", "--product", "pinakotheke",
             "--version", "1.0.0", cwd=candidate)
+        child_env = {**os.environ, "PINAKOTHEKE_REHEARSAL_CHILD": "1"}
+        run("scripts/quality/check.sh", cwd=candidate, env=child_env)
+        run("scripts/audit/check.sh", cwd=candidate, env=child_env)
+        run("scripts/faults/check.sh", cwd=candidate, env=child_env)
+        run(
+            "scripts/contracts/check.sh", "--sibling-root", "/tmp/pinakotheke-no-siblings",
+            cwd=candidate, env=child_env,
+        )
     print("Pinakotheke v1 local cutover rehearsal passed; live 0.9 tree was not mutated")
     return 0
 

@@ -39,6 +39,14 @@ the public documentation lead. It then compiles and tests the renamed workspace
 and runs the strict local cutover and package-source gates. The live 0.9 tree is
 never modified and the temporary copy is deleted after verification.
 
+The rehearsal also runs the renamed repository's complete local quality,
+dependency/license/security audit, nine-case fault-recovery, public contract,
+and package-source suites. Release helpers select canonical crate paths,
+Pinakotheke is the default package identity, and package builders consume the
+activated Monas registration and Firefox manifest rather than the inert review
+candidates. This prevents a cutover that passes compilation but leaves release
+operations tied to pre-1.0 paths or inactive authority documents.
+
 The underlying transformer requires both an explicit root and ``--apply``. It
 is a release-operator mechanism, not an ordinary development command. During
 the real cutover it must be used only after the canonical GitHub repository and

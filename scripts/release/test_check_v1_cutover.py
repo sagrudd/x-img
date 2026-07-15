@@ -22,7 +22,11 @@ class CutoverGateTests(unittest.TestCase):
 
     def test_release_candidate_is_not_misrepresented_as_cutover_ready(self) -> None:
         checks = MODULE.current_checks(github=False)
-        self.assertTrue(any(not check.ready for check in checks))
+        workspace = (MODULE.ROOT / "Cargo.toml").read_text(encoding="utf-8")
+        if 'version = "1.0.0"' in workspace:
+            self.assertTrue(all(check.ready for check in checks))
+        else:
+            self.assertTrue(any(not check.ready for check in checks))
         self.assertTrue(next(check for check in checks if check.surface == "legacy-schemas").ready)
 
 

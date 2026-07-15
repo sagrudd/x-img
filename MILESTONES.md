@@ -529,6 +529,10 @@ Real x86_64 and arm64 DEB/RPM transition rehearsals now move from the published
 x-img 0.9 packages to temporary canonical Pinakotheke 1.0 packages and back,
 while preserving the legacy CLI alias, canonical host identity, and byte-exact
 metadata state.
+The isolated cutover now passes the complete renamed local quality, security,
+dependency/license audit, fault-recovery, public-contract, and packaging suites;
+canonical builders use active authority/Firefox documents and default to the
+Pinakotheke product rather than leaving release operations on candidate paths.
 
 Exit criteria:
 

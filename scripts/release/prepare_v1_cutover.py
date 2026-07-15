@@ -119,6 +119,37 @@ def apply(root: Path) -> None:
     replace(root / "docs/conf.py", 'html_title = "x-img documentation"', 'html_title = "Pinakotheke documentation"')
     replace(root / "packaging/Dockerfile.linux", "-p x-img-cli", "-p pinakotheke-cli")
     replace(root / "packaging/build-macos-pkg.sh", "-p x-img-cli", "-p pinakotheke-cli")
+    replace(root / "MILESTONES.md", "Version: 0.9.0", "Version: 1.0.0")
+    replace(root / "TODO.md", "Version: 0.9.0", "Version: 1.0.0")
+    replace(root / "Makefile", "PRODUCT ?= x-img", "PRODUCT ?= pinakotheke")
+    replace(
+        root / "packaging/Dockerfile.linux",
+        "contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json",
+        "contracts/monas/x-img-product-bootstrap.v1.json",
+    )
+    replace(
+        root / "packaging/build-macos-pkg.sh",
+        "contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json",
+        "contracts/monas/x-img-product-bootstrap.v1.json",
+    )
+    replace(
+        root / "packaging/check.py",
+        'ROOT / "contracts/monas/pinakotheke-product-bootstrap.v1.candidate.json"',
+        'ROOT / "contracts/monas/x-img-product-bootstrap.v1.json"',
+    )
+    replace(
+        root / "packaging/build-firefox.py",
+        'PINAKOTHEKE_MANIFEST = ROOT / "packaging/firefox/pinakotheke-manifest.v1.candidate.json"',
+        'PINAKOTHEKE_MANIFEST = ROOT / "firefox-extension/manifest.json"',
+    )
+    replace(root / "scripts/audit/check.py", "crates/x-img-web", "crates/pinakotheke-web")
+    replace(root / "scripts/release/check_upgrade_rollback.py", '"x-img-core"', '"pinakotheke-core"')
+    faults = root / "scripts/faults/check.py"
+    replace(faults, '"x-img-core"', '"pinakotheke-core"')
+    replace(faults, '"x-img-api"', '"pinakotheke-api"')
+    for document in (root / "docs").glob("*.rst"):
+        source = document.read_text(encoding="utf-8")
+        document.write_text(source.replace("-p x-img-", "-p pinakotheke-"), encoding="utf-8")
 
 
 def main() -> int:

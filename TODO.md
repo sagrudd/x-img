@@ -672,6 +672,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   network-isolated Debian/Fedora containers. Both CLI identities and the
   canonical Monas registration are verified, RPM/DEB successor metadata is
   explicit, and the synthetic authority/catalogue snapshot remains byte-exact.
+  The eighth delivery slice closes the post-rename tooling gap: the isolated
+  cutover now passes the complete quality, dependency/license/security audit,
+  nine-case fault-recovery, public-contract, and package-source suites. Release
+  helpers use canonical crate paths and active authority/Firefox documents, and
+  Pinakotheke becomes the default package identity only inside the coordinated
+  cutover transaction.
 
 ## Post-1.0
 

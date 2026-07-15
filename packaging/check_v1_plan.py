@@ -22,7 +22,9 @@ def main() -> int:
     dockerfile = (ROOT / "packaging/Dockerfile.linux").read_text()
     macos = (ROOT / "packaging/build-macos-pkg.sh").read_text()
     rpm = (ROOT / "packaging/x-img.spec").read_text()
-    assert "PRODUCT ?= x-img" in makefile
+    workspace = (ROOT / "Cargo.toml").read_text()
+    expected_default = "pinakotheke" if 'version = "1.0.0"' in workspace else "x-img"
+    assert f"PRODUCT ?= {expected_default}" in makefile
     assert "--build-arg PRODUCT_NAME=$(PRODUCT)" in makefile
     for source in (dockerfile, macos, rpm):
         assert "pinakotheke" in source
