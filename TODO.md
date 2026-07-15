@@ -541,7 +541,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
 
 ## 0.8.0–1.0.0 — Hardening and release
 
-- [ ] **XIMG-080 P0 — Add fault-injection and recovery suite.**
+- [x] **XIMG-080 P0 — Add fault-injection and recovery suite.**
+  Delivered in ``401adf6``. The strict synthetic matrix and one local runner
+  exercise bounded ingest, authority crash replay, destination revalidation,
+  scheduler cancellation, video-normalizer crash/cleanup, cache/capture
+  authority loss, and real-Firefox substitution failure. Evidence: workspace
+  fmt/check/test/clippy, wasm check, quality and public-contract checks, all
+  nine fault cases, prohibited-name scan, and the pinned Sphinx container build
+  plus run passed locally on 2026-07-15; hosted CI was not required.
 - [ ] **XIMG-081 P0 — Add migration/export/restore tests.**
 - [ ] **XIMG-082 P0 — Implement approved deletion/compliance reconciliation.**
 - [ ] **XIMG-083 P1 — Add redacted telemetry, health, and audit surfaces.**
