@@ -1,6 +1,6 @@
 # Pinakotheke milestones
 
-Status: 1.0 release cutover
+Status: 1.0 stable release
 
 Version: 1.0.0
 
@@ -507,6 +507,11 @@ Exit criteria:
 ## 1.0.0 — Stable personal archive
 
 Goal: stable public interfaces and dependable day-to-day operation.
+
+Published: ``v1.0.0`` is the canonical Pinakotheke release at
+https://github.com/sagrudd/pinakotheke/releases/tag/v1.0.0 with thirteen
+verified artifacts, checksums, typed manifest, CycloneDX SBOM, compatibility
+aliases, and complete local release evidence.
 
 Cutover control: ``make v1-preflight`` inventories the exact coordinated
 identity surface and names blockers safely during 0.9 development;

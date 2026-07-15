@@ -56,18 +56,19 @@ single-click refresh of configured social accounts.
 
 ## Current status
 
-The workspace and public repository have completed the coordinated Pinakotheke
-1.0 identity migration. Canonical 1.0 release artifacts, tag, and release notes
-remain the final release step. The unsigned `v0.9.0` x-img evaluation release
-candidate remains available from the
+The canonical `v1.0.0` Pinakotheke release is available from the
+[GitHub release page](https://github.com/sagrudd/pinakotheke/releases/tag/v1.0.0)
+with thirteen verified artifacts, checksums, a typed manifest, CycloneDX SBOM,
+and local release evidence. The earlier unsigned `v0.9.0` x-img evaluation
+release remains available from its historical
 [GitHub release page](https://github.com/sagrudd/x-img/releases/tag/v0.9.0),
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
 and dual-architecture upgrade/rollback evidence.
 
-The `1.0.0` Rust workspace provides shared model and core
-boundaries, a `clap` CLI, an Axum composition boundary, and a Yew client
-boundary compile without enabling any live source, storage, authentication, or
-media-payload integration. See [MILESTONES.md](MILESTONES.md) for release gates
+The `1.0.0` Rust workspace provides shared model and core boundaries, a `clap`
+CLI, an Axum composition boundary, and a Yew client boundary. It compiles
+without enabling unconfigured source, storage, authentication, or media-payload
+integration. See [MILESTONES.md](MILESTONES.md) for release gates
 and [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
 

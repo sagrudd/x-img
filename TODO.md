@@ -634,16 +634,25 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   connector/authority boundaries remain limited, and Pinakotheke is the 1.0
   coordinated migration. Published at
   https://github.com/sagrudd/x-img/releases/tag/v0.9.0.
-- [ ] **XIMG-088 P0 — Close all release blockers and publish 1.0.0.**
-  Acceptance includes the coordinated Pinakotheke rename/rebrand matrix and
+- [x] **XIMG-088 P0 — Close all release blockers and publish 1.0.0.**
+  Completed in ``79dbc72`` and ``99108b0`` and published as ``v1.0.0`` at
+  https://github.com/sagrudd/pinakotheke/releases/tag/v1.0.0. The coordinated
+  identity gate passed across the canonical repository, Rust workspace, Monas,
+  DASObjectStore, Firefox, packaging, and documentation surfaces while legacy
+  schemas and the ``x-img`` CLI alias remained compatible. Thirteen canonical
+  artifacts plus checksums and a typed release manifest were locally built,
+  verified, and published; the complete local quality, audit, fault, contract,
+  package-transition, Firefox, and containerized Sphinx evidence passed without
+  relying on hosted CI.
+  Acceptance included the coordinated Pinakotheke rename/rebrand matrix and
   repository migration, compatibility aliases/migrations, and local-container
   Sphinx documentation verification described above.
   The first delivery slice adds ``make v1-preflight`` and the deliberately
   strict ``make v1-cutover`` gate: the former proves the exact surface inventory
   while reporting current blockers, and the latter refuses release until every
   canonical identity and the public GitHub repository are ready together.
-  Remaining work is the coordinated identity implementation, compatibility
-  proof, repository rename, 1.0.0 packages/docs verification, tag, and release.
+  The coordinated identity implementation, compatibility proof, repository
+  rename, package/document verification, tag, and release are complete.
   The second delivery slice prepares a canonical ``pinakotheke`` executable and
   a warning-emitting ``x-img`` alias over one clap implementation, with golden
   parser-equivalence tests; 0.9 packages intentionally continue installing only
