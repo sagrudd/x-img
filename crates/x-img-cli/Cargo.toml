@@ -16,6 +16,10 @@ workspace = true
 name = "x-img"
 path = "src/main.rs"
 
+[[bin]]
+name = "pinakotheke"
+path = "src/bin/pinakotheke.rs"
+
 [dependencies]
 clap.workspace = true
 x-img-core = { path = "../x-img-core" }

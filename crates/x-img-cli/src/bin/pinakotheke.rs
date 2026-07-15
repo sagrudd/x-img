@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
-//! Legacy x-img compatibility entry point.
+//! Canonical Pinakotheke command entry point prepared for the v1 cutover.
 
 use std::process::ExitCode;
 
 use x_img_cli::{Invocation, parse_from, run};
 
 fn main() -> ExitCode {
-    execute(Invocation::Legacy)
-}
-
-fn execute(invocation: Invocation) -> ExitCode {
-    if let Some(notice) = invocation.notice() {
-        eprintln!("warning: {notice}");
-    }
+    let invocation = Invocation::Canonical;
     let cli = match parse_from(invocation, std::env::args_os()) {
         Ok(cli) => cli,
         Err(error) => error.exit(),

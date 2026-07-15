@@ -73,3 +73,15 @@ reader, migration proof, and GitHub state are all ready together. A failed
 cutover check is a release refusal, not a checklist warning. The report contains
 surface names only and never reads credentials, media, browsing history, or
 ObjectStore records.
+
+CLI compatibility preparation
+-----------------------------
+
+The 0.9 source builds both command entry points from one clap parser. The
+``pinakotheke`` command is the canonical v1 entry point. The ``x-img`` command
+parses and executes the same arguments and emits a bounded compatibility notice
+to standard error. It remains the only command installed by 0.9 packages, so
+preparing compatibility does not perform a partial public rename. At the
+coordinated v1 cutover, packages install both names and documentation leads with
+``pinakotheke``. The alias is retained through the documented compatibility
+window.

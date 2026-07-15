@@ -644,6 +644,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   canonical identity and the public GitHub repository are ready together.
   Remaining work is the coordinated identity implementation, compatibility
   proof, repository rename, 1.0.0 packages/docs verification, tag, and release.
+  The second delivery slice prepares a canonical ``pinakotheke`` executable and
+  a warning-emitting ``x-img`` alias over one clap implementation, with golden
+  parser-equivalence tests; 0.9 packages intentionally continue installing only
+  ``x-img`` until the coordinated cutover.
 
 ## Post-1.0
 

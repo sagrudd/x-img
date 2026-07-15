@@ -33,7 +33,8 @@ def contains(path: str, value: str) -> bool:
 
 def current_checks(*, github: bool) -> list[Check]:
     cargo = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
-    cli = (ROOT / "crates/x-img-cli/src/main.rs").read_text(encoding="utf-8")
+    cli_manifest = (ROOT / "crates/x-img-cli/Cargo.toml").read_text(encoding="utf-8")
+    cli_legacy = (ROOT / "crates/x-img-cli/src/main.rs").read_text(encoding="utf-8")
     monas = load_json(ROOT / "contracts/monas/x-img-product-bootstrap.v1.json")
     das = load_json(ROOT / "contracts/dasobjectstore/x-img-application-identity.v1.json")
     extension = load_json(ROOT / "firefox-extension/manifest.json")
@@ -44,7 +45,8 @@ def current_checks(*, github: bool) -> list[Check]:
               "Cargo repository is canonical"),
         Check("rust-workspace", '"crates/pinakotheke-' in cargo and '"crates/x-img-' not in cargo,
               "workspace packages use canonical names"),
-        Check("cli", 'name = "pinakotheke"' in cli and "legacy x-img" in cli,
+        Check("cli", 'name = "pinakotheke"' in cli_manifest and
+              'name = "x-img"' in cli_manifest and "Invocation::Legacy" in cli_legacy,
               "canonical CLI and documented legacy wrapper are present"),
         Check("monas-product", monas.get("product_id") == "pinakotheke",
               "canonical Monas product registration is active"),

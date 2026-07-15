@@ -7,6 +7,9 @@ All notable changes to x-img will be documented in this file. The project uses
 
 - Add an executable Pinakotheke v1 preflight and no-partial-cutover release
   gate that reports canonical identity blockers without exposing private data.
+- Prepare one shared clap implementation for the canonical ``pinakotheke``
+  command and behavior-preserving, warning-emitting ``x-img`` legacy alias;
+  0.9 packages continue to install only the legacy command.
 
 ## [0.9.0] - 2026-07-15
 
