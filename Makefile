@@ -11,7 +11,7 @@ BASELINE_VERSION ?=
 	linux-deb-x86_64 linux-deb-arm64 linux-rpm-x86_64 linux-rpm-arm64 \
 	macos-pkg macos-pkg-x86_64 macos-pkg-arm64 firefox firefox-macos-x86_64 \
 	firefox-macos-arm64 firefox-windows-x86_64 firefox-windows-arm64 \
-	firefox-linux-x86_64 firefox-linux-arm64 checksums verify upgrade-rollback quality clean
+	firefox-linux-x86_64 firefox-linux-arm64 sbom checksums verify upgrade-rollback quality clean
 
 help:
 	@echo "x-img $(VERSION) packaging targets"
@@ -20,6 +20,7 @@ help:
 	@echo "  make macos-pkg             Build macOS PKG for x86_64 and arm64 (macOS only)"
 	@echo "  make firefox               Build labelled XPIs for macOS/Windows/Linux x86_64/arm64"
 	@echo "  make verify                Verify produced package structure and checksums"
+	@echo "  make sbom                  Generate the deterministic CycloneDX release SBOM"
 	@echo "  make upgrade-rollback BASELINE_DIST=... BASELINE_VERSION=..."
 	@echo "                              Exercise genuine package upgrade/downgrade acceptance"
 	@echo "  make quality               Run local source, audit, and package checks"
@@ -69,7 +70,10 @@ firefox-linux-x86_64:
 firefox-linux-arm64:
 	python3 packaging/build-firefox.py --os linux --arch arm64 --version $(VERSION) --dist "$(DIST)"
 
-checksums:
+sbom:
+	python3 packaging/sbom.py --version $(VERSION) --dist "$(DIST)"
+
+checksums: sbom
 	python3 packaging/check.py --dist "$(DIST)" --version $(VERSION) --write-checksums
 
 verify:

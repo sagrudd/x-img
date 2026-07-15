@@ -42,8 +42,10 @@ def artifact_record(path: pathlib.Path, dist: pathlib.Path) -> dict[str, object]
     elif parts[0] == "linux":
         kind = "linux-deb" if path.suffix == ".deb" else "linux-rpm"
         os_name, arch = "linux", parts[1]
-    else:
+    elif parts[0] == "macos":
         kind, os_name, arch = "macos-pkg", "macos", parts[1]
+    else:
+        kind, os_name, arch = "cyclonedx-sbom", "all", "all"
     return {
         "path": relative,
         "kind": kind,
@@ -67,6 +69,7 @@ def main() -> int:
         print("packaging sources passed")
         return 0
     expected = [
+        args.dist / f"x-img-{args.version}.cdx.json",
         args.dist / "linux/x86_64" / f"x-img-{args.version}-linux-amd64.deb",
         args.dist / "linux/x86_64" / f"x-img-{args.version}-linux-x86_64.rpm",
         args.dist / "linux/arm64" / f"x-img-{args.version}-linux-arm64.deb",
@@ -91,6 +94,10 @@ def main() -> int:
             with zipfile.ZipFile(xpi) as archive:
                 assert "manifest.json" in archive.namelist()
                 assert json.loads(archive.read("manifest.json"))["version"] == args.version
+    sbom = json.loads((args.dist / f"x-img-{args.version}.cdx.json").read_text())
+    assert sbom["bomFormat"] == "CycloneDX"
+    assert sbom["specVersion"] == "1.6"
+    assert sbom["metadata"]["component"]["version"] == args.version
     checksums = "".join(f"{digest(path)}  {path.relative_to(args.dist)}\n" for path in artifacts)
     checksum_path = args.dist / "SHA256SUMS"
     release_manifest = {

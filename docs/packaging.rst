@@ -49,13 +49,16 @@ Expected outputs are:
 
 * Linux x86_64/arm64: four DEB/RPM files;
 * macOS x86_64/arm64: two PKG files; and
-* Firefox macOS/Windows/Linux x86_64/arm64: six XPI files.
+* Firefox macOS/Windows/Linux x86_64/arm64: six XPI files; and
+* one deterministic CycloneDX 1.6 software bill of materials.
 
-``make checksums`` writes ``dist/SHA256SUMS`` and a deterministic
+``make sbom`` inventories locked third-party Rust packages and the Firefox
+application component without contacting a hosted service. ``make checksums``
+writes ``dist/SHA256SUMS`` and a deterministic
 ``dist/release-manifest.v1.json``. The manifest identifies each artefact's
 kind, operating system, architecture, byte length, SHA-256, and signing state;
 development outputs explicitly say ``signed: false``. ``make verify`` requires
-all twelve artifacts, validates the six XPI manifests and product version, and
+all thirteen artifacts, validates the SBOM, six XPI manifests and product version, and
 rejects missing or stale checksum and release manifests. ``make quality``
 checks packaging sources alongside the existing local quality and release
 audits without requiring hosted CI.
