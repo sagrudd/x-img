@@ -107,9 +107,11 @@ guessing or collapsing other images on the page.
 Those paths now resolve only through the persisted catalogue and a
 Monas-authenticated, host-supplied DASObjectStore streaming-read backend.
 Pinakotheke validates MIME type, length, checksum, and ETag and streams without
-local persistence or origin fallback. The local CLI still requires a published
-DASObjectStore application-read transport before it can compose the live
-backend safely.
+local persistence or origin fallback. The packaged CLI now implements the
+first-party read helper through explicit endpoint/store-to-bucket authority and
+a host-owned scoped AWS profile; complete and ranged reads use private bounded
+ephemeral scratch which is deleted before the helper exits. A future daemon-
+native DAS read can replace this transport behind the unchanged helper port.
 Verified normalized-video records with matching Firefox profile evidence can
 now persist as one card containing separate DASObjectStore poster and rendition
 references. The poster uses authenticated image delivery and the rendition uses

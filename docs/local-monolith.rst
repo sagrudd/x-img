@@ -252,5 +252,6 @@ Next slices
 -----------
 
 XIMG-094 still proves a clean-home authenticated ingest/read/restart flow end
-to end. The host read adapter is now available; a matching DASObjectStore helper
-implementation and live commit/reconciliation path remain.
+to end. The host read adapter and first-party scoped DAS/S3 helper are now
+available; the live local authority commit/read/restart run remains. See
+:doc:`object-read` for the private helper configuration.

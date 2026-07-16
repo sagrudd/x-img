@@ -7,6 +7,11 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Added
 
+- Add the packaged first-party DASObjectStore read helper with explicit
+  endpoint/ObjectStore-to-bucket authority, host-owned AWS credentials,
+  completion-metadata verification, conditional and ranged reads, and bounded
+  automatically removed scratch.
+
 - Add isolated installed-Firefox acceptance for an observed linked thumbnail
   and trusted explicitly opened original through the production capture path.
 

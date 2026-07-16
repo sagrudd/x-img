@@ -59,6 +59,54 @@ The checked-in JSON Schema is
 This is a narrow host adapter, not a new authentication system: DASObjectStore
 or the composing host must supply the helper and retain all secret material.
 
+First-party DAS helper
+----------------------
+
+The packaged ``pinakotheke`` binary now implements the helper's hidden
+``read-v1`` command itself. Set ``PINAKOTHEKE_DAS_READ_HELPER_CONFIG`` to an
+absolute mode-``0600`` configuration file (the default is
+``$HOME/.x-img/config/das-object-read-helper.json``), then pass the same
+``pinakotheke`` executable as ``--object-read-helper``. A minimal configuration
+is:
+
+.. code-block:: json
+
+   {
+     "schema_version": "pinakotheke.das-object-read-helper.v1",
+     "endpoint_id": "local-docker-314985151",
+     "endpoint_url": "http://127.0.0.1:3900",
+     "region": "garage",
+     "profile": "pinakotheke",
+     "aws_executable": "/usr/local/bin/aws",
+     "stores": [
+       {"object_store_id": "pinakotheke_local", "bucket": "dos-pinakotheke-local"}
+     ],
+     "max_object_bytes": 1073741824
+   }
+
+The endpoint and every ObjectStore-to-bucket mapping are explicit; the helper
+never selects the first bucket or changes destination after reconnect. AWS
+credentials remain in the host-owned named profile or its credential process
+and never enter Pinakotheke configuration, requests, logs, or browser state.
+Only HTTPS endpoints are accepted, except explicit loopback HTTP development
+endpoints.
+
+The helper performs a bounded ``head-object`` before every read and requires
+the exact ``dasobjectstore-sha256`` metadata written by DASObjectStore's
+completion-bearing upload. It then uses structured ``s3api get-object``
+arguments, optionally with one reviewed byte range, into a private ephemeral
+directory. Length and metadata are verified before the response header is
+emitted; the supervisor additionally verifies the complete stream checksum.
+Scratch is deleted on every outcome and is never placed under the Pinakotheke
+root. Conditional checksum ETags avoid a payload read.
+
+The strict configuration schema is
+``contracts/dasobjectstore/pinakotheke-das-object-read-helper.v1.schema.json``.
+This first version uses the scoped S3 read granted by DASObjectStore because
+the current public ``dasobjectstore-remote`` client has no download command.
+Replacing it with a daemon-native read transport later does not change the
+``pinakotheke.object-read-helper.v1`` boundary.
+
 Service endpoint binding
 ------------------------
 
@@ -77,6 +125,6 @@ it from request data, silently select the first endpoint, or fall back to an
 origin URL.
 
 The adapter was reviewed against ``../DASObjectStore`` commit
-``8b6d94a284bca636525f4b3d56ad2bfc4fe864a1`` and its application-auth plus
+``5769f27859a58101aedd9de0087fc278fd3e4b16`` and its application-auth plus
 provider-stream range/checksum model. No sibling path dependency, browser
 credential, or backend path enters the public build.

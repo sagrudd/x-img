@@ -337,8 +337,11 @@ still required to close XIMG-096.
   executable with the authenticated web, catalogue, image/poster, and video
   range routes. Its bounded process protocol streams without a local payload
   file and verifies response metadata, length, process status, and full-read
-  checksum; host/DAS authentication remains outside Pinakotheke. A production
-  DAS helper plus the live capture/commit/restart proof remain.
+  checksum; host/DAS authentication remains outside Pinakotheke. The packaged
+  first-party helper now pins endpoint and ObjectStore-to-bucket mappings, uses
+  host-owned AWS credentials, verifies completion checksum metadata, supports
+  ranges, and deletes bounded private scratch. The live
+  capture/commit/read/restart proof remains.
   Object identity now includes the explicit positive immutable version required
   by DASObjectStore provider streams. It survives verified acquisition,
   normalized-video evidence, catalogue restart, authorized read resolution, and

@@ -444,22 +444,23 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   same Monas dispatch. Requests contain immutable object identity only;
   responses use bounded metadata plus a four-chunk streaming queue, with exact
   length, process status, and full-response SHA-256 verification and no local
-  payload file. DASObjectStore/host authentication remains helper-owned. A
-  production DASObjectStore helper implementation, live Monas session evidence,
-  capture/commit/restart reconciliation, and normalized gallery playback
-  remain.
+  payload file. DASObjectStore/host authentication remains helper-owned. The
+  packaged first-party helper now pins endpoint and ObjectStore-to-bucket
+  mappings, uses host-owned AWS credentials, verifies DAS completion checksum
+  metadata, supports one range, and deletes private bounded scratch. Live Monas
+  session evidence, capture/commit/restart reconciliation, and normalized
+  gallery playback remain.
   The helper prerequisite now maps DASObjectStore identity exactly: verified
   acquisitions and managed video objects carry a positive immutable object
   version; catalogue persistence, image/video grants, and helper requests
   preserve it. Legacy catalogue-v1 records default non-destructively to version
   1, while zero and missing new evidence fail closed. A helper can therefore
-  construct the authority's ``BackendObjectKey`` without guessing. The
-  production helper implementation remains the next slice.
+  construct the authority's ``BackendObjectKey`` without guessing.
   Managed macOS composition now requires the reviewed helper path and endpoint
   identity together, validates the stable identity, and pins it in the backend
   agent environment as non-secret authority scope. This prevents a helper from
-  silently following a request-selected endpoint. The DASObjectStore helper
-  binary and live authority proof still remain.
+  silently following a request-selected endpoint. The live authority proof
+  still remains.
   Verification on 2026-07-16: focused CLI tests, the repository quality gate,
   and local Sphinx 8.2.3 warnings-as-errors dummy build passed. The required
   container build could not start because Docker Desktop's local socket did not
@@ -1040,6 +1041,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   local ObjectStore, commit and read one synthetic object through scoped DAS
   contracts, restart and reconcile exactly once, then shut down cleanly. Record
   bounded local evidence and do not rely on GitHub Actions.
+  Progress on 2026-07-16: the packaged binary now implements the production
+  ``read-v1`` helper protocol using a strict mode-0600 endpoint/store-to-bucket
+  configuration, host-owned scoped AWS credentials, verified DAS checksum
+  metadata, conditional reads, bounded ranges, and always-cleaned private
+  ephemeral scratch. This was reviewed against DASObjectStore commit
+  ``5769f27859a58101aedd9de0087fc278fd3e4b16``. Docker Desktop did not recover
+  after a full application restart, so the clean-home live authority run is
+  the next executable step rather than simulated evidence.
+  Verification: all 172 workspace tests, strict workspace Clippy, repository
+  quality/privacy/version checks, release security/license audits, and
+  warnings-denied Sphinx 8.2.3 pass locally.
 
 - [x] **XIMG-200 P3 — Add Synoptikon host/catalogue integration.** Completed
   in ``d0005bb``. A public ``mnemosyne.product.manifest.v1`` registration now

@@ -8,6 +8,7 @@ use x_img_core::{ConfigStore, build_info};
 
 mod capture_worker_helper;
 mod das_capture_helper;
+mod das_object_read_helper;
 mod launchd;
 mod local_objectstore;
 mod monolith;
@@ -77,6 +78,9 @@ enum Command {
     /// Internal DASObjectStore-backed capture helper protocol.
     #[command(name = "acquire-image-v1", hide = true)]
     AcquireImageV1,
+    /// Internal DASObjectStore-backed object read helper protocol.
+    #[command(name = "read-v1", hide = true)]
+    ReadObjectV1,
     /// Strictly validate and inspect a local versioned configuration file.
     Config {
         #[command(subcommand)]
@@ -155,6 +159,7 @@ pub fn run(invocation: Invocation, cli: Cli) -> Result<(), Box<dyn std::error::E
         Some(Command::Service { command }) => launchd::run(command)?,
         Some(Command::Capture { command }) => monolith::run_capture(command)?,
         Some(Command::AcquireImageV1) => das_capture_helper::run()?,
+        Some(Command::ReadObjectV1) => das_object_read_helper::run()?,
     }
     Ok(())
 }
@@ -224,5 +229,12 @@ mod tests {
         let cli = parse_from(Invocation::Canonical, ["pinakotheke", "acquire-image-v1"])
             .expect("helper protocol parses");
         assert!(matches!(cli.command, Some(Command::AcquireImageV1)));
+    }
+
+    #[test]
+    fn packaged_binary_accepts_the_object_read_helper_protocol_command() {
+        let cli = parse_from(Invocation::Canonical, ["pinakotheke", "read-v1"])
+            .expect("object read helper protocol parses");
+        assert!(matches!(cli.command, Some(Command::ReadObjectV1)));
     }
 }
