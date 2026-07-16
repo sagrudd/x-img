@@ -312,8 +312,11 @@ end-to-end gate for this intent.
 - XIMG-051 implements source/account navigation (commit `ffdd275`): All, X,
   Instagram, and website contexts share one catalogue view with explicit
   selection and source counts.
-- XIMG-056 implements client-side metadata search (commit `fd07323`) for the
-  first-version synthetic browser; catalogue-backed structured filters follow.
+- XIMG-056 began with client-side metadata search (commit `fd07323`). The
+  XIMG-096 gallery now filters its persistent catalogue server-side by source,
+  media, review, availability, time, and bounded text before stable pagination;
+  Yew preserves the selected query while incrementally loading honest
+  100-record pages. Viewport windowing and real-Firefox scale evidence remain.
 - XIMG-055 implements visible refresh progress (commit `a48fc13`) with a single
   action, per-account state, partial failure, retry, and new-item summary.
 - XIMG-054 implements word-first review states and reversible batch actions

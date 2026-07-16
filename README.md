@@ -103,6 +103,11 @@ references. The poster uses authenticated image delivery and the rendition uses
 authenticated single-range playback with strict MIME, length, checksum, ETag,
 and range validation. Planned, source-only, unproven, or conflicting video is
 not catalogue-ready.
+Catalogue browsing now applies bounded source, media, review, availability,
+time, and metadata-text filters on the authenticated server before stable
+pagination. The Yew library preserves source/text queries while loading
+explicit 100-record pages and reports matching and total counts, avoiding the
+former silent 200-card truncation.
 
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,

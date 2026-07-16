@@ -99,12 +99,26 @@ pub struct GalleryPage {
     pub schema_version: &'static str,
     pub items: Vec<GalleryItem>,
     pub next_offset: Option<usize>,
+    pub matched_items: usize,
+    pub total_items: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GalleryCatalogueFilter {
+    pub source_kind: Option<GallerySourceKind>,
+    pub media_kind: Option<GalleryMediaKind>,
+    pub review_state: Option<GalleryReviewState>,
+    pub availability: Option<GalleryObjectAvailability>,
+    pub discovered_from_epoch_seconds: Option<u64>,
+    pub discovered_to_epoch_seconds: Option<u64>,
+    pub text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GalleryCatalogueError {
     Unauthorized,
     InvalidPageSize,
+    InvalidFilter,
     InvalidItem(String),
 }
 
@@ -315,18 +329,65 @@ impl GalleryCatalogue {
         if limit == 0 || limit > MAX_GALLERY_PAGE_SIZE {
             return Err(GalleryCatalogueError::InvalidPageSize);
         }
-        let items = self
-            .items
-            .iter()
+        self.filtered_page(context, offset, limit, &GalleryCatalogueFilter::default())
+    }
+
+    pub fn filtered_page(
+        &self,
+        context: &AuthenticatedHostContext,
+        offset: usize,
+        limit: usize,
+        filter: &GalleryCatalogueFilter,
+    ) -> Result<GalleryPage, GalleryCatalogueError> {
+        if context.host_mode() != HostMode::MonasStandalone || !context.permits(XIMG_ACCESS) {
+            return Err(GalleryCatalogueError::Unauthorized);
+        }
+        if limit == 0 || limit > MAX_GALLERY_PAGE_SIZE {
+            return Err(GalleryCatalogueError::InvalidPageSize);
+        }
+        let normalized_text = validate_filter(filter)?;
+        let matches = self.items.iter().filter(|item| {
+            filter
+                .source_kind
+                .is_none_or(|value| item.source_kind == value)
+                && filter
+                    .media_kind
+                    .is_none_or(|value| item.media_kind == value)
+                && filter
+                    .review_state
+                    .is_none_or(|value| item.review_state == value)
+                && filter.availability.is_none_or(|value| {
+                    item.thumbnail.availability == value
+                        || item
+                            .preview
+                            .as_ref()
+                            .is_some_and(|preview| preview.availability == value)
+                })
+                && filter
+                    .discovered_from_epoch_seconds
+                    .is_none_or(|value| item.discovered_at_epoch_seconds >= value)
+                && filter
+                    .discovered_to_epoch_seconds
+                    .is_none_or(|value| item.discovered_at_epoch_seconds <= value)
+                && normalized_text.as_ref().is_none_or(|text| {
+                    item.title.to_lowercase().contains(text)
+                        || item.source_label.to_lowercase().contains(text)
+                        || item.catalogue_id.to_lowercase().contains(text)
+                })
+        });
+        let matched_items = matches.clone().count();
+        let items = matches
             .skip(offset)
             .take(limit)
             .cloned()
             .collect::<Vec<_>>();
-        let next_offset = (offset + items.len() < self.items.len()).then_some(offset + items.len());
+        let next_offset = (offset + items.len() < matched_items).then_some(offset + items.len());
         Ok(GalleryPage {
             schema_version: GALLERY_CATALOGUE_SCHEMA,
             items,
             next_offset,
+            matched_items,
+            total_items: self.items.len(),
         })
     }
 
@@ -429,6 +490,29 @@ impl GalleryCatalogue {
     pub fn items(&self) -> &[GalleryItem] {
         &self.items
     }
+}
+
+fn validate_filter(
+    filter: &GalleryCatalogueFilter,
+) -> Result<Option<String>, GalleryCatalogueError> {
+    if filter
+        .discovered_from_epoch_seconds
+        .zip(filter.discovered_to_epoch_seconds)
+        .is_some_and(|(from, to)| from > to)
+    {
+        return Err(GalleryCatalogueError::InvalidFilter);
+    }
+    let Some(text) = filter.text.as_deref() else {
+        return Ok(None);
+    };
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    if text.chars().count() > 128 || text.chars().any(char::is_control) {
+        return Err(GalleryCatalogueError::InvalidFilter);
+    }
+    Ok(Some(text.to_lowercase()))
 }
 
 fn validate_item(item: &GalleryItem) -> Result<(), GalleryCatalogueError> {
@@ -547,6 +631,71 @@ mod tests {
         let page = catalogue.page(&context, 0, 1).unwrap();
         assert_eq!(page.items[0].catalogue_id, "newer");
         assert_eq!(page.next_offset, Some(1));
+        assert_eq!(page.matched_items, 2);
+        assert_eq!(page.total_items, 2);
+    }
+
+    #[test]
+    fn filters_before_pagination_and_rejects_unbounded_queries() {
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .unwrap();
+        let mut video = item("video", 3);
+        video.title = "A calm ocean film".into();
+        video.media_kind = GalleryMediaKind::NormalizedVideo;
+        video.review_state = GalleryReviewState::Reviewed;
+        video.thumbnail.kind = GalleryRepresentationKind::VideoPoster;
+        video.preview = Some(GalleryRepresentation {
+            kind: GalleryRepresentationKind::NormalizedVideo,
+            content_type: "video/mp4".into(),
+            ..representation(GalleryObjectAvailability::Ready)
+        });
+        let catalogue = GalleryCatalogue::new(vec![item("image", 2), video]).unwrap();
+        let page = catalogue
+            .filtered_page(
+                &context,
+                0,
+                1,
+                &GalleryCatalogueFilter {
+                    media_kind: Some(GalleryMediaKind::NormalizedVideo),
+                    review_state: Some(GalleryReviewState::Reviewed),
+                    text: Some(" OCEAN ".into()),
+                    ..GalleryCatalogueFilter::default()
+                },
+            )
+            .unwrap();
+        assert_eq!(page.items[0].catalogue_id, "video");
+        assert_eq!(page.matched_items, 1);
+        assert_eq!(page.total_items, 2);
+        assert_eq!(page.next_offset, None);
+
+        assert_eq!(
+            catalogue.filtered_page(
+                &context,
+                0,
+                20,
+                &GalleryCatalogueFilter {
+                    discovered_from_epoch_seconds: Some(4),
+                    discovered_to_epoch_seconds: Some(3),
+                    ..GalleryCatalogueFilter::default()
+                }
+            ),
+            Err(GalleryCatalogueError::InvalidFilter)
+        );
+        assert_eq!(
+            catalogue.filtered_page(
+                &context,
+                0,
+                20,
+                &GalleryCatalogueFilter {
+                    text: Some("x".repeat(129)),
+                    ..GalleryCatalogueFilter::default()
+                }
+            ),
+            Err(GalleryCatalogueError::InvalidFilter)
+        );
     }
 
     #[test]

@@ -26,8 +26,9 @@ use x_img_core::{
         CacheRepresentation,
     },
     gallery_catalogue::{
-        GalleryCatalogue, GalleryCatalogueError, GalleryImageResolveError, GalleryImageRole,
-        GalleryPage,
+        GalleryCatalogue, GalleryCatalogueError, GalleryCatalogueFilter, GalleryImageResolveError,
+        GalleryImageRole, GalleryMediaKind, GalleryObjectAvailability, GalleryPage,
+        GalleryReviewState, GallerySourceKind,
     },
     host_context::{
         AuthenticatedHostContext, HostContextAdapter, MonasHostContextAdapter, XIMG_ACCESS,
@@ -513,6 +514,22 @@ struct CataloguePageQuery {
     limit: usize,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GalleryCatalogueQuery {
+    #[serde(default)]
+    offset: usize,
+    #[serde(default = "default_catalogue_limit")]
+    limit: usize,
+    source_kind: Option<GallerySourceKind>,
+    media_kind: Option<GalleryMediaKind>,
+    review_state: Option<GalleryReviewState>,
+    availability: Option<GalleryObjectAvailability>,
+    discovered_from_epoch_seconds: Option<u64>,
+    discovered_to_epoch_seconds: Option<u64>,
+    text: Option<String>,
+}
+
 const fn default_catalogue_limit() -> usize {
     100
 }
@@ -537,16 +554,30 @@ async fn synoptikon_catalogue(
 async fn gallery_catalogue(
     context: Option<Extension<AuthenticatedHostContext>>,
     catalogue: Option<Extension<MonasGalleryCatalogue>>,
-    Query(query): Query<CataloguePageQuery>,
+    Query(query): Query<GalleryCatalogueQuery>,
 ) -> Result<Json<GalleryPage>, StatusCode> {
     let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
     let catalogue = catalogue.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
     catalogue
-        .page(&context, query.offset, query.limit)
+        .filtered_page(
+            &context,
+            query.offset,
+            query.limit,
+            &GalleryCatalogueFilter {
+                source_kind: query.source_kind,
+                media_kind: query.media_kind,
+                review_state: query.review_state,
+                availability: query.availability,
+                discovered_from_epoch_seconds: query.discovered_from_epoch_seconds,
+                discovered_to_epoch_seconds: query.discovered_to_epoch_seconds,
+                text: query.text,
+            },
+        )
         .map(Json)
         .map_err(|error| match error {
             GalleryCatalogueError::Unauthorized => StatusCode::FORBIDDEN,
             GalleryCatalogueError::InvalidPageSize => StatusCode::BAD_REQUEST,
+            GalleryCatalogueError::InvalidFilter => StatusCode::BAD_REQUEST,
             GalleryCatalogueError::InvalidItem(_) => StatusCode::INTERNAL_SERVER_ERROR,
         })
 }
@@ -1667,6 +1698,8 @@ mod tests {
         let body = to_bytes(response.into_body(), 8192).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["schema_version"], "pinakotheke.gallery-catalogue.v1");
+        assert_eq!(json["matched_items"], 1);
+        assert_eq!(json["total_items"], 1);
         assert_eq!(
             json["items"][0]["thumbnail"]["delivery_path"],
             "/api/gallery/v1/objects/thumbnail-1"
@@ -1685,6 +1718,40 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+
+        let context = MonasHostContextAdapter
+            .authenticate(MONAS_CONTEXT.as_bytes())
+            .unwrap();
+        let filtered = router_with_gallery_catalogue(gallery_catalogue())
+            .layer(Extension(context))
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/gallery/v1/catalogue?source_kind=website&media_kind=image&review_state=new&availability=ready&text=redistributable&limit=1")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(filtered.status(), StatusCode::OK);
+        let body = to_bytes(filtered.into_body(), 8192).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["matched_items"], 1);
+        assert_eq!(json["items"][0]["catalogue_id"], "media-1");
+
+        let context = MonasHostContextAdapter
+            .authenticate(MONAS_CONTEXT.as_bytes())
+            .unwrap();
+        let invalid = router_with_gallery_catalogue(gallery_catalogue())
+            .layer(Extension(context))
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/gallery/v1/catalogue?discovered_from_epoch_seconds=2&discovered_to_epoch_seconds=1")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

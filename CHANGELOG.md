@@ -25,6 +25,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Persist only Firefox-proven ready normalized videos as poster-backed gallery
   cards and deliver their exact rendition through authenticated, validated
   single-range playback without local bytes or origin fallback.
+- Add bounded server-side persistent-gallery filters, honest matched/total
+  counts, and query-preserving incremental Yew pagination instead of silently
+  truncating the real library at 200 cards.
 - Add the XIMG-200 Synoptikon product manifest, strict tenant/account/project
   host scope, and bounded authenticated catalogue projection over immutable
   DASObjectStore references.

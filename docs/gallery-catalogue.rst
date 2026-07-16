@@ -10,7 +10,31 @@ The first XIMG-096 slice defines ``GET /api/gallery/v1/catalogue``. Monas must
 authenticate the browser session and inject a validated standalone host context
 before this endpoint is reachable. Direct unauthenticated access is rejected.
 The endpoint is bounded to 200 records per page and returns newest records
-first with a stable catalogue-ID tie break.
+first with a stable catalogue-ID tie break. Every page reports both the number
+of records matching the complete server query and the unfiltered catalogue
+total, so the interface never presents a truncated page as the complete
+library.
+
+Bounded filtering and incremental browsing
+------------------------------------------
+
+The authenticated catalogue accepts exact ``source_kind``, ``media_kind``,
+``review_state``, and representation ``availability`` filters, inclusive
+``discovered_from_epoch_seconds`` and ``discovered_to_epoch_seconds`` bounds,
+and a case-insensitive metadata ``text`` search over title, source label, and
+catalogue ID. Filtering occurs before offset pagination. An inverted time
+range, control characters, text longer than 128 characters, a zero page size,
+or a page larger than 200 records is rejected instead of broadening the query.
+
+The Yew library sends its selected All/X/Website context and metadata text to
+this server boundary. It initially requests 100 records and exposes an
+explicit ``Load next 100 records`` action while ``next_offset`` is present.
+The source and text query are preserved across subsequent pages, filter changes
+restart at the newest matching record, and the page states exactly how many
+matching and total catalogue records exist. This removes the former silent
+200-card truncation without putting the entire persistent catalogue in browser
+memory. True viewport windowing and the real large-catalogue Firefox acceptance
+run remain part of XIMG-096.
 
 Object authority and availability
 ---------------------------------
@@ -39,8 +63,8 @@ The Yew gallery requests the same endpoint through Monas at
 ``/products/pinakotheke/api/gallery/v1/catalogue``. It does not contain a
 synthetic fallback catalogue or proxy artwork. Ready thumbnail and poster paths
 render directly in dense cards; ready original-image and normalized-video paths
-render in the keyboard-accessible preview pane. The web client derives source
-counts and filters from the returned X-account or website classification.
+render in the keyboard-accessible preview pane. The web client requests
+source-filtered pages using the returned X-account or website classification.
 Instagram capture remains part of the normal website class.
 
 Loading, empty, permission-denied, transport-error, unsupported-schema, and

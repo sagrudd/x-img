@@ -417,6 +417,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   partial MP4, and multi-range rejection after restart-safe admission. Live CLI
   DASObjectStore transport, real Firefox restart/play/seek/pause/resume,
   browser failure reconciliation, and large-catalogue virtualization remain.
+  Persistent catalogue queries now apply bounded source/media/review/
+  availability/time/text filters before stable pagination and report matched
+  plus unfiltered totals. Yew sends source and text filters to that
+  authenticated boundary, restarts at the newest match when they change, and
+  incrementally loads the next 100 records without the former silent 200-card
+  truncation. Real-Firefox scale evidence and true viewport windowing remain.
 
 ## 0.6.0 — Firefox capture
 

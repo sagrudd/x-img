@@ -12,7 +12,8 @@ use x_img_core::gallery_catalogue::{
 };
 use yew::prelude::*;
 
-const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue?limit=200";
+const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue";
+const GALLERY_PAGE_SIZE: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -20,12 +21,19 @@ struct GalleryPageResponse {
     schema_version: String,
     items: Vec<GalleryItem>,
     next_offset: Option<usize>,
+    matched_items: usize,
+    total_items: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum GalleryLoadState {
     Loading,
-    Ready(Vec<GalleryItem>),
+    Ready {
+        items: Vec<GalleryItem>,
+        next_offset: Option<usize>,
+        matched_items: usize,
+        total_items: usize,
+    },
     PermissionDenied,
     TransportError,
     InvalidResponse,
@@ -67,12 +75,30 @@ fn ready_path(representation: &GalleryRepresentation) -> Option<&str> {
         .flatten()
 }
 
-fn source_matches(selected: &str, item: &GalleryItem) -> bool {
-    match selected {
-        "x" => item.source_kind == GallerySourceKind::XAccount,
-        "websites" => item.source_kind == GallerySourceKind::Website,
-        _ => true,
+fn encode_query(value: &str) -> String {
+    let mut encoded = String::new();
+    for byte in value.as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(char::from(*byte));
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
     }
+    encoded
+}
+
+fn gallery_url(offset: usize, selected: &str, text: &str) -> String {
+    let mut url = format!("{GALLERY_API}?offset={offset}&limit={GALLERY_PAGE_SIZE}");
+    match selected {
+        "x" => url.push_str("&source_kind=x_account"),
+        "websites" => url.push_str("&source_kind=website"),
+        _ => {}
+    }
+    if !text.trim().is_empty() {
+        url.push_str("&text=");
+        url.push_str(&encode_query(text.trim()));
+    }
+    url
 }
 
 fn focus_by_id(id: &str) {
@@ -118,33 +144,54 @@ pub fn app() -> Html {
     let object_view = use_state(|| true);
     let filter = use_state(String::new);
     let gallery = use_state(|| GalleryLoadState::Loading);
+    let request_generation = use_mut_ref(|| 0_u64);
 
     {
         let gallery = gallery.clone();
-        use_effect_with((), move |()| {
-            spawn_local(async move {
-                let state = match Request::get(GALLERY_API).send().await {
-                    Ok(response) if matches!(response.status(), 401 | 403) => {
-                        GalleryLoadState::PermissionDenied
-                    }
-                    Ok(response) if response.ok() => {
-                        match response.json::<GalleryPageResponse>().await {
-                            Ok(page) if page.schema_version == GALLERY_CATALOGUE_SCHEMA => {
-                                GalleryLoadState::Ready(page.items)
-                            }
-                            _ => GalleryLoadState::InvalidResponse,
-                        }
-                    }
-                    Ok(_) | Err(_) => GalleryLoadState::TransportError,
+        let active_card = active_card.clone();
+        let request_generation = request_generation.clone();
+        use_effect_with(
+            ((*selected).clone(), (*filter).clone()),
+            move |(selected, filter)| {
+                let url = gallery_url(0, selected, filter);
+                let generation = {
+                    let mut current = request_generation.borrow_mut();
+                    *current += 1;
+                    *current
                 };
-                gallery.set(state);
-            });
-            || ()
-        });
+                gallery.set(GalleryLoadState::Loading);
+                active_card.set(0);
+                spawn_local(async move {
+                    let state = match Request::get(&url).send().await {
+                        Ok(response) if matches!(response.status(), 401 | 403) => {
+                            GalleryLoadState::PermissionDenied
+                        }
+                        Ok(response) if response.ok() => {
+                            match response.json::<GalleryPageResponse>().await {
+                                Ok(page) if page.schema_version == GALLERY_CATALOGUE_SCHEMA => {
+                                    GalleryLoadState::Ready {
+                                        items: page.items,
+                                        next_offset: page.next_offset,
+                                        matched_items: page.matched_items,
+                                        total_items: page.total_items,
+                                    }
+                                }
+                                _ => GalleryLoadState::InvalidResponse,
+                            }
+                        }
+                        Ok(_) | Err(_) => GalleryLoadState::TransportError,
+                    };
+                    if *request_generation.borrow() == generation {
+                        gallery.set(state);
+                    }
+                });
+                || ()
+            },
+        );
     }
 
     let items = match &*gallery {
-        GalleryLoadState::Ready(items) => items.as_slice(),
+        GalleryLoadState::Ready { items, .. } => items.as_slice(),
         _ => &[],
     };
     let sources = [
@@ -178,7 +225,6 @@ pub fn app() -> Html {
     }
 
     let selected_card = items.get(*active_card).cloned();
-    let filter_text = (*filter).to_ascii_lowercase();
     html! {
         <div class="mn-app-shell ximg-shell">
             <header class="ximg-shell__header" aria-label="x-img workspace">
@@ -208,7 +254,7 @@ pub fn app() -> Html {
                             placeholder="Account, media type, date"
                         />
                     </label>
-                    <p>{if filter.is_empty() { "Filters: all records" } else { "Filter active: matching synthetic records" }}</p>
+                    <p>{if filter.is_empty() { "Filters: all catalogue records" } else { "Filter active: server-matched catalogue metadata" }}</p>
                 </section>
 
                 <section class="ximg-refresh" aria-labelledby="refresh-title">
@@ -320,20 +366,17 @@ pub fn app() -> Html {
                                 <p>{ "The response schema was not accepted. Update the host and Pinakotheke together." }</p>
                             </div>
                         },
-                        GalleryLoadState::Ready(records) if records.is_empty() => html! {
+                        GalleryLoadState::Ready { items: records, .. } if records.is_empty() => html! {
                             <div class="ximg-gallery__state" role="status">
                                 <h3>{ "No committed media" }</h3>
                                 <p>{ "Media appears after Firefox capture and verified DASObjectStore admission." }</p>
                             </div>
                         },
-                        GalleryLoadState::Ready(records) => html! {
+                        GalleryLoadState::Ready { items: records, next_offset, matched_items, total_items } => html! {
+                            <>
+                            <p role="status">{ format!("Loaded {} of {} catalogue records ({} total before server filters)", records.len(), matched_items, total_items) }</p>
                             <div class={classes!("ximg-gallery__grid", format!("is-{}", *density))}>
-                                { for records.iter().enumerate().filter(|(_, item)| {
-                                    source_matches(&selected, item)
-                                        && (item.title.to_ascii_lowercase().contains(&filter_text)
-                                            || item.source_label.to_ascii_lowercase().contains(&filter_text)
-                                            || media_label(item).to_ascii_lowercase().contains(&filter_text))
-                                }).map(|(index, item)| {
+                                { for records.iter().enumerate().map(|(index, item)| {
                                     let active_card = active_card.clone();
                                     let preview_open = preview_open.clone();
                                     let preview_mode = preview_mode.clone();
@@ -362,6 +405,37 @@ pub fn app() -> Html {
                                     }
                                 }) }
                             </div>
+                            { if let Some(offset) = *next_offset {
+                                let gallery = gallery.clone();
+                                let selected = (*selected).clone();
+                                let filter = (*filter).clone();
+                                let request_generation = request_generation.clone();
+                                html! {
+                                    <button class="ximg-gallery__more" onclick={Callback::from(move |_| {
+                                        let gallery = gallery.clone();
+                                        let url = gallery_url(offset, &selected, &filter);
+                                        let request_generation = request_generation.clone();
+                                        let generation = *request_generation.borrow();
+                                        spawn_local(async move {
+                                            let Ok(response) = Request::get(&url).send().await else { return; };
+                                            let Ok(page) = response.json::<GalleryPageResponse>().await else { return; };
+                                            if page.schema_version != GALLERY_CATALOGUE_SCHEMA { return; }
+                                            if *request_generation.borrow() != generation { return; }
+                                            if let GalleryLoadState::Ready { items, .. } = &*gallery {
+                                                let mut combined = items.clone();
+                                                combined.extend(page.items);
+                                                gallery.set(GalleryLoadState::Ready {
+                                                    items: combined,
+                                                    next_offset: page.next_offset,
+                                                    matched_items: page.matched_items,
+                                                    total_items: page.total_items,
+                                                });
+                                            }
+                                        });
+                                    })}>{ "Load next 100 records" }</button>
+                                }
+                            } else { Html::default() } }
+                            </>
                         },
                     }}
                 </section>
@@ -529,7 +603,17 @@ mod tests {
         media.thumbnail = representation(GalleryObjectAvailability::Unavailable, None);
         assert_eq!(object_label(&media), "Object unavailable");
         assert_eq!(ready_path(&media.thumbnail), None);
-        assert!(source_matches("websites", &media));
-        assert!(!source_matches("x", &media));
+    }
+
+    #[test]
+    fn catalogue_queries_preserve_bounded_server_filters_across_pages() {
+        assert_eq!(
+            gallery_url(100, "websites", " calm ocean & film "),
+            "/products/pinakotheke/api/gallery/v1/catalogue?offset=100&limit=100&source_kind=website&text=calm%20ocean%20%26%20film"
+        );
+        assert_eq!(
+            gallery_url(0, "x", ""),
+            "/products/pinakotheke/api/gallery/v1/catalogue?offset=0&limit=100&source_kind=x_account"
+        );
     }
 }
