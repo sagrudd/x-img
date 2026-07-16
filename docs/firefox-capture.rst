@@ -50,7 +50,10 @@ The endpoint accepts strict JSON with schema version
 ``x-img.capture-request.v1``. Its required metadata is an opaque pairing
 reference, exact site origin, the current page URL, adapter kind and version,
 capture kind, source media URL, and positive dimensions. Query and fragment
-components are removed immediately. It has no payload field, headers field,
+components are removed immediately. A linked image may add a presentation URL
+that correlates the displayed thumbnail with the original the link opens; it
+does not authorize acquisition of anything the user did not observe or open.
+It has no payload field, headers field,
 cookie field, browser-history list, form field, credential field, or storage
 authority field.
 
@@ -285,13 +288,16 @@ therefore owns provider verification and catalogue completion. Scratch is
 deleted on success and every error; no payload is written beneath the
 Pinakotheke product root.
 
-The page plus canonical media URL produces a stable gallery identity, so a page
-with several images retains several cards rather than collapsing them. An
-original with the same canonical URL enriches its observed card. Sites whose
-thumbnail and opened original use different URLs still require a future
-explicit browser correlation field; until then the original remains pending
-rather than being guessed onto another card. Object keys and positive immutable
-versions derive from the payload checksum, making exact retries idempotent.
+For a linked thumbnail, Firefox submits the visible media URL for acquisition
+and the link target as a separate presentation URL. A later trusted click on
+that link submits the same presentation URL with the opened original. Query and
+fragment data are removed server-side. Pinakotheke derives the catalogue ID
+from the site, page, and canonical presentation URL, so distinct thumbnail and
+original URLs converge without collapsing several images on one page. The
+helper's compatibility ``catalogue_id`` response cannot override this identity.
+Legacy requests and journals without a presentation URL use their canonical
+media URL and remain readable. Object keys and positive immutable versions
+derive from the payload checksum, making exact retries idempotent.
 Standard output remains empty and all child diagnostics are suppressed; only
 the strict metadata receipt is written to standard error. The configuration
 schema is

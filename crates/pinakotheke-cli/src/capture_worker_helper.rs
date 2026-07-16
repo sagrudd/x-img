@@ -51,7 +51,8 @@ struct AcquireRequest<'a> {
 enum AcquireResponse {
     Committed {
         schema_version: String,
-        catalogue_id: String,
+        #[serde(rename = "catalogue_id")]
+        _catalogue_id: String,
         title: String,
         content_type: String,
         content_length: u64,
@@ -156,7 +157,7 @@ pub(crate) fn acquire(
     }
     match parsed {
         AcquireResponse::Committed {
-            catalogue_id,
+            _catalogue_id: _,
             title,
             content_type,
             content_length,
@@ -170,7 +171,7 @@ pub(crate) fn acquire(
         } if actual_endpoint == endpoint_id && actual_store == object_store_id => {
             Ok(VerifiedCaptureCompletion {
                 plan_id: plan.plan_id.clone(),
-                catalogue_id,
+                catalogue_id: plan.catalogue_id.clone(),
                 title,
                 content_type,
                 content_length,
@@ -242,6 +243,8 @@ mod tests {
             origin: "https://example.invalid".into(),
             canonical_page_url: "https://example.invalid/gallery".into(),
             canonical_media_url: "https://example.invalid/thumb.jpg".into(),
+            canonical_presentation_url: "https://example.invalid/thumb.jpg".into(),
+            catalogue_id: "website-card-1".into(),
             adapter_kind: AdapterKind::ExperimentalGeneric,
             adapter_version: "1.0.0".into(),
             capture_kind: CaptureKind::ObservedThumbnail,

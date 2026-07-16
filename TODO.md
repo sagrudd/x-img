@@ -565,10 +565,19 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   This was inspected against DASObjectStore commit
   ``5769f27859a58101aedd9de0087fc278fd3e4b16``. Live paired-authority and real
   Firefox acceptance remain before XIMG-096 can close.
-  Gallery identity hashes both page and canonical media URL, preventing
-  multi-image pages from collapsing. Exact thumbnail/original aliases join;
-  distinct thumbnail and opened-original URLs remain pending until the Firefox
-  plan carries an explicit non-guessing correlation identity.
+  Firefox capture plans now carry an optional canonical presentation URL. A
+  displayed linked thumbnail uses its link target; the trusted opened-original
+  event reuses that target. The server derives and persists catalogue identity
+  from site/page/presentation, ignores helper-selected catalogue IDs, keeps
+  unrelated page images separate, and migrates legacy journals by falling back
+  to canonical media identity. This closes the distinct thumbnail/original URL
+  correlation gap without guessing.
+  Verification on 2026-07-16: all 168 workspace tests, strict workspace Clippy,
+  Firefox observation/explicit-open/toolbar contracts, repository quality and
+  release security/privacy audits, and warnings-denied Sphinx 8.2.3 passed.
+  Docker Desktop again did not answer within the bounded 20-second container
+  build attempt. Real installed-Firefox capture against the paired live
+  DASObjectStore authority remains before XIMG-096 can close.
   Verification on 2026-07-16: all 166 workspace tests, strict CLI Clippy,
   repository quality/privacy/version checks, release security/license audits,
   strict JSON contracts, and warnings-denied Sphinx 8.2.3 passed. Docker

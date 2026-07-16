@@ -100,6 +100,10 @@ That exact-origin observer persists across ordinary Firefox restarts, is
 restored after extension updates, and is removed when capture is paused or the
 site is removed. No repeated per-page toolbar action or broad tab/history
 permission is required.
+Linked thumbnails now carry a separate canonical presentation identity. The
+trusted opened-original event reuses that identity, allowing distinct
+thumbnail and original URLs to enrich one server-owned gallery card without
+guessing or collapsing other images on the page.
 Those paths now resolve only through the persisted catalogue and a
 Monas-authenticated, host-supplied DASObjectStore streaming-read backend.
 Pinakotheke validates MIME type, length, checksum, and ETag and streams without

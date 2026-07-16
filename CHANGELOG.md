@@ -79,6 +79,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Add a first-party packaged capture helper that bounds HTTPS image retrieval,
   uses private ephemeral scratch, submits checksum-addressed uploads through
   DASObjectStore's daemon completion path, and emits verified metadata only.
+- Correlate linked observed thumbnails with distinctly addressed opened
+  originals through a canonical presentation identity owned by the capture
+  plan, with non-destructive legacy-journal fallback.
 - Carry an explicit positive immutable object version from verified acquisition
   and normalized-video evidence through persistent gallery records, authorized
   read grants, and host-helper requests, with legacy catalogue-v1 records

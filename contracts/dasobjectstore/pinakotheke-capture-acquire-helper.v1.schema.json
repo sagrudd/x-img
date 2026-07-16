@@ -38,7 +38,7 @@
       "properties": {
         "outcome": { "const": "committed" },
         "schema_version": { "const": "pinakotheke.capture-acquire-helper.v1" },
-        "catalogue_id": { "$ref": "#/$defs/identifier" },
+        "catalogue_id": { "$ref": "#/$defs/identifier", "description": "Compatibility receipt field; Pinakotheke derives authoritative catalogue identity from its admitted plan." },
         "title": { "type": "string", "minLength": 1, "maxLength": 256 },
         "content_type": { "type": "string", "pattern": "^image/" },
         "content_length": { "type": "integer", "minimum": 1 },

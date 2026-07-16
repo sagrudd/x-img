@@ -72,6 +72,7 @@ async function submitCapture(instanceUrl, pairId, origin, pageUrl, adapter, capt
       adapter_version: adapter.version,
       capture_kind: captureKind,
       media_url: media.url,
+      presentation_url: media.presentationUrl || media.url,
       width: media.width,
       height: media.height,
     }),
@@ -178,7 +179,16 @@ function displayedImages() {
         && rect.top < window.innerHeight
         && rect.left < window.innerWidth;
     })
-    .map(image => ({ url: image.currentSrc, width: image.naturalWidth, height: image.naturalHeight }))
+    .map(image => {
+      const linked = image.closest("a[href]")?.href;
+      let presentationUrl = image.currentSrc;
+      try {
+        if (linked && new URL(linked).protocol === "https:") presentationUrl = linked;
+      } catch (_) {
+        // A malformed link cannot prevent other visible images from being observed.
+      }
+      return { url: image.currentSrc, presentationUrl, width: image.naturalWidth, height: image.naturalHeight };
+    })
     .slice(0, 32);
 }
 
@@ -466,9 +476,10 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     if (!Number.isInteger(width) || !Number.isInteger(height)
       || width < 1 || height < 1 || width > 32768 || height > 32768) return undefined;
     const mediaUrl = canonicalAlias(String(message.mediaUrl));
+    const presentationUrl = canonicalAlias(String(message.presentationUrl || message.mediaUrl));
     const capture = await submitCapture(
       instanceUrl, pairId, origin, sender.tab.url, adapter, "explicit_original",
-      { url: mediaUrl, width, height },
+      { url: mediaUrl, presentationUrl, width, height },
     );
     if (capture.ok) {
       await recordSiteDiagnostic(origin, {

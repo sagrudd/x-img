@@ -2168,6 +2168,7 @@ mod tests {
                 adapter_version: "1.0.0".into(),
                 capture_kind: CaptureKind::ObservedThumbnail,
                 media_url: "https://example.invalid/thumbnail.webp?signature=redacted".into(),
+                presentation_url: None,
                 width: 320,
                 height: 200,
             })
@@ -3155,6 +3156,7 @@ mod tests {
                     adapter_version: "1.0.0".into(),
                     capture_kind: CaptureKind::ObservedThumbnail,
                     media_url: "https://example.invalid/startup.jpg".into(),
+                    presentation_url: None,
                     width: 320,
                     height: 200,
                 },

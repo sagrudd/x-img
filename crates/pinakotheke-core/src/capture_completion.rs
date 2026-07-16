@@ -111,7 +111,7 @@ pub fn complete_verified_image(
             &plan,
             &reconciliation,
             GalleryImagePresentation {
-                catalogue_id: evidence.catalogue_id,
+                catalogue_id: plan.catalogue_id.clone(),
                 title: evidence.title,
                 content_type: evidence.content_type,
                 content_length: evidence.content_length,
@@ -170,7 +170,7 @@ mod tests {
                 adapter_kind: AdapterKind::ExperimentalGeneric,
                 adapter_version: "1.0.0".into(),
                 allow_observed_thumbnails: true,
-                allow_explicit_originals: false,
+                allow_explicit_originals: true,
                 max_candidates_per_page: 8,
             }]
         };
@@ -188,6 +188,7 @@ mod tests {
                     adapter_version: "1.0.0".into(),
                     capture_kind: CaptureKind::ObservedThumbnail,
                     media_url: "https://example.invalid/thumb.jpg".into(),
+                    presentation_url: Some("https://media.example.invalid/original.jpg".into()),
                     width: 320,
                     height: 200,
                 },
@@ -212,15 +213,54 @@ mod tests {
         );
         assert!(plans.pending_for_actor("actor").is_empty());
         assert!(plans.is_settled("actor", &plan.plan_id));
-        assert_eq!(gallery.load_or_empty().unwrap().items().len(), 1);
+        let stored = gallery.load_or_empty().unwrap();
+        assert_eq!(stored.items().len(), 1);
+        assert_eq!(stored.items()[0].catalogue_id, plan.catalogue_id);
         assert_eq!(
             complete_verified_image(&mut plans, gallery.clone(), "actor", evidence()).unwrap(),
             CaptureCompletionOutcome::AlreadyPresent
         );
+        let original = plans
+            .plan(
+                "actor",
+                3,
+                CapturePlanRequest {
+                    schema_version: CAPTURE_REQUEST_SCHEMA_VERSION.into(),
+                    pairing_id: "pair-0".into(),
+                    origin: "https://example.invalid".into(),
+                    page_url: "https://example.invalid/gallery".into(),
+                    adapter_kind: AdapterKind::ExperimentalGeneric,
+                    adapter_version: "1.0.0".into(),
+                    capture_kind: CaptureKind::ExplicitOriginal,
+                    media_url: "https://media.example.invalid/original.jpg?rotated=token".into(),
+                    presentation_url: Some(
+                        "https://media.example.invalid/original.jpg?different=token".into(),
+                    ),
+                    width: 1920,
+                    height: 1080,
+                },
+            )
+            .unwrap();
+        assert_eq!(original.catalogue_id, plan.catalogue_id);
+        let mut original_evidence = evidence();
+        original_evidence.plan_id = original.plan_id.clone();
+        original_evidence.catalogue_id = "helper-cannot-change-card".into();
+        original_evidence.object_key = "original-object".into();
+        original_evidence.object_version = 4;
+        original_evidence.verified_at_epoch_seconds = 4;
+        assert_eq!(
+            complete_verified_image(&mut plans, gallery.clone(), "actor", original_evidence,)
+                .unwrap(),
+            CaptureCompletionOutcome::OriginalAttached
+        );
+        let enriched = gallery.load_or_empty().unwrap();
+        assert_eq!(enriched.items().len(), 1);
+        assert!(enriched.items()[0].preview.is_some());
         drop(plans);
         let restarted = CapturePlanService::with_journal(pairings(), sites(), &journal).unwrap();
         assert!(restarted.pending_for_actor("actor").is_empty());
         assert!(restarted.is_settled("actor", &plan.plan_id));
+        assert!(restarted.is_settled("actor", &original.plan_id));
         let _ = std::fs::remove_dir_all(root);
     }
 }

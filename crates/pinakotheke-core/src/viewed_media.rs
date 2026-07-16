@@ -11,6 +11,7 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::{
     capture_plan_journal::{CapturePlanJournal, CapturePlanJournalError, PendingCapturePlan},
@@ -45,6 +46,8 @@ pub struct CapturePlanRequest {
     pub adapter_version: String,
     pub capture_kind: CaptureKind,
     pub media_url: String,
+    #[serde(default)]
+    pub presentation_url: Option<String>,
     pub width: u32,
     pub height: u32,
 }
@@ -58,6 +61,8 @@ pub struct CapturePlan {
     pub origin: String,
     pub canonical_page_url: String,
     pub canonical_media_url: String,
+    pub canonical_presentation_url: String,
+    pub catalogue_id: String,
     pub adapter_kind: AdapterKind,
     pub adapter_version: String,
     pub capture_kind: CaptureKind,
@@ -311,12 +316,16 @@ impl CapturePlanService {
         }
         let canonical_page_url = canonical_page_url(&request.origin, &request.page_url)
             .ok_or(CapturePlanError::InvalidRequest)?;
-        let canonical_media_url =
+        let canonical_media =
             canonical_media_url(&request.media_url).ok_or(CapturePlanError::InvalidRequest)?;
+        let canonical_presentation_url = match request.presentation_url.as_deref() {
+            Some(value) => canonical_media_url(value).ok_or(CapturePlanError::InvalidRequest)?,
+            None => canonical_media.clone(),
+        };
         if let Some(existing) = self.accepted.iter().find(|pending| {
             pending.actor_id == actor_id
                 && pending.plan.site_id == site.site_id
-                && pending.plan.canonical_media_url == canonical_media_url
+                && pending.plan.canonical_media_url == canonical_media
                 && pending.plan.capture_kind == request.capture_kind
         }) {
             return Ok(existing.plan.clone());
@@ -339,6 +348,11 @@ impl CapturePlanService {
         self.next_plan = self.next_plan.saturating_add(1);
         let scheduler_job_id =
             self.schedule(actor_id, site.max_candidates_per_page, plan_id.clone())?;
+        let catalogue_id = capture_catalogue_id(
+            &site.site_id,
+            &canonical_page_url,
+            &canonical_presentation_url,
+        );
         let plan = CapturePlan {
             schema_version: CAPTURE_PLAN_SCHEMA_VERSION,
             plan_id,
@@ -346,7 +360,9 @@ impl CapturePlanService {
             site_id: site.site_id.clone(),
             origin: request.origin,
             canonical_page_url,
-            canonical_media_url,
+            canonical_media_url: canonical_media,
+            catalogue_id,
+            canonical_presentation_url,
             adapter_kind: request.adapter_kind,
             adapter_version: request.adapter_version,
             capture_kind: request.capture_kind,
@@ -407,6 +423,10 @@ fn validate_request(request: &CapturePlanRequest) -> Result<(), CapturePlanError
         || canonical_page_url(&request.origin, &request.page_url).is_none()
         || !is_semver(&request.adapter_version)
         || canonical_media_url(&request.media_url).is_none()
+        || request
+            .presentation_url
+            .as_deref()
+            .is_some_and(|value| canonical_media_url(value).is_none())
         || request.width == 0
         || request.height == 0
         || request.width > 32_768
@@ -415,6 +435,13 @@ fn validate_request(request: &CapturePlanRequest) -> Result<(), CapturePlanError
         return Err(CapturePlanError::InvalidRequest);
     }
     Ok(())
+}
+
+#[must_use]
+pub fn capture_catalogue_id(site_id: &str, page_url: &str, presentation_url: &str) -> String {
+    let identity = format!("{page_url}\n{presentation_url}");
+    let digest = format!("{:x}", Sha256::digest(identity.as_bytes()));
+    format!("website-{site_id}-{}", &digest[..24])
 }
 
 fn canonical_media_url(value: &str) -> Option<String> {
@@ -500,6 +527,7 @@ mod tests {
             adapter_version: "1.0.0".into(),
             capture_kind: CaptureKind::ObservedThumbnail,
             media_url: "https://example.invalid/media/thumbnail.webp?rotating=signature".into(),
+            presentation_url: None,
             width: 320,
             height: 240,
         }
@@ -516,6 +544,43 @@ mod tests {
         assert_eq!(plan.capture_kind, CaptureKind::ObservedThumbnail);
         assert_eq!(plan.scheduler_job_id, "refresh-0");
         assert_eq!(plan.state, CapturePlanState::AwaitingApprovedAcquisition);
+    }
+
+    #[test]
+    fn linked_thumbnail_and_distinct_opened_original_share_server_catalogue_identity() {
+        let mut planner = CapturePlanService::new(
+            [CapturePairing {
+                pairing_id: "pair-0".into(),
+                actor_id: "actor".into(),
+                expires_at: 100,
+                revoked: false,
+            }],
+            [SiteCapturePolicy {
+                site_id: "site".into(),
+                origin: "https://example.invalid".into(),
+                capture_enabled: true,
+                adapter_kind: AdapterKind::ExperimentalGeneric,
+                adapter_version: "1.0.0".into(),
+                allow_observed_thumbnails: true,
+                allow_explicit_originals: true,
+                max_candidates_per_page: 4,
+            }],
+        );
+        let mut thumbnail = request();
+        thumbnail.presentation_url =
+            Some("https://media.example.invalid/original.jpg?signed=redacted".into());
+        let thumbnail = planner.plan("actor", 1, thumbnail).unwrap();
+        let mut original = request();
+        original.capture_kind = CaptureKind::ExplicitOriginal;
+        original.media_url = "https://media.example.invalid/original.jpg?new=signature".into();
+        original.presentation_url = Some(original.media_url.clone());
+        let original = planner.plan("actor", 2, original).unwrap();
+        assert_ne!(thumbnail.canonical_media_url, original.canonical_media_url);
+        assert_eq!(
+            thumbnail.canonical_presentation_url,
+            original.canonical_presentation_url
+        );
+        assert_eq!(thumbnail.catalogue_id, original.catalogue_id);
     }
 
     #[test]

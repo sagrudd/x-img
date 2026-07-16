@@ -225,6 +225,8 @@ mod tests {
             origin: "https://example.invalid".into(),
             canonical_page_url: "https://example.invalid/gallery".into(),
             canonical_media_url: format!("https://example.invalid/{media}.jpg"),
+            canonical_presentation_url: format!("https://example.invalid/{media}.jpg"),
+            catalogue_id: "gallery-image-1".into(),
             adapter_kind: AdapterKind::ExperimentalGeneric,
             adapter_version: "1.0.0".into(),
             capture_kind: kind,

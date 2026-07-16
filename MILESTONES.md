@@ -699,6 +699,9 @@ Exit criteria:
 - the packaged capture worker performs bounded HTTPS image acquisition through
   a scoped DASObjectStore remote-client session, accepts only daemon-verified
   completion, and leaves no durable Pinakotheke-local payload;
+- a linked observed thumbnail and its distinctly addressed opened original
+  share one server-derived catalogue identity while unrelated page images
+  remain separate, including after journal restart;
 - local authentication remains Monas/Prosopikon-owned; the monolith does not
   invent Pinakotheke passwords, cookies, or a parallel session issuer; and
 - unauthenticated navigation presents a polished Monas-owned, Mnemosyne-design-

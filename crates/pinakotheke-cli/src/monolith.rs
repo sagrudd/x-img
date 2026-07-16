@@ -815,6 +815,7 @@ mod tests {
                     adapter_version: "1.0.0".into(),
                     capture_kind: CaptureKind::ObservedThumbnail,
                     media_url: "https://example.invalid/thumb.jpg".into(),
+                    presentation_url: None,
                     width: 320,
                     height: 200,
                 },

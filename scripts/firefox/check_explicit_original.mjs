@@ -66,7 +66,7 @@ const fetchFixture = async (url, options) => {
   return { ok: true };
 };
 const source = fs.readFileSync("firefox-extension/background.js", "utf8");
-vm.runInNewContext(source, {
+const backgroundContext = vm.createContext({
   browser,
   fetch: fetchFixture,
   URL,
@@ -74,9 +74,25 @@ vm.runInNewContext(source, {
   Blob,
   setTimeout,
   clearTimeout,
+  document: { images: [] },
+  window: { innerHeight: 800, innerWidth: 1200, getComputedStyle() { return { display: "block", visibility: "visible", opacity: "1" }; } },
 });
+vm.runInContext(source, backgroundContext);
 assert.equal(typeof messageListener, "function");
 assert.equal(typeof startupListener, "function");
+
+backgroundContext.document.images = [{
+  complete: true,
+  currentSrc: "https://media.example.invalid/thumb.jpg?signed=drop",
+  naturalWidth: 320,
+  naturalHeight: 200,
+  closest(selector) { return selector === "a[href]" ? { href: "https://media.example.invalid/open.jpg?signed=drop" } : null; },
+  getBoundingClientRect() { return { width: 320, height: 200, top: 0, left: 0, bottom: 200, right: 320 }; },
+}];
+const observed = vm.runInContext("displayedImages()", backgroundContext);
+assert.equal(observed.length, 1);
+assert.equal(observed[0].url, "https://media.example.invalid/thumb.jpg?signed=drop");
+assert.equal(observed[0].presentationUrl, "https://media.example.invalid/open.jpg?signed=drop");
 
 const sync = await messageListener({ command: "sync-capture-observers" }, {});
 assert.equal(sync.registered, 1);
@@ -122,12 +138,14 @@ assert.equal(contentMessages.length, 0, "synthetic clicks must be ignored");
 clickListener({ isTrusted: true, button: 0, target: openedImage });
 assert.equal(contentMessages.length, 1);
 assert.equal(contentMessages[0].command, "explicit-original-opened");
+assert.equal(contentMessages[0].presentationUrl, "https://media.example.invalid/open.jpg?signed=drop");
 assert.equal(contentMessages[0].width, 2048);
 
 const sender = { tab: { id: 7, url: "https://art.example.invalid/gallery?private=drop" } };
 const result = await messageListener({
   command: "explicit-original-opened",
   mediaUrl: "https://media.example.invalid/original.jpg?signed=drop#fragment",
+  presentationUrl: "https://media.example.invalid/original.jpg?signed=drop#fragment",
   width: 1920,
   height: 1080,
 }, sender);
@@ -142,6 +160,7 @@ assert.equal(body.capture_kind, "explicit_original");
 assert.equal(body.origin, "https://art.example.invalid");
 assert.equal(body.page_url, sender.tab.url, "page provenance must come from Firefox sender state");
 assert.equal(body.media_url, "https://media.example.invalid/original.jpg");
+assert.equal(body.presentation_url, "https://media.example.invalid/original.jpg");
 assert.equal(body.width, 1920);
 assert.equal(storage.siteDiagnostics[body.origin].state, "Original queued");
 

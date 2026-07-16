@@ -17,6 +17,7 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
     void browser.runtime.sendMessage({
       command: "explicit-original-opened",
       mediaUrl,
+      presentationUrl: mediaUrl,
       width: image.naturalWidth,
       height: image.naturalHeight,
     });

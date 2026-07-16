@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::viewed_media::{
     AdapterKind, CAPTURE_PLAN_SCHEMA_VERSION, CaptureKind, CapturePlan, CapturePlanState,
+    capture_catalogue_id,
 };
 
 const JOURNAL_SCHEMA: &str = "pinakotheke.capture-plan-journal.v1";
@@ -90,6 +91,8 @@ struct StoredCapturePlan {
     origin: String,
     canonical_page_url: String,
     canonical_media_url: String,
+    #[serde(default)]
+    canonical_presentation_url: Option<String>,
     adapter_kind: AdapterKind,
     adapter_version: String,
     capture_kind: CaptureKind,
@@ -230,6 +233,9 @@ impl StoredPendingPlan {
 
 impl StoredCapturePlan {
     fn into_plan(self) -> Result<CapturePlan, CapturePlanJournalError> {
+        let canonical_presentation_url = self
+            .canonical_presentation_url
+            .unwrap_or_else(|| self.canonical_media_url.clone());
         if self.schema_version != CAPTURE_PLAN_SCHEMA_VERSION
             || !identifier(&self.plan_id)
             || self
@@ -247,6 +253,7 @@ impl StoredCapturePlan {
             || !https_origin(&self.origin)
             || !https_url(&self.canonical_page_url)
             || !https_url(&self.canonical_media_url)
+            || !https_url(&canonical_presentation_url)
             || !(self.canonical_page_url == self.origin
                 || self
                     .canonical_page_url
@@ -255,6 +262,11 @@ impl StoredCapturePlan {
         {
             return Err(CapturePlanJournalError::InvalidRecord);
         }
+        let catalogue_id = capture_catalogue_id(
+            &self.site_id,
+            &self.canonical_page_url,
+            &canonical_presentation_url,
+        );
         Ok(CapturePlan {
             schema_version: CAPTURE_PLAN_SCHEMA_VERSION,
             plan_id: self.plan_id,
@@ -263,6 +275,8 @@ impl StoredCapturePlan {
             origin: self.origin,
             canonical_page_url: self.canonical_page_url,
             canonical_media_url: self.canonical_media_url,
+            canonical_presentation_url,
+            catalogue_id,
             adapter_kind: self.adapter_kind,
             adapter_version: self.adapter_version,
             capture_kind: self.capture_kind,
@@ -288,6 +302,7 @@ impl From<&PendingCapturePlan> for StoredPendingPlan {
                 origin: plan.origin.clone(),
                 canonical_page_url: plan.canonical_page_url.clone(),
                 canonical_media_url: plan.canonical_media_url.clone(),
+                canonical_presentation_url: Some(plan.canonical_presentation_url.clone()),
                 adapter_kind: plan.adapter_kind,
                 adapter_version: plan.adapter_version.clone(),
                 capture_kind: plan.capture_kind,
@@ -330,6 +345,11 @@ mod tests {
     use super::*;
 
     fn pending() -> PendingCapturePlan {
+        let catalogue_id = capture_catalogue_id(
+            "site-1",
+            "https://example.invalid/page",
+            "https://media.example.invalid/thumb.jpg",
+        );
         PendingCapturePlan {
             actor_id: "actor-1".into(),
             admitted_at_epoch_seconds: 42,
@@ -342,6 +362,8 @@ mod tests {
                 origin: "https://example.invalid".into(),
                 canonical_page_url: "https://example.invalid/page".into(),
                 canonical_media_url: "https://media.example.invalid/thumb.jpg".into(),
+                canonical_presentation_url: "https://media.example.invalid/thumb.jpg".into(),
+                catalogue_id,
                 adapter_kind: AdapterKind::ExperimentalGeneric,
                 adapter_version: "1.0.0".into(),
                 capture_kind: CaptureKind::ObservedThumbnail,
@@ -366,6 +388,42 @@ mod tests {
         for prohibited in ["cookie", "authorization", "payload", "password"] {
             assert!(!text.contains(prohibited));
         }
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn legacy_journal_without_presentation_identity_migrates_non_destructively() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-capture-journal-legacy-{}-{}",
+            std::process::id(),
+            TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        let journal = CapturePlanJournal::new(root.join("journal.json"));
+        journal.replace(&[pending()]).unwrap();
+        let mut document: serde_json::Value =
+            serde_json::from_slice(&fs::read(journal.path()).unwrap()).unwrap();
+        document["plans"][0]["plan"]
+            .as_object_mut()
+            .unwrap()
+            .remove("canonical_presentation_url");
+        fs::write(
+            journal.path(),
+            serde_json::to_vec_pretty(&document).unwrap(),
+        )
+        .unwrap();
+        let loaded = journal.load().unwrap();
+        assert_eq!(
+            loaded[0].plan.canonical_presentation_url,
+            loaded[0].plan.canonical_media_url
+        );
+        assert_eq!(
+            loaded[0].plan.catalogue_id,
+            capture_catalogue_id(
+                &loaded[0].plan.site_id,
+                &loaded[0].plan.canonical_page_url,
+                &loaded[0].plan.canonical_media_url,
+            )
+        );
         let _ = fs::remove_dir_all(root);
     }
 
