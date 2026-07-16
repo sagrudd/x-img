@@ -128,10 +128,7 @@ pub(crate) fn run(command: StorageCommand) -> Result<(), Box<dyn std::error::Err
     match action {
         "plan" => print_plan(&plan),
         "provision" => {
-            authority_command(&plan, "up")?;
-            let description = discover(&plan)?;
-            persist_selection(&plan, &description)?;
-            print_description(&description);
+            provision(&plan)?;
         }
         "status" => print_description(&discover(&plan)?),
         "down" => {
@@ -139,6 +136,23 @@ pub(crate) fn run(command: StorageCommand) -> Result<(), Box<dyn std::error::Err
             println!("DASObjectStore local profile stopped; state retained");
         }
         _ => unreachable!(),
+    }
+    Ok(())
+}
+
+fn provision(plan: &LocalProfilePlan) -> Result<(), Box<dyn std::error::Error>> {
+    let start = authority_command(plan, "up");
+    let description = match discover(plan) {
+        Ok(description) => description,
+        Err(discovery) => {
+            start?;
+            return Err(discovery);
+        }
+    };
+    persist_selection(plan, &description)?;
+    print_description(&description);
+    if start.is_err() {
+        println!("DASObjectStore start reconciled from the exact Ready authority identity");
     }
     Ok(())
 }
@@ -353,5 +367,39 @@ mod tests {
         assert!(diagnostic.starts_with(": error: "));
         assert!(diagnostic.len() <= 514);
         assert!(!diagnostic.contains('\n'));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_repeat_start_reconciles_only_from_exact_ready_identity() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = temporary_root("reconcile");
+        let home = root.join("home");
+        let product_root = home.join(".x-img");
+        let provisioner = root.join("authority");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::write(
+            &provisioner,
+            r#"#!/bin/sh
+if [ "$1" = up ]; then exit 1; fi
+if [ "$1" = describe ]; then
+  printf '%s\n' '{"schema_version":"dasobjectstore.local_profile_description.v1","endpoint_id":"local-docker-reconciled","object_store_id":"pinakotheke_local","profile_id":"pinakotheke-local","status":"ready","api_url":"http://127.0.0.1:3900","credential_ref":"dasobjectstore.local-profile:pinakotheke-local:reconciled"}'
+  exit 0
+fi
+exit 2
+"#,
+        )
+        .unwrap();
+        std::fs::set_permissions(&provisioner, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let plan = LocalProfilePlan {
+            storage_root: product_root.join("dasobjectstore"),
+            selection_path: product_root.join("state/dasobjectstore-local.json"),
+            private_root: home.join(".config/dasobjectstore"),
+            product_root,
+            provisioner,
+        };
+        provision(&plan).unwrap();
+        assert!(is_ready(&plan.product_root));
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

@@ -148,6 +148,11 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Fixed
 
+- Reconcile a repeated local-profile start only when DASObjectStore can still
+  rediscover the exact reviewed Ready endpoint/ObjectStore identity, allowing
+  safe recovery from an already-running nested provider without accepting a
+  changed or unavailable authority.
+
 - Declare both Firefox ``background.scripts`` and cross-browser
   ``background.service_worker`` in extension manifests, and generate valid
   port-independent WebExtension match patterns for non-default-port HTTPS

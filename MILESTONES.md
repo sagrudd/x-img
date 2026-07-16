@@ -313,6 +313,15 @@ exact-origin policy/provenance while using Firefox's required port-independent
 host match pattern. Live paired DASObjectStore commit and restart evidence is
 still required to close XIMG-096.
 
+The clean-home authority run now provisions and strictly rediscovers a real
+isolated DASObjectStore endpoint/ObjectStore, including a mode-0600 persisted
+selection. Repeated starts reconcile only through the exact Ready identity.
+DASObjectStore commit ``b88eba40`` fixes the local image's public Prosopikon
+build context. Docker Desktop still refuses host connections to the daemon's
+container-created bind-mounted Unix socket, so a supported host-reachable
+daemon transport (or container-packaged remote client) remains before the
+commit/read/restart gate can close; a direct S3 write is not substitute proof.
+
 - XIMG-050 implements the Mnemosyne-compatible Monas shell (commit `9e9cabb`):
   semantic-token CSS, compact header, responsive accessible empty state, and
   one mandatory footer provenance mark; host authentication remains Monas-owned.

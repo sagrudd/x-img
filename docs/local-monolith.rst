@@ -58,6 +58,12 @@ Use ``status`` to re-discover and validate the authority identity, or ``down``
 to stop the containers without deleting state. Both accept the same required
 ``--provisioner`` argument. An alternate ``--root`` must be absolute.
 
+Provisioning is restart-safe. If the authority's start action reports failure
+but strict ``describe`` immediately returns the exact expected Ready profile,
+endpoint, ObjectStore, API URL, and credential reference, Pinakotheke records
+that reconciled identity. If rediscovery is missing, changed, or unhealthy, the
+original start failure remains fatal and no selection is written.
+
 Readiness
 ---------
 
@@ -253,5 +259,11 @@ Next slices
 
 XIMG-094 still proves a clean-home authenticated ingest/read/restart flow end
 to end. The host read adapter and first-party scoped DAS/S3 helper are now
-available; the live local authority commit/read/restart run remains. See
-:doc:`object-read` for the private helper configuration.
+available. A real isolated profile provisions and rediscovers successfully on
+macOS after the DASObjectStore local image consumes its copied Prosopikon build
+context. The remaining authority gap is transport: Docker Desktop exposes the
+container-created Unix socket path on a bind mount but refuses host
+connections. DASObjectStore must provide a supported host-reachable daemon
+transport or package ``dasobjectstore-remote`` inside the authority container;
+direct S3 writes are not accepted as verified completion. See :doc:`object-read`
+for the private helper configuration.

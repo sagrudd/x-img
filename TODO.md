@@ -1052,6 +1052,24 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Verification: all 172 workspace tests, strict workspace Clippy, repository
   quality/privacy/version checks, release security/license audits, and
   warnings-denied Sphinx 8.2.3 pass locally.
+  Further progress on 2026-07-16: after a clean Docker backend restart, a real
+  isolated HOME provisioned and strictly rediscovered endpoint
+  ``local-docker-2731860728`` plus ObjectStore ``pinakotheke_local`` and wrote a
+  mode-0600 secret-free selection. Repeated provisioning now reconciles a
+  failed already-running start only through the exact Ready authority identity.
+  DASObjectStore commit ``b88eba40`` fixes its local Docker build to use the
+  Prosopikon source already copied into the public build context. The next
+  blocker is narrower: Docker Desktop exposes the container-created daemon
+  Unix-socket path but refuses host connections, so authoritative remote-client
+  completion needs a supported host-reachable daemon transport or a packaged
+  container-side remote client. Direct S3 smoke/write results are explicitly
+  insufficient to close XIMG-094.
+  Verification: all 173 workspace tests, strict workspace Clippy, repository
+  quality/privacy/version checks, release security/license audits, and
+  warnings-denied Sphinx 8.2.3 pass locally. The isolated containers and HOME
+  were removed after evidence collection; unrelated DAS development containers
+  and ObjectStores were not changed. The required pinned documentation image
+  build and container dummy verification also pass after Docker recovery.
 
 - [x] **XIMG-200 P3 — Add Synoptikon host/catalogue integration.** Completed
   in ``d0005bb``. A public ``mnemosyne.product.manifest.v1`` registration now
