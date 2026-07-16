@@ -59,6 +59,9 @@ pub(crate) struct InstallArgs {
     /// Absolute private capture-worker completion token file.
     #[arg(long, requires = "capture_authority_file")]
     capture_completion_token_file: Option<PathBuf>,
+    /// Absolute reviewed continuous capture acquisition helper.
+    #[arg(long, requires = "capture_completion_token_file")]
+    capture_acquire_helper: Option<PathBuf>,
     /// Replace existing Pinakotheke-managed plist definitions.
     #[arg(long)]
     replace: bool,
@@ -169,6 +172,9 @@ fn install(layout: &ServiceLayout, args: &InstallArgs) -> io::Result<()> {
             ));
         }
     }
+    if let Some(helper) = &args.capture_acquire_helper {
+        validate_binary(helper)?;
+    }
     if !args.replace && (layout.backend_plist.exists() || layout.monas_plist.exists()) {
         return Err(io::Error::new(
             io::ErrorKind::AlreadyExists,
@@ -193,6 +199,7 @@ fn install(layout: &ServiceLayout, args: &InstallArgs) -> io::Result<()> {
         args.object_read_endpoint_id.as_deref(),
         args.capture_authority_file.as_deref(),
         args.capture_completion_token_file.as_deref(),
+        args.capture_acquire_helper.as_deref(),
     );
     let monas = monas_plist(layout, &args.monas_binary);
     let previous_backend = std::fs::read(&layout.backend_plist).ok();
@@ -363,6 +370,7 @@ fn backend_plist(
     endpoint_id: Option<&str>,
     capture_authority_file: Option<&Path>,
     capture_completion_token_file: Option<&Path>,
+    capture_acquire_helper: Option<&Path>,
 ) -> String {
     let mut arguments = vec![
         "serve",
@@ -383,6 +391,9 @@ fn backend_plist(
     }
     if let Some(path) = capture_completion_token_file {
         arguments.extend(["--capture-completion-token-file", path_text_unchecked(path)]);
+    }
+    if let Some(path) = capture_acquire_helper {
+        arguments.extend(["--capture-acquire-helper", path_text_unchecked(path)]);
     }
     let environment = endpoint_id
         .map(|endpoint_id| vec![("PINAKOTHEKE_OBJECT_READ_ENDPOINT_ID", endpoint_id)])
@@ -591,6 +602,7 @@ mod tests {
             Some(Path::new(
                 "/Users/synthetic & user/.x-img/run/completion.token",
             )),
+            Some(Path::new("/opt/bin/capture-acquire-helper")),
         );
         let monas = monas_plist(&layout, Path::new("/opt/bin/monas-server"));
         assert!(backend.contains("127.0.0.1</string><string>--port</string><string>8732"));
@@ -601,6 +613,7 @@ mod tests {
         assert!(backend.contains("--capture-authority-file"));
         assert!(backend.contains("capture.json"));
         assert!(backend.contains("--capture-completion-token-file"));
+        assert!(backend.contains("--capture-acquire-helper"));
         assert!(monas.contains("127.0.0.1:8731"));
         assert!(monas.contains("PROSOPIKON_ROOT"));
         assert!(monas.contains("synthetic &amp; user"));

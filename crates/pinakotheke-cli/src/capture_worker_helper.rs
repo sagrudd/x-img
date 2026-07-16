@@ -8,6 +8,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use x_img_api::HostCaptureAcquireBackend;
 use x_img_core::{
     capture_completion::VerifiedCaptureCompletion,
     viewed_media::{CaptureKind, CapturePlan},
@@ -15,6 +16,18 @@ use x_img_core::{
 
 const SCHEMA: &str = "pinakotheke.capture-acquire-helper.v1";
 const RESPONSE_LIMIT: u64 = 16 * 1024;
+
+pub(crate) fn backend(
+    helper: &Path,
+    endpoint_id: String,
+    object_store_id: String,
+) -> io::Result<HostCaptureAcquireBackend> {
+    validate_helper(helper)?;
+    let helper = helper.to_owned();
+    Ok(HostCaptureAcquireBackend::new(Box::new(move |plan| {
+        acquire(&helper, plan, &endpoint_id, &object_store_id).map_err(|_| ())
+    })))
+}
 
 #[derive(Serialize)]
 #[serde(deny_unknown_fields)]

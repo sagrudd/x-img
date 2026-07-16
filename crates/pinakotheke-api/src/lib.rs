@@ -5,6 +5,7 @@
 //! This crate never parses cookies, passwords, or session tokens.
 
 use std::{
+    collections::BTreeSet,
     io,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -75,12 +76,24 @@ pub struct CaptureCompletionAuthority {
 pub struct CapturePlanComposition {
     plans: CapturePlanService,
     completion: Option<CaptureCompletionAuthority>,
+    acquire: Option<HostCaptureAcquireBackend>,
+}
+
+/// Process-isolated callback that returns verified authority metadata only.
+pub type HostCaptureAcquire =
+    Box<dyn FnMut(&CapturePlan) -> Result<VerifiedCaptureCompletion, ()> + Send>;
+
+/// Host adapter wrapping one process-isolated acquisition callback.
+pub struct HostCaptureAcquireBackend {
+    acquire: HostCaptureAcquire,
 }
 
 struct CaptureCompletionRuntime {
     authority: CaptureCompletionAuthority,
     plans: CapturePlans,
     gallery: MonasGalleryCatalogue,
+    acquire: Option<Mutex<HostCaptureAcquireBackend>>,
+    in_flight: Mutex<BTreeSet<String>>,
 }
 
 const CACHE_LOOKUP_SCHEMA_VERSION: &str = "x-img.cache-alias-lookup.v1";
@@ -197,7 +210,29 @@ impl CapturePlanComposition {
     /// Creates the capture composition used by the complete monolith router.
     #[must_use]
     pub fn new(plans: CapturePlanService, completion: Option<CaptureCompletionAuthority>) -> Self {
-        Self { plans, completion }
+        Self {
+            plans,
+            completion,
+            acquire: None,
+        }
+    }
+
+    /// Adds a reviewed asynchronous acquisition adapter.
+    #[must_use]
+    pub fn with_acquire(mut self, acquire: HostCaptureAcquireBackend) -> Self {
+        self.acquire = Some(acquire);
+        self
+    }
+}
+
+impl HostCaptureAcquireBackend {
+    /// Creates the adapter from a host-owned metadata-only acquisition callback.
+    pub fn new(acquire: HostCaptureAcquire) -> Self {
+        Self { acquire }
+    }
+
+    fn acquire(&mut self, plan: &CapturePlan) -> Result<VerifiedCaptureCompletion, ()> {
+        (self.acquire)(plan)
     }
 }
 
@@ -613,6 +648,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
         let CapturePlanComposition {
             plans: capture_plans,
             completion: completion_authority,
+            acquire,
         } = capture;
         let capture_plans = Arc::new(Mutex::new(capture_plans));
         protected = protected
@@ -631,6 +667,8 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                     authority,
                     plans: capture_plans,
                     gallery,
+                    acquire: acquire.map(Mutex::new),
+                    in_flight: Mutex::new(BTreeSet::new()),
                 })));
         }
     }
@@ -1195,6 +1233,7 @@ async fn context(
 
 async fn capture_plan(
     capture_plans: Option<Extension<CapturePlans>>,
+    runtime: Option<Extension<Arc<CaptureCompletionRuntime>>>,
     context: Option<Extension<AuthenticatedHostContext>>,
     Json(request): Json<CapturePlanRequest>,
 ) -> Result<Json<CapturePlan>, StatusCode> {
@@ -1210,10 +1249,38 @@ async fn capture_plan(
     let mut capture_plans = capture_plans
         .lock()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    capture_plans
+    let plan = capture_plans
         .plan(context.actor_id(), now, request)
-        .map(Json)
-        .map_err(capture_plan_status)
+        .map_err(capture_plan_status)?;
+    drop(capture_plans);
+    if let Some(runtime) = runtime.map(|runtime| runtime.0)
+        && runtime.acquire.is_some()
+    {
+        let actor_id = context.actor_id().to_owned();
+        let key = format!("{actor_id}:{}", plan.plan_id);
+        let admitted = runtime
+            .in_flight
+            .lock()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .insert(key.clone());
+        if admitted {
+            let runtime = Arc::clone(&runtime);
+            let worker_plan = plan.clone();
+            tokio::task::spawn_blocking(move || {
+                let evidence = runtime
+                    .acquire
+                    .as_ref()
+                    .and_then(|backend| backend.lock().ok()?.acquire(&worker_plan).ok());
+                if let Some(evidence) = evidence {
+                    let _ = settle_capture_runtime(&runtime, &actor_id, evidence);
+                }
+                if let Ok(mut in_flight) = runtime.in_flight.lock() {
+                    in_flight.remove(&key);
+                }
+            });
+        }
+    }
+    Ok(Json(plan))
 }
 
 async fn capture_plans_pending(
@@ -1262,13 +1329,8 @@ async fn complete_capture_plan(
     {
         return Err(StatusCode::CONFLICT);
     }
-    let mut plans = runtime
-        .plans
-        .lock()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let outcome = complete_verified_image(
-        &mut plans,
-        runtime.authority.gallery_store.clone(),
+    let outcome = settle_capture_runtime(
+        &runtime,
         context.actor_id(),
         VerifiedCaptureCompletion {
             plan_id,
@@ -1293,15 +1355,6 @@ async fn complete_capture_plan(
         | CaptureCompletionError::Gallery(_) => StatusCode::UNPROCESSABLE_ENTITY,
         CaptureCompletionError::Journal(_) => StatusCode::SERVICE_UNAVAILABLE,
     })?;
-    let refreshed = runtime
-        .authority
-        .gallery_store
-        .load_or_empty()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    *runtime
-        .gallery
-        .lock()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? = refreshed;
     Ok(Json(CaptureCompletionResponse {
         schema_version: "pinakotheke.capture-completion-result.v1",
         outcome: match outcome {
@@ -1310,6 +1363,39 @@ async fn complete_capture_plan(
             CaptureCompletionOutcome::AlreadyPresent => "already_present",
         },
     }))
+}
+
+fn settle_capture_runtime(
+    runtime: &CaptureCompletionRuntime,
+    actor_id: &str,
+    evidence: VerifiedCaptureCompletion,
+) -> Result<CaptureCompletionOutcome, CaptureCompletionError> {
+    if evidence.endpoint_id != runtime.authority.endpoint_id
+        || evidence.object_store_id != runtime.authority.object_store_id
+    {
+        return Err(CaptureCompletionError::InvalidEvidence);
+    }
+    let mut plans = runtime
+        .plans
+        .lock()
+        .map_err(|_| CaptureCompletionError::InvalidEvidence)?;
+    let outcome = complete_verified_image(
+        &mut plans,
+        runtime.authority.gallery_store.clone(),
+        actor_id,
+        evidence,
+    )?;
+    drop(plans);
+    let refreshed = runtime
+        .authority
+        .gallery_store
+        .load_or_empty()
+        .map_err(|_| CaptureCompletionError::InvalidEvidence)?;
+    *runtime
+        .gallery
+        .lock()
+        .map_err(|_| CaptureCompletionError::InvalidEvidence)? = refreshed;
+    Ok(outcome)
 }
 
 fn capture_plan_status(error: CapturePlanError) -> StatusCode {
@@ -1742,9 +1828,10 @@ mod tests {
     };
 
     use super::{
-        CaptureCompletionAuthority, CapturePlanComposition, HostObjectReadBackend,
-        MonasDispatchVerifier, monolith_router, monolith_router_with_authorities,
-        monolith_router_with_gallery_authority, monolith_router_with_gallery_delivery_authority,
+        CaptureCompletionAuthority, CapturePlanComposition, HostCaptureAcquireBackend,
+        HostObjectReadBackend, MonasDispatchVerifier, VerifiedCaptureCompletion, monolith_router,
+        monolith_router_with_authorities, monolith_router_with_gallery_authority,
+        monolith_router_with_gallery_delivery_authority,
         monolith_router_with_gallery_web_and_capture_authority,
         monolith_router_with_gallery_web_delivery_and_capture_authority,
         monolith_router_with_gallery_web_delivery_authority, monolith_router_with_storage, router,
@@ -2841,6 +2928,162 @@ mod tests {
             serde_json::from_slice(&to_bytes(catalogue.into_body(), 16 * 1024).await.unwrap())
                 .unwrap();
         assert_eq!(catalogue["items"].as_array().unwrap().len(), 1);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[tokio::test]
+    async fn admitted_plan_runs_one_background_helper_and_becomes_live() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-api-background-capture-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let store = GalleryCatalogueStore::new(root.join("gallery.json"));
+        let dispatch = "synthetic-monas-dispatch-token-0001";
+        let worker = "synthetic-capture-worker-token-0001";
+        let acquire = HostCaptureAcquireBackend::new(Box::new(|plan| {
+            Ok(VerifiedCaptureCompletion {
+                plan_id: plan.plan_id.clone(),
+                catalogue_id: "background-card-1".into(),
+                title: "Background synthetic image".into(),
+                content_type: "image/jpeg".into(),
+                content_length: 12,
+                endpoint_id: "synthetic-endpoint".into(),
+                object_store_id: "synthetic-store".into(),
+                object_key: "background-object-1".into(),
+                object_version: 1,
+                checksum_sha256: CHECKSUM.strip_prefix("sha256:").unwrap().into(),
+                verified_at_epoch_seconds: 42,
+            })
+        }));
+        let app = monolith_router_with_gallery_web_delivery_and_capture_authority(
+            true,
+            Some(MonasDispatchVerifier::new(dispatch.into()).unwrap()),
+            GalleryCatalogue::default(),
+            None,
+            gallery_image_backend(),
+            Some(
+                CapturePlanComposition::new(
+                    capture_plans(),
+                    Some(
+                        CaptureCompletionAuthority::new(
+                            worker.into(),
+                            store,
+                            "synthetic-endpoint".into(),
+                            "synthetic-store".into(),
+                        )
+                        .unwrap(),
+                    ),
+                )
+                .with_acquire(acquire),
+            ),
+        );
+        let planned = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(request_body())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(planned.status(), StatusCode::OK);
+        let mut visible = false;
+        for _ in 0..50 {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/products/pinakotheke/api/gallery/v1/catalogue")
+                        .header("x-monas-dispatch-token", dispatch)
+                        .header("x-monas-host-context", MONAS_CONTEXT)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            let json: serde_json::Value =
+                serde_json::from_slice(&to_bytes(response.into_body(), 16 * 1024).await.unwrap())
+                    .unwrap();
+            if json["items"]
+                .as_array()
+                .is_some_and(|items| items.len() == 1)
+            {
+                visible = true;
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        assert!(visible, "background capture should update the live gallery");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[tokio::test]
+    async fn background_helper_failure_keeps_plan_pending_without_gallery_claim() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-api-failed-background-capture-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let dispatch = "synthetic-monas-dispatch-token-0001";
+        let app = monolith_router_with_gallery_web_delivery_and_capture_authority(
+            true,
+            Some(MonasDispatchVerifier::new(dispatch.into()).unwrap()),
+            GalleryCatalogue::default(),
+            None,
+            gallery_image_backend(),
+            Some(
+                CapturePlanComposition::new(
+                    capture_plans(),
+                    Some(
+                        CaptureCompletionAuthority::new(
+                            "synthetic-capture-worker-token-0001".into(),
+                            GalleryCatalogueStore::new(root.join("gallery.json")),
+                            "synthetic-endpoint".into(),
+                            "synthetic-store".into(),
+                        )
+                        .unwrap(),
+                    ),
+                )
+                .with_acquire(HostCaptureAcquireBackend::new(Box::new(|_| Err(())))),
+            ),
+        );
+        let planned = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(request_body())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(planned.status(), StatusCode::OK);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        let pending = app
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let pending: serde_json::Value =
+            serde_json::from_slice(&to_bytes(pending.into_body(), 16 * 1024).await.unwrap())
+                .unwrap();
+        assert_eq!(pending["plans"].as_array().unwrap().len(), 1);
         let _ = std::fs::remove_dir_all(root);
     }
 

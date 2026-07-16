@@ -505,6 +505,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   repository quality/privacy/version checks, and local warnings-denied Sphinx
   8.2.3 passed. Docker Desktop still did not answer its local socket, leaving
   container replication as the recorded host-service follow-up.
+  The same reviewed helper can now run continuously inside foreground or
+  launchd monolith operation. Firefox admission returns promptly; helper work
+  is serialized, repeated actor/plan requests coalesce, verified receipts use
+  the existing completion gate, and failures remain pending without a stored
+  claim. A concrete DASObjectStore-packaged helper and real Firefox/live
+  authority acceptance remain.
+  Verification on 2026-07-16: 157 focused Rust tests, warnings-denied Clippy,
+  repository quality/privacy/version checks, and local warnings-denied Sphinx
+  8.2.3 passed. Docker Desktop again did not answer its local socket, so the
+  container replication remains the recorded host-service follow-up.
 
 ## 0.6.0 — Firefox capture
 

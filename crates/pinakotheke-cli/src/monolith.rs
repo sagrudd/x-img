@@ -45,6 +45,9 @@ pub(crate) struct ServeArgs {
     /// Private process token authorizing verified capture-worker completions.
     #[arg(long)]
     capture_completion_token_file: Option<PathBuf>,
+    /// Reviewed host executable for continuous approved image acquisition.
+    #[arg(long)]
+    capture_acquire_helper: Option<PathBuf>,
 }
 
 const CAPTURE_AUTHORITY_SCHEMA: &str = "pinakotheke.capture-authority.v1";
@@ -349,6 +352,27 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
             )
         })
         .transpose()?;
+    if arguments.capture_acquire_helper.is_some() && capture_completion.is_none() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "continuous capture acquisition requires capture completion authority",
+        )
+        .into());
+    }
+    let capture_acquire = arguments
+        .capture_acquire_helper
+        .as_deref()
+        .map(|helper| {
+            let authority = capture_authority
+                .as_ref()
+                .expect("validated capture authority");
+            crate::capture_worker_helper::backend(
+                helper,
+                authority.endpoint_id.clone(),
+                authority.object_store_id.clone(),
+            )
+        })
+        .transpose()?;
     let capture_plans = capture_authority.map(|authority| authority.plans);
     let monas_dispatch = arguments
         .monas_dispatch_token_file
@@ -406,7 +430,12 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                     web_root,
                     backend,
                     capture_plans.map(|plans| {
-                        x_img_api::CapturePlanComposition::new(plans, capture_completion)
+                        let composition =
+                            x_img_api::CapturePlanComposition::new(plans, capture_completion);
+                        match capture_acquire {
+                            Some(backend) => composition.with_acquire(backend),
+                            None => composition,
+                        }
                     }),
                 )
                 .await
@@ -667,6 +696,7 @@ mod tests {
             object_read_helper: None,
             capture_authority_file: None,
             capture_completion_token_file: None,
+            capture_acquire_helper: None,
         };
         assert_eq!(
             socket_address(&denied).unwrap_err().kind(),

@@ -152,6 +152,10 @@ executable using a strict metadata-only protocol. The helper owns source
 retrieval and DASObjectStore authorization, streams bytes directly to the
 authority, and returns only a verified receipt; Pinakotheke rejects stdout
 payloads, changed destinations, malformed schemas, and non-zero exits.
+The monolith can use that same adapter continuously with
+``--capture-acquire-helper``. Admission returns promptly, identical concurrent
+work is coalesced, helper execution is serialized, verified success updates the
+live gallery, and every failure remains pending without a false stored badge.
 
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,

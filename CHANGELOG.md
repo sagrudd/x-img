@@ -64,6 +64,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
   and metadata-only settlement without shell execution or local payload files.
   Foreground/service and offline workers share an exclusive local mutation
   lease so long-running acquisition cannot overlap journal writes.
+- Compose the reviewed acquisition helper into foreground and launchd monolith
+  operation with prompt browser admission, serialized background execution,
+  per-plan retry coalescing, live verified settlement, and pending-on-failure.
 - Carry an explicit positive immutable object version from verified acquisition
   and normalized-video evidence through persistent gallery records, authorized
   read grants, and host-helper requests, with legacy catalogue-v1 records

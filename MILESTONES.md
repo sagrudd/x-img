@@ -684,6 +684,9 @@ Exit criteria:
 - a run-one host worker can execute one pending image through a reviewed,
   shell-free, metadata-only helper protocol whose implementation owns permitted
   retrieval and direct DASObjectStore streaming and may not return payloads;
+- foreground and managed-service modes can continuously schedule that helper
+  with one process at a time, coalesced retries, prompt Firefox admission, and
+  pending-on-failure semantics before verified live-gallery settlement;
 - local authentication remains Monas/Prosopikon-owned; the monolith does not
   invent Pinakotheke passwords, cookies, or a parallel session issuer; and
 - unauthenticated navigation presents a polished Monas-owned, Mnemosyne-design-
