@@ -4,8 +4,9 @@
 use gloo_net::http::Request;
 use serde::Deserialize;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{HtmlElement, HtmlInputElement, KeyboardEvent};
+use web_sys::{Event, HtmlElement, HtmlInputElement, KeyboardEvent};
 use x_img_core::gallery_catalogue::{
     GALLERY_CATALOGUE_SCHEMA, GalleryItem, GalleryMediaKind, GalleryObjectAvailability,
     GalleryRepresentation, GalleryReviewState, GallerySourceKind,
@@ -14,6 +15,46 @@ use yew::prelude::*;
 
 const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue";
 const GALLERY_PAGE_SIZE: usize = 100;
+const GALLERY_WINDOW_ROWS: usize = 8;
+const GALLERY_OVERSCAN_ROWS: usize = 2;
+const COMPACT_ROW_HEIGHT: usize = 224;
+const COMFORTABLE_ROW_HEIGHT: usize = 304;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct GalleryWindow {
+    start: usize,
+    end: usize,
+    top_padding: usize,
+    bottom_padding: usize,
+    columns: usize,
+    row_height: usize,
+}
+
+fn gallery_window(
+    total: usize,
+    scroll_top: usize,
+    viewport_width: usize,
+    density: &str,
+) -> GalleryWindow {
+    let (minimum_card_width, row_height) = if density == "comfortable" {
+        (224, COMFORTABLE_ROW_HEIGHT)
+    } else {
+        (144, COMPACT_ROW_HEIGHT)
+    };
+    let columns = (viewport_width / (minimum_card_width + 12)).max(1);
+    let total_rows = total.div_ceil(columns);
+    let first_visible_row = (scroll_top / row_height).min(total_rows.saturating_sub(1));
+    let start_row = first_visible_row.saturating_sub(GALLERY_OVERSCAN_ROWS);
+    let end_row = (first_visible_row + GALLERY_WINDOW_ROWS + GALLERY_OVERSCAN_ROWS).min(total_rows);
+    GalleryWindow {
+        start: (start_row * columns).min(total),
+        end: (end_row * columns).min(total),
+        top_padding: start_row * row_height,
+        bottom_padding: total_rows.saturating_sub(end_row) * row_height,
+        columns,
+        row_height,
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -101,6 +142,13 @@ fn gallery_url(offset: usize, selected: &str, text: &str) -> String {
     url
 }
 
+fn initial_viewport_width() -> usize {
+    web_sys::window()
+        .and_then(|window| window.inner_width().ok())
+        .and_then(|width| width.as_f64())
+        .map_or(1024, |width| width.max(1.0) as usize)
+}
+
 fn focus_by_id(id: &str) {
     let Some(document) = web_sys::window().and_then(|window| window.document()) else {
         return;
@@ -145,11 +193,37 @@ pub fn app() -> Html {
     let filter = use_state(String::new);
     let gallery = use_state(|| GalleryLoadState::Loading);
     let request_generation = use_mut_ref(|| 0_u64);
+    let gallery_scroll_top = use_state(|| 0_usize);
+    let gallery_viewport_width = use_state(initial_viewport_width);
+    let keyboard_focus_pending = use_state(|| false);
+
+    {
+        let gallery_viewport_width = gallery_viewport_width.clone();
+        use_effect_with((), move |()| {
+            let callback = Closure::<dyn FnMut(Event)>::new(move |_| {
+                gallery_viewport_width.set(initial_viewport_width());
+            });
+            let window = web_sys::window();
+            if let Some(window) = &window {
+                let _ = window
+                    .add_event_listener_with_callback("resize", callback.as_ref().unchecked_ref());
+            }
+            move || {
+                if let Some(window) = window {
+                    let _ = window.remove_event_listener_with_callback(
+                        "resize",
+                        callback.as_ref().unchecked_ref(),
+                    );
+                }
+            }
+        });
+    }
 
     {
         let gallery = gallery.clone();
         let active_card = active_card.clone();
         let request_generation = request_generation.clone();
+        let gallery_scroll_top_effect = gallery_scroll_top.clone();
         use_effect_with(
             ((*selected).clone(), (*filter).clone()),
             move |(selected, filter)| {
@@ -161,6 +235,7 @@ pub fn app() -> Html {
                 };
                 gallery.set(GalleryLoadState::Loading);
                 active_card.set(0);
+                gallery_scroll_top_effect.set(0);
                 spawn_local(async move {
                     let state = match Request::get(&url).send().await {
                         Ok(response) if matches!(response.status(), 401 | 403) => {
@@ -225,6 +300,16 @@ pub fn app() -> Html {
     }
 
     let selected_card = items.get(*active_card).cloned();
+    {
+        let keyboard_focus_pending = keyboard_focus_pending.clone();
+        use_effect_with(*active_card, move |index| {
+            if *keyboard_focus_pending {
+                focus_by_id(&format!("preview-trigger-{index}"));
+                keyboard_focus_pending.set(false);
+            }
+            || ()
+        });
+    }
     html! {
         <div class="mn-app-shell ximg-shell">
             <header class="ximg-shell__header" aria-label="x-img workspace">
@@ -375,21 +460,71 @@ pub fn app() -> Html {
                         GalleryLoadState::Ready { items: records, next_offset, matched_items, total_items } => html! {
                             <>
                             <p role="status">{ format!("Loaded {} of {} catalogue records ({} total before server filters)", records.len(), matched_items, total_items) }</p>
-                            <div class={classes!("ximg-gallery__grid", format!("is-{}", *density))}>
-                                { for records.iter().enumerate().map(|(index, item)| {
+                            {{
+                                let window = gallery_window(records.len(), *gallery_scroll_top, *gallery_viewport_width, &density);
+                                let window_contains_active = (window.start..window.end).contains(&*active_card);
+                                let onscroll = {
+                                    let gallery_scroll_top = gallery_scroll_top.clone();
+                                    let gallery_viewport_width = gallery_viewport_width.clone();
+                                    Callback::from(move |event: Event| {
+                                        let element = event.target_unchecked_into::<HtmlElement>();
+                                        gallery_scroll_top.set(element.scroll_top().max(0) as usize);
+                                        gallery_viewport_width.set(element.client_width().max(1) as usize);
+                                    })
+                                };
+                                html! { <div id="gallery-scroll" class="ximg-gallery__viewport" {onscroll} tabindex="-1">
+                            <div
+                                class={classes!("ximg-gallery__grid", format!("is-{}", *density))}
+                                style={format!("--gallery-columns:{}", window.columns)}
+                            >
+                                <div class="ximg-gallery__spacer" style={format!("height:{}px", window.top_padding)} aria-hidden="true"></div>
+                                { for records[window.start..window.end].iter().enumerate().map(|(relative_index, item)| {
+                                    let index = window.start + relative_index;
                                     let active_card = active_card.clone();
+                                    let click_active_card = active_card.clone();
+                                    let focus_active_card = active_card.clone();
                                     let preview_open = preview_open.clone();
                                     let preview_mode = preview_mode.clone();
+                                    let gallery_scroll_top = gallery_scroll_top.clone();
+                                    let keyboard_focus_pending = keyboard_focus_pending.clone();
                                     let is_selected = index == *active_card;
                                     let thumbnail_path = ready_path(&item.thumbnail).map(ToOwned::to_owned);
+                                    let record_count = records.len();
+                                    let columns = window.columns;
+                                    let row_height = window.row_height;
                                     html! {
                                         <button
                                             id={format!("preview-trigger-{index}")}
                                             class={classes!("ximg-gallery__card", is_selected.then_some("is-selected"))}
                                             aria-haspopup="dialog"
                                             aria-pressed={is_selected.to_string()}
+                                            tabindex={if is_selected || (!window_contains_active && index == window.start) { "0" } else { "-1" }}
+                                            onfocus={Callback::from(move |_| focus_active_card.set(index))}
+                                            onkeydown={Callback::from(move |event: KeyboardEvent| {
+                                                let target = match event.key().as_str() {
+                                                    "ArrowRight" => (index + 1).min(record_count - 1),
+                                                    "ArrowLeft" => index.saturating_sub(1),
+                                                    "ArrowDown" => (index + columns).min(record_count - 1),
+                                                    "ArrowUp" => index.saturating_sub(columns),
+                                                    "Home" => 0,
+                                                    "End" => record_count - 1,
+                                                    _ => return,
+                                                };
+                                                event.prevent_default();
+                                                let target_top = (target / columns) * row_height;
+                                                if let Some(element) = web_sys::window()
+                                                    .and_then(|window| window.document())
+                                                    .and_then(|document| document.get_element_by_id("gallery-scroll"))
+                                                    .and_then(|element| element.dyn_into::<HtmlElement>().ok())
+                                                {
+                                                    element.set_scroll_top(target_top as i32);
+                                                }
+                                                gallery_scroll_top.set(target_top);
+                                                keyboard_focus_pending.set(true);
+                                                active_card.set(target);
+                                            })}
                                             onclick={Callback::from(move |_| {
-                                                active_card.set(index);
+                                                click_active_card.set(index);
                                                 preview_mode.set("Fit to pane".to_owned());
                                                 preview_open.set(true)
                                             })}
@@ -404,7 +539,10 @@ pub fn app() -> Html {
                                         </button>
                                     }
                                 }) }
+                                <div class="ximg-gallery__spacer" style={format!("height:{}px", window.bottom_padding)} aria-hidden="true"></div>
                             </div>
+                            </div> }
+                            }}
                             { if let Some(offset) = *next_offset {
                                 let gallery = gallery.clone();
                                 let selected = (*selected).clone();
@@ -615,5 +753,35 @@ mod tests {
             gallery_url(0, "x", ""),
             "/products/pinakotheke/api/gallery/v1/catalogue?offset=0&limit=100&source_kind=x_account"
         );
+    }
+
+    #[test]
+    fn gallery_window_bounds_a_large_catalogue_and_preserves_virtual_height() {
+        let first = gallery_window(10_000, 0, 1_024, "compact");
+        assert_eq!(first.start, 0);
+        assert!(first.end <= 60);
+        assert_eq!(first.top_padding, 0);
+        assert!(first.bottom_padding > 300_000);
+
+        let middle = gallery_window(10_000, 100_000, 1_024, "compact");
+        assert!(middle.start > 0);
+        assert!(middle.end - middle.start <= 72);
+        assert!(middle.top_padding > 0);
+        assert!(middle.bottom_padding > 0);
+
+        let end = gallery_window(10_000, usize::MAX, 1_024, "compact");
+        assert_eq!(end.end, 10_000);
+        assert_eq!(end.bottom_padding, 0);
+    }
+
+    #[test]
+    fn gallery_window_reflows_for_mobile_and_density() {
+        let mobile = gallery_window(500, 0, 320, "compact");
+        assert_eq!(mobile.columns, 2);
+        assert_eq!(mobile.row_height, COMPACT_ROW_HEIGHT);
+
+        let comfortable = gallery_window(500, 0, 1_024, "comfortable");
+        assert_eq!(comfortable.columns, 4);
+        assert_eq!(comfortable.row_height, COMFORTABLE_ROW_HEIGHT);
     }
 }

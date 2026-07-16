@@ -33,8 +33,23 @@ The source and text query are preserved across subsequent pages, filter changes
 restart at the newest matching record, and the page states exactly how many
 matching and total catalogue records exist. This removes the former silent
 200-card truncation without putting the entire persistent catalogue in browser
-memory. True viewport windowing and the real large-catalogue Firefox acceptance
-run remain part of XIMG-096.
+memory.
+
+Loaded pages are rendered through a fixed-row, responsive viewport window. The
+window derives its column count from the current container width and selected
+density, renders eight visible rows plus two overscan rows on either side, and
+represents off-screen rows with non-interactive vertical space. Scrolling,
+window resize, and density changes recalculate the slice; a 10,000-record unit
+fixture proves that the DOM-bound slice remains bounded while the virtual
+height and final record remain reachable.
+
+Cards use one roving tab stop. Arrow keys move by card or visual row, while
+Home and End reach the first and last currently loaded record. Moving to an
+off-screen record updates the scroll position, renders the new window, and
+then restores focus to the selected card. If pointer scrolling moves the
+selected record outside the window, the first visible card remains a keyboard
+entry point. The real large-catalogue Firefox performance, focus, and
+responsive-layout acceptance run remains part of XIMG-096.
 
 Object authority and availability
 ---------------------------------

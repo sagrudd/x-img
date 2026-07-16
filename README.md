@@ -107,7 +107,9 @@ Catalogue browsing now applies bounded source, media, review, availability,
 time, and metadata-text filters on the authenticated server before stable
 pagination. The Yew library preserves source/text queries while loading
 explicit 100-record pages and reports matching and total counts, avoiding the
-former silent 200-card truncation.
+former silent 200-card truncation. A responsive overscanned viewport keeps the
+number of rendered cards bounded and retains Arrow/Home/End keyboard traversal
+across loaded records that begin off-screen.
 
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,

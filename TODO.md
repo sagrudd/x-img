@@ -422,7 +422,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   plus unfiltered totals. Yew sends source and text filters to that
   authenticated boundary, restarts at the newest match when they change, and
   incrementally loads the next 100 records without the former silent 200-card
-  truncation. Real-Firefox scale evidence and true viewport windowing remain.
+  truncation. The dense grid now renders only a responsive eight-row window
+  plus bounded overscan, preserves virtual height, recalculates on resize and
+  density changes, and uses a roving tab stop with Arrow/Home/End navigation
+  across off-screen loaded cards. A 10,000-record unit fixture bounds the DOM
+  slice; real-Firefox scale, focus, and responsive-layout evidence remains.
 
 ## 0.6.0 — Firefox capture
 

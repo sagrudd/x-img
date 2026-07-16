@@ -28,6 +28,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Add bounded server-side persistent-gallery filters, honest matched/total
   counts, and query-preserving incremental Yew pagination instead of silently
   truncating the real library at 200 cards.
+- Window the responsive persistent gallery to visible plus overscan rows while
+  retaining virtual scroll height and roving Arrow/Home/End keyboard traversal
+  across off-screen loaded records.
 - Add the XIMG-200 Synoptikon product manifest, strict tenant/account/project
   host scope, and bounded authenticated catalogue projection over immutable
   DASObjectStore references.

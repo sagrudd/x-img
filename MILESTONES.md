@@ -316,7 +316,9 @@ end-to-end gate for this intent.
   XIMG-096 gallery now filters its persistent catalogue server-side by source,
   media, review, availability, time, and bounded text before stable pagination;
   Yew preserves the selected query while incrementally loading honest
-  100-record pages. Viewport windowing and real-Firefox scale evidence remain.
+  100-record pages. Its responsive overscanned viewport window bounds rendered
+  cards and preserves roving Arrow/Home/End keyboard navigation across
+  off-screen loaded records. Real-Firefox scale evidence remains.
 - XIMG-055 implements visible refresh progress (commit `a48fc13`) with a single
   action, per-account state, partial failure, retry, and new-item summary.
 - XIMG-054 implements word-first review states and reversible batch actions
