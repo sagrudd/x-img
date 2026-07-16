@@ -27,10 +27,14 @@ use x_img_core::{
         CacheBypassReason, CacheLookupOutcome, CacheLookupRequest, CacheLookupService,
         CacheRepresentation,
     },
+    capture_completion::{
+        CaptureCompletionError, CaptureCompletionOutcome, VerifiedCaptureCompletion,
+        complete_verified_image,
+    },
     gallery_catalogue::{
-        GalleryCatalogue, GalleryCatalogueError, GalleryCatalogueFilter, GalleryImageResolveError,
-        GalleryImageRole, GalleryMediaKind, GalleryObjectAvailability, GalleryPage,
-        GalleryReviewState, GallerySourceKind,
+        GalleryCatalogue, GalleryCatalogueError, GalleryCatalogueFilter, GalleryCatalogueStore,
+        GalleryImageResolveError, GalleryImageRole, GalleryMediaKind, GalleryObjectAvailability,
+        GalleryPage, GalleryReviewState, GallerySourceKind,
     },
     host_context::{
         AuthenticatedHostContext, HostContextAdapter, MonasHostContextAdapter, XIMG_ACCESS,
@@ -55,7 +59,29 @@ type CacheAliases = Arc<Mutex<CacheLookupService>>;
 type ImageDelivery = Arc<Mutex<AuthorizedObjectReader<HostObjectReadBackend>>>;
 type Operations = Arc<Mutex<OperationalTelemetry>>;
 type SynoptikonCatalogue = Arc<SynoptikonCatalogueProjection>;
-type MonasGalleryCatalogue = Arc<GalleryCatalogue>;
+type MonasGalleryCatalogue = Arc<Mutex<GalleryCatalogue>>;
+
+/// Private host-worker authority used only to report independently verified
+/// DASObjectStore image commits.
+#[derive(Clone)]
+pub struct CaptureCompletionAuthority {
+    token: String,
+    gallery_store: GalleryCatalogueStore,
+    endpoint_id: String,
+    object_store_id: String,
+}
+
+/// Capture planning plus its optional separately credentialled completion port.
+pub struct CapturePlanComposition {
+    plans: CapturePlanService,
+    completion: Option<CaptureCompletionAuthority>,
+}
+
+struct CaptureCompletionRuntime {
+    authority: CaptureCompletionAuthority,
+    plans: CapturePlans,
+    gallery: MonasGalleryCatalogue,
+}
 
 const CACHE_LOOKUP_SCHEMA_VERSION: &str = "x-img.cache-alias-lookup.v1";
 const CACHE_RESULT_SCHEMA_VERSION: &str = "x-img.cache-alias-result.v1";
@@ -129,6 +155,52 @@ impl MonasDispatchVerifier {
     }
 }
 
+impl CaptureCompletionAuthority {
+    /// Creates a private worker authority bound to the persistent gallery.
+    pub fn new(
+        token: String,
+        gallery_store: GalleryCatalogueStore,
+        endpoint_id: String,
+        object_store_id: String,
+    ) -> io::Result<Self> {
+        if token.len() < 32 || token.len() > 256 || token.chars().any(char::is_whitespace) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "capture completion token must be a bounded non-whitespace secret",
+            ));
+        }
+        if !safe_authority_identifier(&endpoint_id) || !safe_authority_identifier(&object_store_id)
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "capture completion destination identity is invalid",
+            ));
+        }
+        Ok(Self {
+            token,
+            gallery_store,
+            endpoint_id,
+            object_store_id,
+        })
+    }
+}
+
+fn safe_authority_identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-'))
+}
+
+impl CapturePlanComposition {
+    /// Creates the capture composition used by the complete monolith router.
+    #[must_use]
+    pub fn new(plans: CapturePlanService, completion: Option<CaptureCompletionAuthority>) -> Self {
+        Self { plans, completion }
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct OperationsResponse {
     schema_version: &'static str,
@@ -139,6 +211,28 @@ struct OperationsResponse {
 struct PendingCapturePlansResponse {
     schema_version: &'static str,
     plans: Vec<CapturePlan>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CaptureCompletionRequest {
+    schema_version: String,
+    catalogue_id: String,
+    title: String,
+    content_type: String,
+    content_length: u64,
+    endpoint_id: String,
+    object_store_id: String,
+    object_key: String,
+    object_version: u64,
+    checksum_sha256: String,
+    verified_at_epoch_seconds: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct CaptureCompletionResponse {
+    schema_version: &'static str,
+    outcome: &'static str,
 }
 
 /// Server-side callback used to bridge a host's scoped DASObjectStore read
@@ -267,7 +361,7 @@ pub async fn serve_monolith_with_gallery_web_delivery_and_capture(
     gallery: GalleryCatalogue,
     web_root: Option<PathBuf>,
     backend: HostObjectReadBackend,
-    capture_plans: Option<CapturePlanService>,
+    capture: Option<CapturePlanComposition>,
 ) -> io::Result<()> {
     axum::serve(
         listener,
@@ -277,7 +371,7 @@ pub async fn serve_monolith_with_gallery_web_delivery_and_capture(
             gallery,
             web_root,
             backend,
-            capture_plans,
+            capture,
         ),
     )
     .with_graceful_shutdown(shutdown_signal())
@@ -386,7 +480,7 @@ pub fn monolith_router_with_gallery_and_web_authority(
             "/products/pinakotheke/api/gallery/v1/catalogue",
             get(gallery_catalogue),
         )
-        .layer(Extension(Arc::new(gallery)));
+        .layer(Extension(Arc::new(Mutex::new(gallery))));
     if let Some(web_root) = web_root {
         protected = protected.nest_service(
             "/products/pinakotheke/app",
@@ -428,7 +522,7 @@ pub fn monolith_router_with_gallery_web_and_capture_authority(
             "/products/pinakotheke/api/extension/v1/capture-plans",
             get(capture_plans_pending).post(capture_plan),
         )
-        .layer(Extension(Arc::new(gallery)))
+        .layer(Extension(Arc::new(Mutex::new(gallery))))
         .layer(Extension(Arc::new(Mutex::new(capture_plans))));
     if let Some(web_root) = web_root {
         protected = protected.nest_service(
@@ -493,9 +587,10 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
     gallery: GalleryCatalogue,
     web_root: Option<PathBuf>,
     backend: HostObjectReadBackend,
-    capture_plans: Option<CapturePlanService>,
+    capture: Option<CapturePlanComposition>,
 ) -> Router {
     let authentication_ready = monas_dispatch.is_some();
+    let gallery = Arc::new(Mutex::new(gallery));
     let mut protected = Router::new()
         .route("/products/pinakotheke/api/context", get(context))
         .route(
@@ -510,17 +605,34 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             "/products/pinakotheke/api/gallery/v1/objects/{catalogue_id}/video",
             get(deliver_gallery_video),
         )
-        .layer(Extension(Arc::new(gallery)))
+        .layer(Extension(Arc::clone(&gallery)))
         .layer(Extension(Arc::new(Mutex::new(
             AuthorizedObjectReader::new(backend),
         ))));
-    if let Some(capture_plans) = capture_plans {
+    if let Some(capture) = capture {
+        let CapturePlanComposition {
+            plans: capture_plans,
+            completion: completion_authority,
+        } = capture;
+        let capture_plans = Arc::new(Mutex::new(capture_plans));
         protected = protected
             .route(
                 "/products/pinakotheke/api/extension/v1/capture-plans",
                 get(capture_plans_pending).post(capture_plan),
             )
-            .layer(Extension(Arc::new(Mutex::new(capture_plans))));
+            .layer(Extension(Arc::clone(&capture_plans)));
+        if let Some(authority) = completion_authority {
+            protected = protected
+                .route(
+                    "/products/pinakotheke/api/internal/v1/capture-plans/{plan_id}/complete",
+                    post(complete_capture_plan),
+                )
+                .layer(Extension(Arc::new(CaptureCompletionRuntime {
+                    authority,
+                    plans: capture_plans,
+                    gallery,
+                })));
+        }
     }
     if let Some(web_root) = web_root {
         protected = protected.nest_service(
@@ -692,7 +804,7 @@ pub fn router_with_gallery_catalogue(catalogue: GalleryCatalogue) -> Router {
             "/products/pinakotheke/api/gallery/v1/catalogue",
             get(gallery_catalogue),
         )
-        .layer(Extension(Arc::new(catalogue)))
+        .layer(Extension(Arc::new(Mutex::new(catalogue))))
 }
 
 /// Returns an authenticated gallery with exact DASObjectStore image streaming.
@@ -714,7 +826,7 @@ pub fn router_with_gallery_delivery(
             "/products/pinakotheke/api/gallery/v1/objects/{catalogue_id}/video",
             get(deliver_gallery_video),
         )
-        .layer(Extension(Arc::new(catalogue)))
+        .layer(Extension(Arc::new(Mutex::new(catalogue))))
         .layer(Extension(Arc::new(Mutex::new(
             AuthorizedObjectReader::new(backend),
         ))))
@@ -774,6 +886,8 @@ async fn gallery_catalogue(
     let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
     let catalogue = catalogue.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
     catalogue
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .filtered_page(
             &context,
             query.offset,
@@ -810,9 +924,10 @@ async fn deliver_gallery_image(
         "original" => GalleryImageRole::Original,
         _ => return Err(StatusCode::NOT_FOUND),
     };
+    let catalogue = catalogue.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
     let grant = catalogue
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?
-        .0
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .resolve_image(&context, &catalogue_id, role)
         .map_err(|error| match error {
             GalleryImageResolveError::Unauthorized => StatusCode::FORBIDDEN,
@@ -874,9 +989,10 @@ async fn deliver_gallery_video(
     delivery: Option<Extension<ImageDelivery>>,
 ) -> Result<Response, StatusCode> {
     let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    let catalogue = catalogue.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
     let grant = catalogue
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?
-        .0
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .resolve_video(&context, &catalogue_id)
         .map_err(|error| match error {
             GalleryImageResolveError::Unauthorized => StatusCode::FORBIDDEN,
@@ -1116,6 +1232,83 @@ async fn capture_plans_pending(
     Ok(Json(PendingCapturePlansResponse {
         schema_version: "pinakotheke.pending-capture-plans.v1",
         plans,
+    }))
+}
+
+async fn complete_capture_plan(
+    Path(plan_id): Path<String>,
+    headers: HeaderMap,
+    context: Option<Extension<AuthenticatedHostContext>>,
+    runtime: Option<Extension<Arc<CaptureCompletionRuntime>>>,
+    Json(request): Json<CaptureCompletionRequest>,
+) -> Result<Json<CaptureCompletionResponse>, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    if !context.permits(XIMG_ACCESS) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    let runtime = runtime.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let supplied = headers
+        .get("x-pinakotheke-capture-worker-token")
+        .and_then(|value| value.to_str().ok())
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+    if !constant_time_equal(supplied.as_bytes(), runtime.authority.token.as_bytes()) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    if request.schema_version != "pinakotheke.capture-completion.v1" {
+        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    if request.endpoint_id != runtime.authority.endpoint_id
+        || request.object_store_id != runtime.authority.object_store_id
+    {
+        return Err(StatusCode::CONFLICT);
+    }
+    let mut plans = runtime
+        .plans
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let outcome = complete_verified_image(
+        &mut plans,
+        runtime.authority.gallery_store.clone(),
+        context.actor_id(),
+        VerifiedCaptureCompletion {
+            plan_id,
+            catalogue_id: request.catalogue_id,
+            title: request.title,
+            content_type: request.content_type,
+            content_length: request.content_length,
+            endpoint_id: request.endpoint_id,
+            object_store_id: request.object_store_id,
+            object_key: request.object_key,
+            object_version: request.object_version,
+            checksum_sha256: request.checksum_sha256,
+            verified_at_epoch_seconds: request.verified_at_epoch_seconds,
+        },
+    )
+    .map_err(|error| match error {
+        CaptureCompletionError::UnknownPlan => StatusCode::NOT_FOUND,
+        CaptureCompletionError::InvalidEvidence
+        | CaptureCompletionError::Acquisition(_)
+        | CaptureCompletionError::Reconciliation(_)
+        | CaptureCompletionError::ReconciliationConflict
+        | CaptureCompletionError::Gallery(_) => StatusCode::UNPROCESSABLE_ENTITY,
+        CaptureCompletionError::Journal(_) => StatusCode::SERVICE_UNAVAILABLE,
+    })?;
+    let refreshed = runtime
+        .authority
+        .gallery_store
+        .load_or_empty()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    *runtime
+        .gallery
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? = refreshed;
+    Ok(Json(CaptureCompletionResponse {
+        schema_version: "pinakotheke.capture-completion-result.v1",
+        outcome: match outcome {
+            CaptureCompletionOutcome::ThumbnailInserted => "thumbnail_inserted",
+            CaptureCompletionOutcome::OriginalAttached => "original_attached",
+            CaptureCompletionOutcome::AlreadyPresent => "already_present",
+        },
     }))
 }
 
@@ -1526,9 +1719,9 @@ mod tests {
             CacheLookupService, CacheObjectAvailability, CacheRepresentation,
         },
         gallery_catalogue::{
-            GalleryCatalogue, GalleryItem, GalleryMediaKind, GalleryObjectAvailability,
-            GalleryRepresentation, GalleryRepresentationKind, GalleryReviewState,
-            GallerySourceKind,
+            GalleryCatalogue, GalleryCatalogueStore, GalleryItem, GalleryMediaKind,
+            GalleryObjectAvailability, GalleryRepresentation, GalleryRepresentationKind,
+            GalleryReviewState, GallerySourceKind,
         },
         host_context::{HostContextAdapter, MonasHostContextAdapter},
         object_read::{
@@ -1549,10 +1742,11 @@ mod tests {
     };
 
     use super::{
-        HostObjectReadBackend, MonasDispatchVerifier, monolith_router,
-        monolith_router_with_authorities, monolith_router_with_gallery_authority,
-        monolith_router_with_gallery_delivery_authority,
+        CaptureCompletionAuthority, CapturePlanComposition, HostObjectReadBackend,
+        MonasDispatchVerifier, monolith_router, monolith_router_with_authorities,
+        monolith_router_with_gallery_authority, monolith_router_with_gallery_delivery_authority,
         monolith_router_with_gallery_web_and_capture_authority,
+        monolith_router_with_gallery_web_delivery_and_capture_authority,
         monolith_router_with_gallery_web_delivery_authority, monolith_router_with_storage, router,
         router_with_cache_aliases, router_with_cache_substitution, router_with_capture_plans,
         router_with_direct_playback, router_with_gallery_catalogue, router_with_gallery_delivery,
@@ -2514,6 +2708,140 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(admitted.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn verified_worker_completion_updates_live_gallery_and_settles_pending_plan() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-api-capture-completion-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let store = GalleryCatalogueStore::new(root.join("gallery.json"));
+        let dispatch = "synthetic-monas-dispatch-token-0001";
+        let worker = "synthetic-capture-worker-token-0001";
+        let app = monolith_router_with_gallery_web_delivery_and_capture_authority(
+            true,
+            Some(MonasDispatchVerifier::new(dispatch.into()).unwrap()),
+            GalleryCatalogue::default(),
+            None,
+            gallery_image_backend(),
+            Some(CapturePlanComposition::new(
+                capture_plans(),
+                Some(
+                    CaptureCompletionAuthority::new(
+                        worker.into(),
+                        store,
+                        "synthetic-endpoint".into(),
+                        "synthetic-store".into(),
+                    )
+                    .unwrap(),
+                ),
+            )),
+        );
+        let planned = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(request_body())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(planned.status(), StatusCode::OK);
+        let plan: serde_json::Value =
+            serde_json::from_slice(&to_bytes(planned.into_body(), 16 * 1024).await.unwrap())
+                .unwrap();
+        let plan_id = plan["plan_id"].as_str().unwrap();
+        let completion = serde_json::json!({
+            "schema_version": "pinakotheke.capture-completion.v1",
+            "catalogue_id": "website-card-1",
+            "title": "Synthetic artwork",
+            "content_type": "image/jpeg",
+            "content_length": 12,
+            "endpoint_id": "synthetic-endpoint",
+            "object_store_id": "synthetic-store",
+            "object_key": "image-1",
+            "object_version": 1,
+            "checksum_sha256": CHECKSUM.strip_prefix("sha256:").unwrap(),
+            "verified_at_epoch_seconds": 42
+        });
+        let denied = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!(
+                        "/products/pinakotheke/api/internal/v1/capture-plans/{plan_id}/complete"
+                    ))
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::from(serde_json::to_vec(&completion).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+        let mut wrong_destination = completion.clone();
+        wrong_destination["object_store_id"] = serde_json::json!("other-store");
+        let wrong_destination = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!(
+                        "/products/pinakotheke/api/internal/v1/capture-plans/{plan_id}/complete"
+                    ))
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .header("x-pinakotheke-capture-worker-token", worker)
+                    .body(Body::from(serde_json::to_vec(&wrong_destination).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(wrong_destination.status(), StatusCode::CONFLICT);
+        let completed = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!(
+                        "/products/pinakotheke/api/internal/v1/capture-plans/{plan_id}/complete"
+                    ))
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .header("x-pinakotheke-capture-worker-token", worker)
+                    .body(Body::from(serde_json::to_vec(&completion).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(completed.status(), StatusCode::OK);
+        let catalogue = app
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/gallery/v1/catalogue")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let catalogue: serde_json::Value =
+            serde_json::from_slice(&to_bytes(catalogue.into_body(), 16 * 1024).await.unwrap())
+                .unwrap();
+        assert_eq!(catalogue["items"].as_array().unwrap().len(), 1);
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[tokio::test]

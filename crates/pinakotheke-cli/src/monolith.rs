@@ -42,6 +42,9 @@ pub(crate) struct ServeArgs {
     /// Private metadata-only Firefox pairing/site authority document.
     #[arg(long)]
     capture_authority_file: Option<PathBuf>,
+    /// Private process token authorizing verified capture-worker completions.
+    #[arg(long)]
+    capture_completion_token_file: Option<PathBuf>,
 }
 
 const CAPTURE_AUTHORITY_SCHEMA: &str = "pinakotheke.capture-authority.v1";
@@ -51,8 +54,17 @@ const CAPTURE_AUTHORITY_LIMIT: u64 = 256 * 1024;
 #[serde(deny_unknown_fields)]
 struct CaptureAuthorityDocument {
     schema_version: String,
+    endpoint_id: String,
+    object_store_id: String,
     pairings: Vec<CapturePairingRecord>,
     sites: Vec<SiteCapturePolicyRecord>,
+}
+
+#[derive(Debug)]
+struct LoadedCaptureAuthority {
+    plans: CapturePlanService,
+    endpoint_id: String,
+    object_store_id: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -247,11 +259,42 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
         .as_deref()
         .map(crate::object_read_helper::backend)
         .transpose()?;
-    let capture_plans = arguments
+    let capture_authority = arguments
         .capture_authority_file
         .as_deref()
         .map(|path| load_capture_authority(path, layout.root.join("state/capture-plans.v1.json")))
         .transpose()?;
+    if arguments.capture_completion_token_file.is_some()
+        && (object_read_backend.is_none()
+            || capture_authority.is_none()
+            || arguments.monas_dispatch_token_file.is_none())
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "capture completion requires Monas dispatch, capture authority, and object delivery",
+        )
+        .into());
+    }
+    let gallery_path = layout.root.join("state/gallery-catalogue.v1.json");
+    let gallery_store = GalleryCatalogueStore::new(&gallery_path);
+    let capture_completion = arguments
+        .capture_completion_token_file
+        .as_deref()
+        .map(read_dispatch_token)
+        .transpose()?
+        .map(|token| {
+            let authority = capture_authority
+                .as_ref()
+                .expect("validated capture authority");
+            x_img_api::CaptureCompletionAuthority::new(
+                token,
+                gallery_store.clone(),
+                authority.endpoint_id.clone(),
+                authority.object_store_id.clone(),
+            )
+        })
+        .transpose()?;
+    let capture_plans = capture_authority.map(|authority| authority.plans);
     let monas_dispatch = arguments
         .monas_dispatch_token_file
         .as_deref()
@@ -266,8 +309,7 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
     runtime.block_on(async move {
         let listener = tokio::net::TcpListener::bind(address).await?;
         let storage_ready = crate::local_objectstore::is_ready(&layout.root);
-        let gallery_path = layout.root.join("state/gallery-catalogue.v1.json");
-        let gallery = GalleryCatalogueStore::new(&gallery_path)
+        let gallery = gallery_store
             .load_or_empty()
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
         println!(
@@ -308,7 +350,9 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                     gallery,
                     web_root,
                     backend,
-                    capture_plans,
+                    capture_plans.map(|plans| {
+                        x_img_api::CapturePlanComposition::new(plans, capture_completion)
+                    }),
                 )
                 .await
             }
@@ -338,7 +382,10 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-fn load_capture_authority(path: &Path, journal_path: PathBuf) -> io::Result<CapturePlanService> {
+fn load_capture_authority(
+    path: &Path,
+    journal_path: PathBuf,
+) -> io::Result<LoadedCaptureAuthority> {
     let metadata = std::fs::symlink_metadata(path)?;
     if !path.is_absolute()
         || metadata.file_type().is_symlink()
@@ -364,6 +411,8 @@ fn load_capture_authority(path: &Path, journal_path: PathBuf) -> io::Result<Capt
     let document: CaptureAuthorityDocument = serde_json::from_slice(&bytes)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
     if document.schema_version != CAPTURE_AUTHORITY_SCHEMA
+        || !safe_identifier(&document.endpoint_id)
+        || !safe_identifier(&document.object_store_id)
         || document.pairings.len() > 128
         || document.sites.len() > 256
     {
@@ -424,8 +473,13 @@ fn load_capture_authority(path: &Path, journal_path: PathBuf) -> io::Result<Capt
             })
         })
         .collect::<io::Result<Vec<_>>>()?;
-    CapturePlanService::with_journal(pairings, sites, journal_path)
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
+    let plans = CapturePlanService::with_journal(pairings, sites, journal_path)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+    Ok(LoadedCaptureAuthority {
+        plans,
+        endpoint_id: document.endpoint_id,
+        object_store_id: document.object_store_id,
+    })
 }
 
 fn safe_identifier(value: &str) -> bool {
@@ -522,6 +576,7 @@ mod tests {
             web_root: None,
             object_read_helper: None,
             capture_authority_file: None,
+            capture_completion_token_file: None,
         };
         assert_eq!(
             socket_address(&denied).unwrap_err().kind(),
@@ -573,6 +628,8 @@ mod tests {
             &authority,
             r#"{
               "schema_version":"pinakotheke.capture-authority.v1",
+              "endpoint_id":"endpoint-1",
+              "object_store_id":"store-1",
               "pairings":[{"pairing_id":"pair-1","actor_id":"actor-1","expires_at":4102444800,"revoked":false}],
               "sites":[{"site_id":"example","origin":"https://example.invalid","capture_enabled":true,"adapter_kind":"experimental_generic","adapter_version":"1.0.0","allow_observed_thumbnails":true,"allow_explicit_originals":true,"max_candidates_per_page":32}]
             }"#,

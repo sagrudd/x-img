@@ -142,6 +142,11 @@ misrepresented as stored media.
 Accepted plan metadata is atomically journalled beneath the private product
 state root. Retries are idempotent across restart, daily page budgets survive a
 restart, and an authenticated actor can list only their own pending plans.
+A separately credentialled host worker can report an independently verified
+DASObjectStore image commit through the strict completion boundary. Successful
+completion updates the live gallery and persistent review card before retaining
+a restart-safe settled marker; Firefox cannot invoke this with its pairing or
+Monas session alone.
 
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,

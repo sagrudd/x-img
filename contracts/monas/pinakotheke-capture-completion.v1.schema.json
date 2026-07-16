@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sagrudd/pinakotheke/contracts/monas/pinakotheke-capture-completion.v1.schema.json",
+  "title": "Verified capture completion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "catalogue_id", "title", "content_type", "content_length", "endpoint_id", "object_store_id", "object_key", "object_version", "checksum_sha256", "verified_at_epoch_seconds"],
+  "properties": {
+    "schema_version": { "const": "pinakotheke.capture-completion.v1" },
+    "catalogue_id": { "$ref": "#/$defs/identifier" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "content_type": { "type": "string", "pattern": "^image/[A-Za-z0-9.+-]+$", "maxLength": 128 },
+    "content_length": { "type": "integer", "minimum": 1 },
+    "endpoint_id": { "$ref": "#/$defs/identifier" },
+    "object_store_id": { "$ref": "#/$defs/identifier" },
+    "object_key": { "$ref": "#/$defs/identifier" },
+    "object_version": { "type": "integer", "minimum": 1 },
+    "checksum_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "verified_at_epoch_seconds": { "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" }
+  }
+}

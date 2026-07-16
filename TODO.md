@@ -483,6 +483,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Docker Desktop again failed to answer its local socket, so the documented
   container replication remains a host-service follow-up rather than a code
   acceptance blocker.
+  A private host-worker completion endpoint now accepts strict independently
+  verified ObjectStore image evidence, replays acquisition/reconciliation
+  gates, atomically admits the common ``New`` gallery card, updates the live
+  catalogue, and retains an idempotent settled marker. Monas context alone is
+  insufficient: a separate process token is mandatory. The remaining gap is a
+  production worker/read-helper that performs the authority transfer and
+  verification before calling this boundary, plus real Firefox evidence.
+  Verification on 2026-07-16: 153 focused Rust tests, warnings-denied Clippy,
+  repository quality/privacy/version checks, and local Sphinx 8.2.3 with
+  warnings denied passed. Docker Desktop still did not answer its local socket,
+  so container replication remains an explicit host-service follow-up.
 
 ## 0.6.0 — Firefox capture
 

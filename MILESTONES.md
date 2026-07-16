@@ -678,6 +678,9 @@ Exit criteria:
 - accepted Firefox plans survive restart in a bounded private atomic journal,
   retain actor scope and daily page budgets, and reconcile idempotent retries
   without claiming that pending metadata is stored media;
+- only a separately credentialled host worker may convert a pending plan and
+  independently verified DASObjectStore image reference into the persistent
+  review queue and live gallery; browser sessions cannot assert completion;
 - local authentication remains Monas/Prosopikon-owned; the monolith does not
   invent Pinakotheke passwords, cookies, or a parallel session issuer; and
 - unauthenticated navigation presents a polished Monas-owned, Mnemosyne-design-

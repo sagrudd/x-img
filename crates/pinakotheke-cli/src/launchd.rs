@@ -56,6 +56,9 @@ pub(crate) struct InstallArgs {
     /// Absolute private Firefox capture pairing/site authority document.
     #[arg(long)]
     capture_authority_file: Option<PathBuf>,
+    /// Absolute private capture-worker completion token file.
+    #[arg(long, requires = "capture_authority_file")]
+    capture_completion_token_file: Option<PathBuf>,
     /// Replace existing Pinakotheke-managed plist definitions.
     #[arg(long)]
     replace: bool,
@@ -157,6 +160,15 @@ fn install(layout: &ServiceLayout, args: &InstallArgs) -> io::Result<()> {
     if let Some(path) = &args.capture_authority_file {
         validate_private_file(path)?;
     }
+    if let Some(path) = &args.capture_completion_token_file {
+        validate_private_file(path)?;
+        if args.object_read_helper.is_none() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "capture completion requires --object-read-helper",
+            ));
+        }
+    }
     if !args.replace && (layout.backend_plist.exists() || layout.monas_plist.exists()) {
         return Err(io::Error::new(
             io::ErrorKind::AlreadyExists,
@@ -180,6 +192,7 @@ fn install(layout: &ServiceLayout, args: &InstallArgs) -> io::Result<()> {
         args.object_read_helper.as_deref(),
         args.object_read_endpoint_id.as_deref(),
         args.capture_authority_file.as_deref(),
+        args.capture_completion_token_file.as_deref(),
     );
     let monas = monas_plist(layout, &args.monas_binary);
     let previous_backend = std::fs::read(&layout.backend_plist).ok();
@@ -349,6 +362,7 @@ fn backend_plist(
     helper: Option<&Path>,
     endpoint_id: Option<&str>,
     capture_authority_file: Option<&Path>,
+    capture_completion_token_file: Option<&Path>,
 ) -> String {
     let mut arguments = vec![
         "serve",
@@ -366,6 +380,9 @@ fn backend_plist(
     }
     if let Some(path) = capture_authority_file {
         arguments.extend(["--capture-authority-file", path_text_unchecked(path)]);
+    }
+    if let Some(path) = capture_completion_token_file {
+        arguments.extend(["--capture-completion-token-file", path_text_unchecked(path)]);
     }
     let environment = endpoint_id
         .map(|endpoint_id| vec![("PINAKOTHEKE_OBJECT_READ_ENDPOINT_ID", endpoint_id)])
@@ -571,6 +588,9 @@ mod tests {
             Some(Path::new(
                 "/Users/synthetic & user/.x-img/config/capture.json",
             )),
+            Some(Path::new(
+                "/Users/synthetic & user/.x-img/run/completion.token",
+            )),
         );
         let monas = monas_plist(&layout, Path::new("/opt/bin/monas-server"));
         assert!(backend.contains("127.0.0.1</string><string>--port</string><string>8732"));
@@ -580,6 +600,7 @@ mod tests {
         assert!(backend.contains("endpoint-local"));
         assert!(backend.contains("--capture-authority-file"));
         assert!(backend.contains("capture.json"));
+        assert!(backend.contains("--capture-completion-token-file"));
         assert!(monas.contains("127.0.0.1:8731"));
         assert!(monas.contains("PROSOPIKON_ROOT"));
         assert!(monas.contains("synthetic &amp; user"));

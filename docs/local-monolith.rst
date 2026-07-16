@@ -164,6 +164,7 @@ readable through the same authenticated monolith:
    pinakotheke serve --port 8732 \
      --object-read-helper /absolute/path/to/reviewed-helper \
      --capture-authority-file /absolute/path/to/capture-authority.json \
+     --capture-completion-token-file /absolute/path/to/completion.token \
      --monas-dispatch-token-file "$HOME/.x-img/run/monas-dispatch.token"
 
 The helper uses the strict ``pinakotheke.object-read-helper.v1`` protocol
@@ -196,7 +197,8 @@ Review and install the two coordinated user agents:
      --monas-binary /absolute/path/to/monas-server \
      --object-read-helper /absolute/path/to/reviewed-helper \
      --object-read-endpoint-id endpoint-local \
-     --capture-authority-file /absolute/path/to/capture-authority.json
+     --capture-authority-file /absolute/path/to/capture-authority.json \
+     --capture-completion-token-file /absolute/path/to/completion.token
 
 Installation requires absolute executable regular files, generates a private
 dispatch credential, keeps the backend on port 8732, and exposes Monas on port

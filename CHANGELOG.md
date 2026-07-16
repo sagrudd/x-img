@@ -55,6 +55,10 @@ All notable changes to Pinakotheke will be documented in this file. The project 
   restore actor-scoped pending work and daily budgets after restart, return
   idempotent retries, and expose an authenticated pending-plan reconciliation
   view without media bytes or credentials.
+- Add a separately credentialled host-worker completion boundary that admits
+  exact verified DASObjectStore image evidence through acquisition,
+  reconciliation, persistent review, and the live gallery, with restart-safe
+  idempotent settled markers and no payload bytes.
 - Carry an explicit positive immutable object version from verified acquisition
   and normalized-video evidence through persistent gallery records, authorized
   read grants, and host-helper requests, with legacy catalogue-v1 records

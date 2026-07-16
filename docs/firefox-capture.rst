@@ -74,14 +74,17 @@ The local monolith mounts capture planning at
 ``/products/pinakotheke/api/extension/v1/capture-plans`` only when supplied a
 private metadata-only authority document. The endpoint remains behind Monas
 dispatch and requires the pairing actor to match the authenticated host
-context. The document contains opaque pairing references and explicit enabled
-site rules; it contains no browser cookies, site credentials, media bytes, or
-DASObjectStore secrets.
+context. The document binds every completion to one reviewed endpoint and
+logical ObjectStore and contains opaque pairing references plus explicit
+enabled site rules. It contains no browser cookies, site credentials, media
+bytes, or DASObjectStore secrets.
 
 .. code-block:: json
 
    {
      "schema_version": "pinakotheke.capture-authority.v1",
+     "endpoint_id": "endpoint-local",
+     "object_store_id": "pinakotheke-local",
      "pairings": [{
        "pairing_id": "pair-firefox-1",
        "actor_id": "local-user",
@@ -132,6 +135,34 @@ can inspect only their own pending plans with:
 Pending means ``awaiting_approved_acquisition``. It is explicit reconciliation
 work, not evidence that DASObjectStore contains the object and not permission
 to display a ``Stored in ObjectStore`` badge.
+
+Verified worker completion
+--------------------------
+
+An accepted plan becomes a gallery card only through the narrow host-worker
+completion route. Configure it only alongside Monas dispatch, capture
+authority, and the reviewed ObjectStore read helper by supplying a separate
+mode-``0600`` ``--capture-completion-token-file``. The worker token is a local
+process credential and must never enter Firefox storage, site rules, URLs,
+logs, or documentation examples with a real value.
+
+After independently verifying the exact DASObjectStore endpoint, logical store,
+object key/version, checksum, media type, and length, the host worker submits
+strict ``pinakotheke.capture-completion.v1`` metadata to:
+
+.. code-block:: text
+
+   POST /products/pinakotheke/api/internal/v1/capture-plans/{plan_id}/complete
+
+The request needs both Monas actor context and
+``X-Pinakotheke-Capture-Worker-Token``. A browser session without the worker
+credential is denied. Pinakotheke replays the acquisition and reconciliation
+state gates, writes the common ``New`` gallery record atomically, refreshes the
+live ThumbsPlus-style catalogue, and only then marks the plan settled. Exact
+retries return ``already_present``; settled markers survive restart and stay
+out of the pending list. No payload bytes cross this endpoint. The request
+schema is
+``contracts/monas/pinakotheke-capture-completion.v1.schema.json``.
 
 Compatibility evidence
 ----------------------

@@ -181,6 +181,9 @@ impl CapturePlanService {
         service.journal = Some(journal);
         service.next_plan = next_plan;
         for pending in &accepted {
+            if pending.settled {
+                continue;
+            }
             let restored_job = service
                 .schedule(&pending.actor_id, 1_000, pending.plan.plan_id.clone())
                 .map_err(|_| CapturePlanJournalError::InvalidRecord)?;
@@ -196,9 +199,43 @@ impl CapturePlanService {
     pub fn pending_for_actor(&self, actor_id: &str) -> Vec<CapturePlan> {
         self.accepted
             .iter()
-            .filter(|pending| pending.actor_id == actor_id)
+            .filter(|pending| pending.actor_id == actor_id && !pending.settled)
             .map(|pending| pending.plan.clone())
             .collect()
+    }
+
+    #[must_use]
+    pub fn pending(&self, actor_id: &str, plan_id: &str) -> Option<CapturePlan> {
+        self.accepted
+            .iter()
+            .find(|pending| pending.actor_id == actor_id && pending.plan.plan_id == plan_id)
+            .map(|pending| pending.plan.clone())
+    }
+
+    #[must_use]
+    pub fn is_settled(&self, actor_id: &str, plan_id: &str) -> bool {
+        self.accepted.iter().any(|pending| {
+            pending.actor_id == actor_id && pending.plan.plan_id == plan_id && pending.settled
+        })
+    }
+
+    pub fn settle(&mut self, actor_id: &str, plan_id: &str) -> Result<(), CapturePlanError> {
+        let Some(index) = self
+            .accepted
+            .iter()
+            .position(|pending| pending.actor_id == actor_id && pending.plan.plan_id == plan_id)
+        else {
+            return Err(CapturePlanError::InvalidRequest);
+        };
+        let mut replacement = self.accepted.clone();
+        replacement[index].settled = true;
+        if let Some(journal) = &self.journal {
+            journal
+                .replace(&replacement)
+                .map_err(|_| CapturePlanError::Persistence)?;
+        }
+        self.accepted = replacement;
+        Ok(())
     }
 
     pub fn plan(
@@ -291,6 +328,7 @@ impl CapturePlanService {
         let pending = PendingCapturePlan {
             actor_id: actor_id.into(),
             admitted_at_epoch_seconds: now,
+            settled: false,
             plan: plan.clone(),
         };
         if let Some(journal) = &self.journal {

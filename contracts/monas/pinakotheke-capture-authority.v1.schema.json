@@ -4,9 +4,11 @@
   "title": "Pinakotheke capture authority",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "pairings", "sites"],
+  "required": ["schema_version", "endpoint_id", "object_store_id", "pairings", "sites"],
   "properties": {
     "schema_version": { "const": "pinakotheke.capture-authority.v1" },
+    "endpoint_id": { "$ref": "#/$defs/identifier" },
+    "object_store_id": { "$ref": "#/$defs/identifier" },
     "pairings": {
       "type": "array",
       "maxItems": 128,

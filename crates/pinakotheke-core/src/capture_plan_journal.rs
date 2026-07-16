@@ -25,6 +25,7 @@ static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub struct PendingCapturePlan {
     pub actor_id: String,
     pub admitted_at_epoch_seconds: u64,
+    pub settled: bool,
     pub plan: CapturePlan,
 }
 
@@ -74,6 +75,8 @@ struct JournalDocument {
 struct StoredPendingPlan {
     actor_id: String,
     admitted_at_epoch_seconds: u64,
+    #[serde(default)]
+    settled: bool,
     plan: StoredCapturePlan,
 }
 
@@ -219,6 +222,7 @@ impl StoredPendingPlan {
         Ok(PendingCapturePlan {
             actor_id: self.actor_id,
             admitted_at_epoch_seconds: self.admitted_at_epoch_seconds,
+            settled: self.settled,
             plan: self.plan.into_plan()?,
         })
     }
@@ -275,6 +279,7 @@ impl From<&PendingCapturePlan> for StoredPendingPlan {
         Self {
             actor_id: pending.actor_id.clone(),
             admitted_at_epoch_seconds: pending.admitted_at_epoch_seconds,
+            settled: pending.settled,
             plan: StoredCapturePlan {
                 schema_version: plan.schema_version.into(),
                 plan_id: plan.plan_id.clone(),
@@ -328,6 +333,7 @@ mod tests {
         PendingCapturePlan {
             actor_id: "actor-1".into(),
             admitted_at_epoch_seconds: 42,
+            settled: false,
             plan: CapturePlan {
                 schema_version: CAPTURE_PLAN_SCHEMA_VERSION,
                 plan_id: "capture-plan-0".into(),
