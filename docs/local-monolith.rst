@@ -56,7 +56,12 @@ never writes media by treating the managed root as an ordinary folder.
 
 Use ``status`` to re-discover and validate the authority identity, or ``down``
 to stop the containers without deleting state. Both accept the same required
-``--provisioner`` argument. An alternate ``--root`` must be absolute.
+``--provisioner`` argument. An alternate ``--root`` must be absolute. The
+loopback API defaults to port ``3900``. For an isolated profile or a host where
+that port is already owned by another DASObjectStore authority, pass the same
+explicit non-zero port to every lifecycle command, for example
+``--api-port 43000``. Pinakotheke persists and revalidates the exact resulting
+loopback URL; it does not silently reconnect to an authority on another port.
 
 Provisioning is restart-safe. If the authority's start action reports failure
 but strict ``describe`` immediately returns the exact expected Ready profile,
@@ -254,18 +259,18 @@ refused unless the operator supplies the deliberately explicit
 for controlled development only: it prints a warning and does not create TLS or
 authentication. Do not expose this first slice to an untrusted network.
 
-Next slices
------------
+Clean-home acceptance
+---------------------
 
-XIMG-094 still proves a clean-home authenticated ingest/read/restart flow end
-to end. The host read adapter and first-party scoped DAS/S3 helper are now
-available. A real isolated profile provisions and rediscovers successfully on
-macOS after the DASObjectStore local image consumes its copied Prosopikon build
-context. The remaining authority gap is transport: Docker Desktop exposes the
-container-created Unix socket path on a bind mount but refuses host
-connections. DASObjectStore must provide a supported host-reachable daemon
-transport or package ``dasobjectstore-remote`` inside the authority container;
-direct S3 writes are not accepted as verified completion. See :doc:`object-read`
+XIMG-094 proves the clean-home authenticated ingest/read/restart flow end to
+end. The final isolated macOS run used a dedicated loopback API port, the
+packaged Monas login and Pinakotheke product mount, and DASObjectStore commit
+``f195c4d5a30d1cc34ca61f31a6939edf54db782f``. It verified an unauthenticated
+deep-link redirect, exact post-login return, direct-backend rejection, Ready
+Monas and storage components, a daemon-verified synthetic commit, and a scoped
+``read-v1`` response whose 4,096 bytes matched the catalogue SHA-256. Restart
+preserved the session and authority selection; logout revoked access; shutdown
+left the unrelated default-port authority untouched. See :doc:`object-read`
 for the private helper configuration.
 
 DASObjectStore commit ``01a8c385`` now packages that version-matched remote

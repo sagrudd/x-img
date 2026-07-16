@@ -7,6 +7,13 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Added
 
+- Allow each managed local profile lifecycle command to select an explicit
+  loopback DASObjectStore API port while retaining port 3900 as the default,
+  and strictly bind discovery to the requested authority.
+- Complete the isolated XIMG-094 clean-home proof across Monas login, exact
+  return, direct-backend rejection, DASObjectStore readiness, verified commit
+  and scoped read-back, restart reconciliation, logout, and clean shutdown at
+  DASObjectStore ``f195c4d5``.
 - Add a strict local-Docker capture transport that maps only private
   DAS-managed scratch into the fixed authority service, supplies scoped
   credentials by private file path, and removes the job directory on every

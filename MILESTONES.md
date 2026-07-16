@@ -703,6 +703,15 @@ Pinakotheke backend and Monas host agents. Private credential creation,
 transactional guarded replacement, status/restart/log access, and
 data-preserving uninstall were exercised in an isolated home.
 
+XIMG-094 is complete. A fresh isolated macOS home composed the packaged Monas
+login with the Pinakotheke backend and a managed ``pinakotheke_local`` store at
+DASObjectStore commit ``f195c4d5a30d1cc34ca61f31a6939edf54db782f``. The run
+proved exact deep-link return, direct-backend rejection, component readiness,
+daemon-verified synthetic commit, checksum-identical scoped read-back, restart
+reconciliation and session continuity, logout revocation, and clean shutdown.
+Managed profiles now accept an explicit loopback API port so this bounded proof
+does not disturb an existing default-port authority.
+
 XIMG-095 is complete in Monas ``0.3.0`` commit ``a0fabe2``. Its host-owned
 login/Yew shell is informed by the DASObjectStore WebUI inspected at commit
 ``a93f0f872152d3790746292de1f3aec5d1a7bdd3`` while preserving the different

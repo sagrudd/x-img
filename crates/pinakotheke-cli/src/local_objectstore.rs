@@ -47,6 +47,9 @@ pub(crate) struct ProfileArgs {
     /// DASObjectStore's canonical local-profile authority helper.
     #[arg(long)]
     provisioner: PathBuf,
+    /// Loopback API port for this managed profile.
+    #[arg(long, default_value_t = 3900)]
+    api_port: u16,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +59,7 @@ struct LocalProfilePlan {
     private_root: PathBuf,
     selection_path: PathBuf,
     provisioner: PathBuf,
+    api_port: u16,
 }
 
 #[derive(Debug, Deserialize)]
@@ -103,7 +107,7 @@ pub(crate) fn is_ready(product_root: &Path) -> bool {
         && selection.object_store_id == STORE_ID
         && selection.profile_id == PROFILE_ID
         && selection.endpoint_id.starts_with("local-docker-")
-        && selection.api_url == "http://127.0.0.1:3900"
+        && valid_loopback_api_url(&selection.api_url)
         && selection
             .credential_ref
             .starts_with("dasobjectstore.local-profile:pinakotheke-local:")
@@ -182,6 +186,7 @@ impl LocalProfilePlan {
             private_root: home.join(".config/dasobjectstore"),
             product_root,
             provisioner: arguments.provisioner,
+            api_port: arguments.api_port,
         })
     }
 }
@@ -197,6 +202,7 @@ fn configured_command(plan: &LocalProfilePlan, action: &str) -> Command {
         .env("DASOBJECTSTORE_LOCAL_STORE_BUCKET", STORE_BUCKET)
         .env("DASOBJECTSTORE_LOCAL_STORE_PREFIX", STORE_PREFIX)
         .env("DASOBJECTSTORE_LOCAL_CONSUMER", CONSUMER);
+    command.env("DASOBJECTSTORE_LOCAL_API_PORT", plan.api_port.to_string());
     command
 }
 
@@ -231,17 +237,20 @@ fn bounded_authority_diagnostic(stderr: &[u8]) -> String {
 fn discover(plan: &LocalProfilePlan) -> Result<AuthorityDescription, Box<dyn std::error::Error>> {
     let output = authority_command(plan, "describe")?;
     let description: AuthorityDescription = serde_json::from_slice(&output.stdout)?;
-    validate_description(&description)?;
+    validate_description(&description, plan)?;
     Ok(description)
 }
 
-fn validate_description(description: &AuthorityDescription) -> io::Result<()> {
+fn validate_description(
+    description: &AuthorityDescription,
+    plan: &LocalProfilePlan,
+) -> io::Result<()> {
     if description.schema_version != DESCRIPTION_SCHEMA
         || description.object_store_id != STORE_ID
         || description.profile_id != PROFILE_ID
         || description.status != "ready"
         || !description.endpoint_id.starts_with("local-docker-")
-        || description.api_url != "http://127.0.0.1:3900"
+        || description.api_url != format!("http://127.0.0.1:{}", plan.api_port)
         || !description
             .credential_ref
             .starts_with("dasobjectstore.local-profile:pinakotheke-local:")
@@ -252,6 +261,13 @@ fn validate_description(description: &AuthorityDescription) -> io::Result<()> {
         ));
     }
     Ok(())
+}
+
+fn valid_loopback_api_url(value: &str) -> bool {
+    value
+        .strip_prefix("http://127.0.0.1:")
+        .and_then(|port| port.parse::<u16>().ok())
+        .is_some_and(|port| port > 0)
 }
 
 fn persist_selection(
@@ -290,6 +306,7 @@ fn print_plan(plan: &LocalProfilePlan) {
     println!("private authority root: {}", plan.private_root.display());
     println!("profile: {PROFILE_ID}");
     println!("ObjectStore: {STORE_ID}");
+    println!("loopback API: http://127.0.0.1:{}", plan.api_port);
     println!("Pinakotheke never writes media directly to the storage root");
 }
 
@@ -321,13 +338,21 @@ mod tests {
             api_url: "http://127.0.0.1:3900".into(),
             credential_ref: "dasobjectstore.local-profile:pinakotheke-local:42".into(),
         };
-        assert!(validate_description(&valid).is_ok());
+        let plan = LocalProfilePlan {
+            product_root: PathBuf::from("/tmp/pinakotheke"),
+            storage_root: PathBuf::from("/tmp/pinakotheke/dasobjectstore"),
+            private_root: PathBuf::from("/tmp/dasobjectstore"),
+            selection_path: PathBuf::from("/tmp/pinakotheke/state/selection.json"),
+            provisioner: PathBuf::from("/tmp/local.sh"),
+            api_port: 3900,
+        };
+        assert!(validate_description(&valid, &plan).is_ok());
         let changed = AuthorityDescription {
             object_store_id: "first-store".into(),
             ..valid
         };
         assert_eq!(
-            validate_description(&changed).unwrap_err().kind(),
+            validate_description(&changed, &plan).unwrap_err().kind(),
             io::ErrorKind::InvalidData
         );
     }
@@ -397,6 +422,7 @@ exit 2
             private_root: home.join(".config/dasobjectstore"),
             product_root,
             provisioner,
+            api_port: 3900,
         };
         provision(&plan).unwrap();
         assert!(is_ready(&plan.product_root));
