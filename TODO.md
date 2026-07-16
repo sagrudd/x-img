@@ -385,7 +385,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   population, authorized image/video object delivery composition, and the
   real-Firefox restart proof remain. The authenticated monolith now composes the
   canonical gallery route and returns an honest empty catalogue until a host
-  supplies the persistent projection.
+  supplies the persistent projection. Persistent gallery metadata now loads on
+  monolith startup from a private, strict, bounded, atomically replaced v1 JSON
+  document. Missing state is empty; corrupt/future/oversized/symlinked state
+  fails closed, and restart tests preserve complete ObjectStore identity,
+  review state, and availability without payload bytes. Verified capture/review
+  admission must populate the store next, followed by authorized object
+  delivery and the real-Firefox restart proof. Local Sphinx 8.2.3 HTML and
+  dummy builds pass with warnings denied; the required pinned container rerun
+  remains outstanding because Docker Desktop's engine did not recover after
+  two clean/hard restarts on 2026-07-16 (``docker info`` remained unavailable).
+  This environmental evidence gap does not mark XIMG-096 complete.
 
 ## 0.6.0 — Firefox capture
 

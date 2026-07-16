@@ -81,6 +81,12 @@ the two coordinated agents without deleting application data. See
 and [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
 
+The Monas-authenticated gallery now loads a strict, bounded, atomically replaced
+metadata catalogue from ``state/gallery-catalogue.v1.json`` below the monolith
+root. It retains only review metadata and verified DASObjectStore references;
+media bytes are never stored in the Pinakotheke root. Missing state is empty,
+while corrupt, future-schema, oversized, or symlinked state fails closed.
+
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,
 scheduler, normalizer, and Firefox fail-open boundaries using synthetic data;

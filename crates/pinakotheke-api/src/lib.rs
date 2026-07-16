@@ -156,9 +156,25 @@ pub async fn serve_monolith(
     dasobjectstore_ready: bool,
     monas_dispatch: Option<MonasDispatchVerifier>,
 ) -> io::Result<()> {
+    serve_monolith_with_gallery(
+        listener,
+        dasobjectstore_ready,
+        monas_dispatch,
+        GalleryCatalogue::default(),
+    )
+    .await
+}
+
+/// Serves the monolith with a validated persistent gallery projection.
+pub async fn serve_monolith_with_gallery(
+    listener: tokio::net::TcpListener,
+    dasobjectstore_ready: bool,
+    monas_dispatch: Option<MonasDispatchVerifier>,
+    gallery: GalleryCatalogue,
+) -> io::Result<()> {
     axum::serve(
         listener,
-        monolith_router_with_authorities(dasobjectstore_ready, monas_dispatch),
+        monolith_router_with_gallery_authority(dasobjectstore_ready, monas_dispatch, gallery),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await

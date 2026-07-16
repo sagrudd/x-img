@@ -8,6 +8,7 @@ use std::{
 };
 
 use clap::Args;
+use x_img_core::gallery_catalogue::GalleryCatalogueStore;
 
 const DEFAULT_PORT: u16 = 8731;
 
@@ -118,13 +119,19 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
     runtime.block_on(async move {
         let listener = tokio::net::TcpListener::bind(address).await?;
         let storage_ready = crate::local_objectstore::is_ready(&layout.root);
+        let gallery_path = layout.root.join("state/gallery-catalogue.v1.json");
+        let gallery = GalleryCatalogueStore::new(&gallery_path)
+            .load_or_empty()
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
         println!(
             "Pinakotheke {} listening on http://{address}",
             env!("CARGO_PKG_VERSION")
         );
         println!("metadata root: {}", layout.root.display());
+        println!("gallery metadata: {}", gallery_path.display());
         println!("readiness: http://{address}/ready");
-        x_img_api::serve_monolith(listener, storage_ready, monas_dispatch).await
+        x_img_api::serve_monolith_with_gallery(listener, storage_ready, monas_dispatch, gallery)
+            .await
     })?;
     Ok(())
 }

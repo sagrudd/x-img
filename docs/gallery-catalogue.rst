@@ -52,7 +52,25 @@ checked against ``mnemosyne_design_language`` commit
 ``cd6617cdbfc0d8587b3b51b9925a378b3aacaab9``. These are compatibility evidence,
 not unpublished path dependencies.
 
-Persistent population of this endpoint and the real-Firefox restart proof
-remain the next XIMG-096 slice. The authenticated monolith already composes the
-canonical route and returns an honest empty catalogue when no persistent
-projection has been supplied.
+Persistent metadata
+-------------------
+
+The local monolith loads ``state/gallery-catalogue.v1.json`` below its private
+metadata root at startup. A missing document is an honest empty catalogue. The
+strict versioned document contains gallery metadata and immutable
+DASObjectStore references only; it cannot contain image or video payloads.
+The store rejects unknown fields, future schemas, invalid ObjectStore evidence,
+origin delivery URLs, symlinks, non-regular files, more than 100,000 records,
+and documents larger than 64 MiB.
+
+Replacement validates the complete candidate before writing a private temporary
+file, synchronizes it, atomically renames it, and synchronizes the containing
+directory. A malformed or unsupported existing document fails monolith startup
+instead of silently presenting an empty library. Restart tests load a written
+record through a new store instance and preserve its catalogue ID,
+endpoint/ObjectStore identity, checksum, review state, and availability without
+retaining payload bytes.
+
+Capture/review admission must now populate this store through verified commit
+evidence. Authorized image/video delivery composition and the real-Firefox
+restart proof remain the next XIMG-096 slices.

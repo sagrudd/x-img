@@ -13,6 +13,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Replace the Yew gallery's synthetic cards and proxy visuals with the canonical
   Monas-forwarded catalogue, real authorized media elements, source-derived
   filters, and explicit safe failure states.
+- Persist the Monas gallery's metadata-only ObjectStore references in a strict,
+  bounded, private, atomically replaced document loaded by the local monolith,
+  with fail-closed schema/corruption handling and restart coverage.
 - Add the XIMG-200 Synoptikon product manifest, strict tenant/account/project
   host scope, and bounded authenticated catalogue projection over immutable
   DASObjectStore references.
