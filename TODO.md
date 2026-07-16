@@ -426,7 +426,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   plus bounded overscan, preserves virtual height, recalculates on resize and
   density changes, and uses a roving tab stop with Arrow/Home/End navigation
   across off-screen loaded cards. A 10,000-record unit fixture bounds the DOM
-  slice; real-Firefox scale, focus, and responsive-layout evidence remains.
+  slice. The gallery now has a real WebAssembly start entry and reproducible
+  ``make web`` Trunk build. A bounded, symlink-free web root is served from the
+  canonical app path only behind private Monas dispatch; direct backend access
+  is denied. Native tests prove admitted index delivery. Automatic package
+  installation plus real-Firefox scale, focus, and responsive-layout evidence
+  remain.
 
 ## 0.6.0 — Firefox capture
 

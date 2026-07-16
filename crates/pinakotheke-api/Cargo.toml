@@ -16,6 +16,7 @@ workspace = true
 axum.workspace = true
 serde.workspace = true
 tokio.workspace = true
+tower-http.workspace = true
 x-img-core = { package = "pinakotheke-core", path = "../pinakotheke-core" }
 
 [dev-dependencies]

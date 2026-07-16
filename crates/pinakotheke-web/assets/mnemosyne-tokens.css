@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+/* Versioned mirror of mnemosyne_design_language 5539df8 semantic web tokens. */
+:root {
+  --mn-color-surface-canvas:#f6f7f5;
+  --mn-color-surface-raised:#fff;
+  --mn-color-text-primary:#111;
+  --mn-color-text-secondary:#4f5c55;
+  --mn-color-border-subtle:#d9e0e3;
+  --mn-color-action-primary-default:#0f6b78;
+  --mn-color-brand-footer:#1c2b0b;
+  --mn-font-family-sans:"Source Sans 3",ui-sans-serif,system-ui,sans-serif;
+  --mn-font-family-serif:"Crimson Pro",ui-serif,Georgia,serif;
+  --mn-space-1:.25rem;
+  --mn-space-2:.5rem;
+  --mn-space-3:.75rem;
+  --mn-space-4:1rem;
+  --mn-space-5:1.25rem;
+  --mn-space-6:1.5rem;
+  --mn-space-8:2rem;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; }
+button,input { font:inherit; }

@@ -29,6 +29,9 @@ pub(crate) struct ServeArgs {
     /// Private file containing the process-local Monas dispatch token.
     #[arg(long)]
     monas_dispatch_token_file: Option<PathBuf>,
+    /// Built Trunk output; defaults to ROOT/web when that directory exists.
+    #[arg(long)]
+    web_root: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -102,9 +105,76 @@ fn socket_address(arguments: &ServeArgs) -> io::Result<SocketAddr> {
     Ok(SocketAddr::new(arguments.bind, arguments.port))
 }
 
+fn resolve_web_root(
+    requested: Option<PathBuf>,
+    product_root: &Path,
+) -> io::Result<Option<PathBuf>> {
+    let candidate = match requested {
+        Some(candidate) => candidate,
+        None => {
+            let candidate = product_root.join("web");
+            match std::fs::symlink_metadata(&candidate) {
+                Ok(_) => candidate,
+                Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+                Err(error) => return Err(error),
+            }
+        }
+    };
+    if !candidate.is_absolute() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "web root must be absolute",
+        ));
+    }
+    let mut files = 0;
+    let mut bytes = 0;
+    validate_web_tree(&candidate, &mut files, &mut bytes)?;
+    let index = candidate.join("index.html");
+    let metadata = std::fs::symlink_metadata(&index)?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "web root requires a regular index.html",
+        ));
+    }
+    Ok(Some(candidate))
+}
+
+fn validate_web_tree(path: &Path, files: &mut usize, bytes: &mut u64) -> io::Result<()> {
+    let metadata = std::fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "web assets must not contain symlinks",
+        ));
+    }
+    if metadata.is_file() {
+        *files += 1;
+        *bytes = bytes.saturating_add(metadata.len());
+        if *files > 128 || *bytes > 32 * 1024 * 1024 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "web asset tree exceeds its bounded size",
+            ));
+        }
+        return Ok(());
+    }
+    if !metadata.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "web assets must be regular files and directories",
+        ));
+    }
+    for entry in std::fs::read_dir(path)? {
+        validate_web_tree(&entry?.path(), files, bytes)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Error>> {
     let address = socket_address(&arguments)?;
     let layout = LocalRootLayout::resolve(arguments.root)?;
+    let web_root = resolve_web_root(arguments.web_root, &layout.root)?;
     let monas_dispatch = arguments
         .monas_dispatch_token_file
         .as_deref()
@@ -129,9 +199,21 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
         );
         println!("metadata root: {}", layout.root.display());
         println!("gallery metadata: {}", gallery_path.display());
+        println!(
+            "web application: {}",
+            web_root
+                .as_deref()
+                .map_or("Not installed".into(), |path| path.display().to_string())
+        );
         println!("readiness: http://{address}/ready");
-        x_img_api::serve_monolith_with_gallery(listener, storage_ready, monas_dispatch, gallery)
-            .await
+        x_img_api::serve_monolith_with_gallery_and_web(
+            listener,
+            storage_ready,
+            monas_dispatch,
+            gallery,
+            web_root,
+        )
+        .await
     })?;
     Ok(())
 }
@@ -202,6 +284,7 @@ mod tests {
             port: DEFAULT_PORT,
             allow_non_loopback_without_authentication: false,
             monas_dispatch_token_file: None,
+            web_root: None,
         };
         assert_eq!(
             socket_address(&denied).unwrap_err().kind(),
@@ -239,6 +322,28 @@ mod tests {
             assert_eq!(
                 read_dispatch_token(&token).unwrap_err().kind(),
                 io::ErrorKind::PermissionDenied
+            );
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn web_root_requires_a_bounded_regular_trunk_tree() {
+        let root = temporary_root();
+        let web = root.join("web");
+        std::fs::create_dir_all(&web).unwrap();
+        std::fs::write(web.join("index.html"), "<!doctype html>").unwrap();
+        std::fs::write(web.join("pinakotheke.js"), "export {};").unwrap();
+        assert_eq!(resolve_web_root(None, &root).unwrap(), Some(web.clone()));
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(web.join("pinakotheke.js"), web.join("linked.js")).unwrap();
+            assert_eq!(
+                resolve_web_root(Some(web.clone()), &root)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::InvalidInput
             );
         }
         std::fs::remove_dir_all(root).unwrap();

@@ -110,6 +110,10 @@ explicit 100-record pages and reports matching and total counts, avoiding the
 former silent 200-card truncation. A responsive overscanned viewport keeps the
 number of rendered cards bounded and retains Arrow/Home/End keyboard traversal
 across loaded records that begin off-screen.
+``make web`` now builds the actual Yew application as hashed Trunk/WASM assets.
+The local monolith can mount a reviewed build with ``--web-root`` (or discover
+``~/.x-img/web``) and serves it only through the Monas-authenticated canonical
+application path; direct backend requests are denied.
 
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,

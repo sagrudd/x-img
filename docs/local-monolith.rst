@@ -115,6 +115,44 @@ any caller-supplied dispatch headers, and streams to the backend. Pinakotheke
 never parses the cookie or issues login, session, or logout state. Keep port
 8732 loopback-only; direct protected requests remain rejected.
 
+Build and mount the Yew application
+-----------------------------------
+
+Build the browser application locally with the checked-in Trunk document and
+WebAssembly start entry:
+
+.. code-block:: console
+
+   make web
+
+This writes hashed HTML, CSS, JavaScript, and WebAssembly files to
+``dist/web`` with the canonical ``/products/pinakotheke/app/`` public URL. No
+sibling source tree or unpublished path dependency is used. The semantic-token
+mirror records ``mnemosyne_design_language`` commit
+``5539df8f662a78ebdf7cf4c868d71831380c8cfd``; Monas remains responsible for
+the approved host branding and login assets.
+
+Point the backend at the reviewed build directory:
+
+.. code-block:: console
+
+   pinakotheke serve --port 8732 \
+     --web-root "$PWD/dist/web" \
+     --monas-dispatch-token-file "$HOME/.x-img/run/monas-dispatch.token"
+
+Alternatively, copy the complete build into ``~/.x-img/web`` and omit
+``--web-root``. Pinakotheke accepts only an absolute, symlink-free tree with a
+regular ``index.html``, at most 128 files, and at most 32 MiB. Missing default
+assets leave the app mount unconfigured rather than serving a placeholder as
+the gallery.
+
+The entire app mount is protected by Monas dispatch. A direct request to the
+backend app path returns ``401``; after Monas authenticates the user, the same
+path serves the Yew document and its hashed assets. Catalogue and object routes
+retain their independent host-context checks. Native tests prove both direct
+denial and admitted static delivery. Packaging still needs to install the web
+build automatically, and real-Firefox catalogue acceptance remains XIMG-096.
+
 Stop the foreground process with ``Control-C``. Axum stops accepting new work
 and completes graceful shutdown.
 

@@ -82,6 +82,11 @@ render in the keyboard-accessible preview pane. The web client requests
 source-filtered pages using the returned X-account or website classification.
 Instagram capture remains part of the normal website class.
 
+The crate has a WebAssembly start entry and a checked-in Trunk document. A
+release build uses the canonical app mount as its public URL, and the monolith
+serves the resulting bounded static tree only after the same private Monas
+dispatch admission used by the catalogue. Direct backend access is denied.
+
 Loading, empty, permission-denied, transport-error, unsupported-schema, and
 object-unavailable states are expressed in words. In all failure states the web
 client leaves media absent and never contacts a source website. This slice was

@@ -318,7 +318,10 @@ end-to-end gate for this intent.
   Yew preserves the selected query while incrementally loading honest
   100-record pages. Its responsive overscanned viewport window bounds rendered
   cards and preserves roving Arrow/Home/End keyboard navigation across
-  off-screen loaded records. Real-Firefox scale evidence remains.
+  off-screen loaded records. The Yew crate now produces a runnable Trunk/WASM
+  application served from the canonical app mount only after private Monas
+  dispatch admission. Package installation and real-Firefox scale evidence
+  remain.
 - XIMG-055 implements visible refresh progress (commit `a48fc13`) with a single
   action, per-account state, partial failure, retry, and new-item summary.
 - XIMG-054 implements word-first review states and reversible batch actions

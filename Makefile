@@ -8,7 +8,7 @@ BASELINE_DIST ?=
 BASELINE_VERSION ?=
 PRODUCT ?= pinakotheke
 
-.PHONY: help all packages linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
+.PHONY: help all packages web linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
 	linux-deb-x86_64 linux-deb-arm64 linux-rpm-x86_64 linux-rpm-arm64 \
 	macos-pkg macos-pkg-x86_64 macos-pkg-arm64 firefox firefox-macos-x86_64 \
 	firefox-macos-arm64 firefox-windows-x86_64 firefox-windows-arm64 \
@@ -17,6 +17,7 @@ PRODUCT ?= pinakotheke
 help:
 	@echo "$(PRODUCT) $(VERSION) packaging targets"
 	@echo "  make packages              Build every native package and Firefox XPI"
+	@echo "  make web                   Build the Monas-mounted Yew application"
 	@echo "  make linux                 Build DEB and RPM for Linux x86_64 and arm64"
 	@echo "  make macos-pkg             Build macOS PKG for x86_64 and arm64 (macOS only)"
 	@echo "  make firefox               Build labelled XPIs for macOS/Windows/Linux x86_64/arm64"
@@ -31,6 +32,11 @@ help:
 
 all: packages
 packages: linux macos-pkg firefox checksums verify
+
+web:
+	@mkdir -p "$(DIST)/web"
+	cd crates/pinakotheke-web && NO_COLOR=true trunk build index.html --release \
+		--public-url /products/pinakotheke/app/ --dist "$(DIST)/web"
 
 linux: linux-x86_64 linux-arm64
 linux-deb: linux-deb-x86_64 linux-deb-arm64

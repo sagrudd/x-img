@@ -13,6 +13,13 @@ use x_img_core::gallery_catalogue::{
 };
 use yew::prelude::*;
 
+/// Starts the browser application when loaded from the Trunk-built module.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn run() {
+    yew::Renderer::<App>::new().render();
+}
+
 const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue";
 const GALLERY_PAGE_SIZE: usize = 100;
 const GALLERY_WINDOW_ROWS: usize = 8;

@@ -6,6 +6,7 @@
 
 use std::{
     io,
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -20,6 +21,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use tower_http::services::ServeDir;
 use x_img_core::{
     cache_alias::{
         CacheBypassReason, CacheLookupOutcome, CacheLookupRequest, CacheLookupService,
@@ -176,9 +178,32 @@ pub async fn serve_monolith_with_gallery(
     monas_dispatch: Option<MonasDispatchVerifier>,
     gallery: GalleryCatalogue,
 ) -> io::Result<()> {
+    serve_monolith_with_gallery_and_web(
+        listener,
+        dasobjectstore_ready,
+        monas_dispatch,
+        gallery,
+        None,
+    )
+    .await
+}
+
+/// Serves the monolith with persistent gallery metadata and reviewed web assets.
+pub async fn serve_monolith_with_gallery_and_web(
+    listener: tokio::net::TcpListener,
+    dasobjectstore_ready: bool,
+    monas_dispatch: Option<MonasDispatchVerifier>,
+    gallery: GalleryCatalogue,
+    web_root: Option<PathBuf>,
+) -> io::Result<()> {
     axum::serve(
         listener,
-        monolith_router_with_gallery_authority(dasobjectstore_ready, monas_dispatch, gallery),
+        monolith_router_with_gallery_and_web_authority(
+            dasobjectstore_ready,
+            monas_dispatch,
+            gallery,
+            web_root,
+        ),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await
@@ -265,18 +290,39 @@ pub fn monolith_router_with_gallery_authority(
     monas_dispatch: Option<MonasDispatchVerifier>,
     gallery: GalleryCatalogue,
 ) -> Router {
+    monolith_router_with_gallery_and_web_authority(
+        dasobjectstore_ready,
+        monas_dispatch,
+        gallery,
+        None,
+    )
+}
+
+/// Returns the Monas-admitted gallery plus an optional built Yew application.
+pub fn monolith_router_with_gallery_and_web_authority(
+    dasobjectstore_ready: bool,
+    monas_dispatch: Option<MonasDispatchVerifier>,
+    gallery: GalleryCatalogue,
+    web_root: Option<PathBuf>,
+) -> Router {
     let authentication_ready = monas_dispatch.is_some();
-    let protected = Router::new()
+    let mut protected = Router::new()
         .route("/products/pinakotheke/api/context", get(context))
         .route(
             "/products/pinakotheke/api/gallery/v1/catalogue",
             get(gallery_catalogue),
         )
-        .layer(Extension(Arc::new(gallery)))
-        .layer(middleware::from_fn_with_state(
-            monas_dispatch,
-            admit_monas_dispatch,
-        ));
+        .layer(Extension(Arc::new(gallery)));
+    if let Some(web_root) = web_root {
+        protected = protected.nest_service(
+            "/products/pinakotheke/app",
+            ServeDir::new(web_root).append_index_html_on_directories(true),
+        );
+    }
+    let protected = protected.layer(middleware::from_fn_with_state(
+        monas_dispatch,
+        admit_monas_dispatch,
+    ));
     Router::new()
         .route("/", get(monolith_landing))
         .route("/health", get(health))
@@ -1276,7 +1322,10 @@ fn playback_status(error: DirectPlaybackError) -> StatusCode {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
+    use std::{
+        fs,
+        sync::{Arc, Mutex},
+    };
 
     use axum::{
         Extension,
@@ -1314,10 +1363,11 @@ mod tests {
 
     use super::{
         HostObjectReadBackend, MonasDispatchVerifier, monolith_router,
-        monolith_router_with_authorities, monolith_router_with_gallery_authority,
-        monolith_router_with_gallery_delivery_authority, monolith_router_with_storage, router,
-        router_with_cache_aliases, router_with_cache_substitution, router_with_capture_plans,
-        router_with_direct_playback, router_with_gallery_catalogue, router_with_gallery_delivery,
+        monolith_router_with_authorities, monolith_router_with_gallery_and_web_authority,
+        monolith_router_with_gallery_authority, monolith_router_with_gallery_delivery_authority,
+        monolith_router_with_storage, router, router_with_cache_aliases,
+        router_with_cache_substitution, router_with_capture_plans, router_with_direct_playback,
+        router_with_gallery_catalogue, router_with_gallery_delivery,
         router_with_image_substitution, router_with_operations, router_with_synoptikon_catalogue,
     };
 
@@ -1993,6 +2043,56 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(admitted.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn built_yew_application_is_available_only_through_monas_dispatch() {
+        let root =
+            std::env::temp_dir().join(format!("pinakotheke-web-root-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("index.html"),
+            "<!doctype html><title>Pinakotheke gallery</title>",
+        )
+        .unwrap();
+        fs::write(root.join("pinakotheke.js"), "export {};").unwrap();
+        let token = "synthetic-monas-dispatch-token-0001";
+        let router = || {
+            monolith_router_with_gallery_and_web_authority(
+                true,
+                Some(MonasDispatchVerifier::new(token.into()).unwrap()),
+                gallery_catalogue(),
+                Some(root.clone()),
+            )
+        };
+
+        let direct = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/app/")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(direct.status(), StatusCode::UNAUTHORIZED);
+
+        let admitted = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/app/")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(admitted.status(), StatusCode::OK);
+        let body = to_bytes(admitted.into_body(), 1024).await.unwrap();
+        assert!(String::from_utf8_lossy(&body).contains("Pinakotheke gallery"));
+
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[tokio::test]
