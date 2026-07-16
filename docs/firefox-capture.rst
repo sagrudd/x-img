@@ -306,6 +306,39 @@ select the exact ObjectStore with DASObjectStore before starting Pinakotheke;
 the helper cannot infer a first store, change the endpoint selected by the
 capture authority, or prompt for a password in the background.
 
+On macOS Docker Desktop, use the authority container rather than a
+container-created socket path on the host. DASObjectStore commit ``01a8c385``
+packages the matching remote client and AWS CLI. Select this transport only in
+the private host configuration:
+
+.. code-block:: json
+
+   {
+     "schema_version": "pinakotheke.das-capture-helper.v1",
+     "endpoint_id": "local-docker-example",
+     "curl_executable": "/usr/bin/curl",
+     "container_execution": {
+       "docker_executable": "/Applications/Docker.app/Contents/Resources/bin/docker",
+       "compose_file": "/Users/example/.x-img/dasobjectstore/pinakotheke-local/compose.yml",
+       "managed_scratch_root": "/Users/example/.x-img/dasobjectstore",
+       "container_scratch_root": "/Volumes/Seagate/DASObjectStore",
+       "remote_config": "/Users/example/.config/dasobjectstore/remote.json",
+       "aws_credentials": "/Users/example/.config/dasobjectstore/scoped.credentials",
+       "service": "dasobjectstored",
+       "daemon_socket": "/run/dasobjectstore/dasobjectstored.sock"
+     },
+     "max_image_bytes": 67108864
+   }
+
+Native and container fields are mutually exclusive. The container service and
+daemon socket are fixed by the schema. The helper accepts only canonical
+managed scratch roots, creates a private direct child, and translates that one
+descendant to the reviewed container mount. It copies the already-scoped remote
+configuration and AWS credential file into that job directory, passes only the
+credential *path* to Docker, and deletes the whole directory before returning.
+Neither the capture plan nor any browser request can select Docker, a compose
+file, a host/container path, or credentials.
+
 For each approved plan the helper permits only HTTPS retrieval and HTTPS
 redirects, caps redirects and bytes, writes to a fresh mode-``0700`` ephemeral
 directory, validates a non-empty ``image/*`` response, and computes SHA-256 by
@@ -340,9 +373,12 @@ revisions; they are compatibility pins, not dependencies of the public build:
 
 * Monas ``3d21b0bc7b83fa8408d01b93347a56f43f3a96b7`` for host-owned session
   admission and host-relative product APIs;
-* DASObjectStore ``5769f27859a58101aedd9de0087fc278fd3e4b16`` for the
+* DASObjectStore ``01a8c385330b284492fa729055176db54b9ecf1f`` for the
   ``dasobjectstore-remote`` daemon-submitted upload, checksum metadata,
-  immutable object version, provider verification, and catalogue completion;
+  immutable object version, provider verification, catalogue completion, and
+  container-packaged remote client;
+* DASObjectStore ``720ae9c1`` for aligned isolated-profile ports and the
+  idempotent canonical folder binding required by daemon capacity admission;
   and
 * Mnemosyne design language ``5539df8f662a78ebdf7cf4c868d71831380c8cfd`` and
   Mnemosyne ``52810176bf95a170f93d74a6f5daa94da5c6640e`` for host-relative

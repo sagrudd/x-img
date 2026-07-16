@@ -1072,6 +1072,18 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   slice must add a narrow container execution adapter with managed-root-only
   source translation and scoped credential handoff; browser/product requests
   must never select a container, host path, or provider credential.
+  The narrow adapter is now implemented: native and container execution are
+  mutually exclusive, the Docker Compose service and daemon socket are fixed,
+  only a canonical DAS-managed scratch descendant is translated, and scoped
+  remote/AWS files exist only in the private automatically removed job
+  directory. Unit coverage proves the structured invocation and cleanup. The
+  first isolated live run exposed two authority-profile defects rather than
+  bypassing completion: non-default Garage listeners diverged from Compose,
+  and capacity admission lacked a folder-profile binding. DASObjectStore commit
+  ``720ae9c1`` aligns the four ports and idempotently provisions the canonical
+  binding. Docker Desktop then failed to restore its daemon socket after an
+  authorized restart. The remaining gate is to rerun this fixed profile,
+  commit/read the synthetic object, restart, and reconcile once.
   Verification: all 173 workspace tests, strict workspace Clippy, repository
   quality/privacy/version checks, release security/license audits, and
   warnings-denied Sphinx 8.2.3 pass locally. The isolated containers and HOME

@@ -7,6 +7,13 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Added
 
+- Add a strict local-Docker capture transport that maps only private
+  DAS-managed scratch into the fixed authority service, supplies scoped
+  credentials by private file path, and removes the job directory on every
+  outcome.
+- Record the live authority defects resolved by DASObjectStore ``720ae9c1``:
+  isolated port alignment and canonical folder-profile capacity binding.
+
 - Record and validate the DASObjectStore container-side remote-completion
   prerequisite that removes Docker Desktop bind-mounted Unix sockets from the
   clean-home authority path.

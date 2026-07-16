@@ -38,10 +38,28 @@ struct Config {
     schema_version: String,
     endpoint_id: String,
     curl_executable: PathBuf,
-    dasobjectstore_remote_executable: PathBuf,
-    dasobjectstore_remote_config: PathBuf,
-    daemon_socket: PathBuf,
+    #[serde(default)]
+    dasobjectstore_remote_executable: Option<PathBuf>,
+    #[serde(default)]
+    dasobjectstore_remote_config: Option<PathBuf>,
+    #[serde(default)]
+    daemon_socket: Option<PathBuf>,
+    #[serde(default)]
+    container_execution: Option<ContainerExecution>,
     max_image_bytes: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ContainerExecution {
+    docker_executable: PathBuf,
+    compose_file: PathBuf,
+    managed_scratch_root: PathBuf,
+    container_scratch_root: PathBuf,
+    remote_config: PathBuf,
+    aws_credentials: PathBuf,
+    service: String,
+    daemon_socket: PathBuf,
 }
 
 #[derive(Debug, Serialize)]
@@ -96,17 +114,72 @@ fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
         return Err("DAS capture helper config is invalid".into());
     }
     require_executable(&config.curl_executable)?;
-    require_executable(&config.dasobjectstore_remote_executable)?;
-    require_private_regular(&config.dasobjectstore_remote_config)?;
-    if !config.daemon_socket.is_absolute() {
-        return Err("DAS daemon socket must be absolute".into());
+    match &config.container_execution {
+        Some(container) => {
+            if config.dasobjectstore_remote_executable.is_some()
+                || config.dasobjectstore_remote_config.is_some()
+                || config.daemon_socket.is_some()
+            {
+                return Err("native and container DAS execution cannot be combined".into());
+            }
+            validate_container_execution(container)?;
+        }
+        None => {
+            require_executable(
+                config
+                    .dasobjectstore_remote_executable
+                    .as_deref()
+                    .ok_or("native DAS remote executable is required")?,
+            )?;
+            require_private_regular(
+                config
+                    .dasobjectstore_remote_config
+                    .as_deref()
+                    .ok_or("native DAS remote config is required")?,
+            )?;
+            if !config
+                .daemon_socket
+                .as_deref()
+                .is_some_and(Path::is_absolute)
+            {
+                return Err("native DAS daemon socket must be absolute".into());
+            }
+        }
     }
     Ok(config)
 }
 
+fn validate_container_execution(
+    container: &ContainerExecution,
+) -> Result<(), Box<dyn std::error::Error>> {
+    require_executable(&container.docker_executable)?;
+    require_private_regular(&container.compose_file)?;
+    require_private_regular(&container.remote_config)?;
+    require_private_regular(&container.aws_credentials)?;
+    if container.service != "dasobjectstored"
+        || !container.managed_scratch_root.is_absolute()
+        || !container.container_scratch_root.is_absolute()
+        || !container.daemon_socket.is_absolute()
+        || container.managed_scratch_root == Path::new("/")
+        || container.container_scratch_root == Path::new("/")
+    {
+        return Err("container execution boundary is invalid".into());
+    }
+    let root = fs::canonicalize(&container.managed_scratch_root)?;
+    if root != container.managed_scratch_root
+        || fs::symlink_metadata(&root)?.file_type().is_symlink()
+    {
+        return Err("managed scratch root must be a canonical directory".into());
+    }
+    Ok(())
+}
+
 fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std::error::Error>> {
     validate_request(request, config)?;
-    let scratch = Scratch::create()?;
+    let scratch = match &config.container_execution {
+        Some(container) => Scratch::create_in(&container.managed_scratch_root)?,
+        None => Scratch::create()?,
+    };
     let payload = scratch.path.join("payload");
     let max_bytes = config.max_image_bytes.unwrap_or(DEFAULT_MAX_BYTES);
     let max_bytes_text = max_bytes.to_string();
@@ -153,19 +226,7 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
     let checksum = sha256_file(&payload)?;
     let object_key = format!("media/{checksum}");
     let version = u64::from_str_radix(&checksum[..16], 16).unwrap_or(1).max(1);
-    let mut upload = Command::new(&config.dasobjectstore_remote_executable);
-    upload
-        .arg("--config")
-        .arg(&config.dasobjectstore_remote_config)
-        .arg("upload")
-        .arg(&request.object_store_id)
-        .arg("--source")
-        .arg(&payload)
-        .arg("--key")
-        .arg(&object_key)
-        .args(["--no-progress", "--submit-to-daemon", "--daemon-socket"])
-        .arg(&config.daemon_socket)
-        .stderr(Stdio::null());
+    let mut upload = upload_command(config, &scratch, &payload, request, &object_key)?;
     let (upload_status, upload_stdout) = output_bounded(&mut upload, 64 * 1024)?;
     if !upload_status.success() {
         return Err("DASObjectStore remote upload failed".into());
@@ -191,6 +252,105 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         checksum_sha256: checksum,
         verified_at_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
     })
+}
+
+fn upload_command(
+    config: &Config,
+    scratch: &Scratch,
+    payload: &Path,
+    request: &Request,
+    object_key: &str,
+) -> Result<Command, Box<dyn std::error::Error>> {
+    if let Some(container) = &config.container_execution {
+        let remote_config = scratch.path.join("remote.json");
+        let credentials = scratch.path.join("aws-credentials");
+        copy_private(&container.remote_config, &remote_config)?;
+        copy_private(&container.aws_credentials, &credentials)?;
+        let container_job = translated_container_path(container, &scratch.path)?;
+        let container_payload = container_job.join("payload");
+        let container_config = container_job.join("remote.json");
+        let container_credentials = container_job.join("aws-credentials");
+        let mut command = Command::new(&container.docker_executable);
+        command
+            .args(["compose", "-f"])
+            .arg(&container.compose_file)
+            .args(["exec", "-T", "-e"])
+            .arg(format!(
+                "AWS_SHARED_CREDENTIALS_FILE={}",
+                container_credentials.display()
+            ))
+            .arg(&container.service)
+            .arg("dasobjectstore-remote")
+            .arg("--config")
+            .arg(container_config)
+            .arg("upload")
+            .arg(&request.object_store_id)
+            .arg("--source")
+            .arg(container_payload)
+            .arg("--key")
+            .arg(object_key)
+            .args(["--no-progress", "--submit-to-daemon", "--daemon-socket"])
+            .arg(&container.daemon_socket)
+            .stderr(Stdio::null());
+        return Ok(command);
+    }
+    let mut command = Command::new(
+        config
+            .dasobjectstore_remote_executable
+            .as_deref()
+            .ok_or("native DAS remote executable is required")?,
+    );
+    command
+        .arg("--config")
+        .arg(
+            config
+                .dasobjectstore_remote_config
+                .as_deref()
+                .ok_or("native DAS remote config is required")?,
+        )
+        .arg("upload")
+        .arg(&request.object_store_id)
+        .arg("--source")
+        .arg(payload)
+        .arg("--key")
+        .arg(object_key)
+        .args(["--no-progress", "--submit-to-daemon", "--daemon-socket"])
+        .arg(
+            config
+                .daemon_socket
+                .as_deref()
+                .ok_or("native DAS daemon socket is required")?,
+        )
+        .stderr(Stdio::null());
+    Ok(command)
+}
+
+fn translated_container_path(
+    container: &ContainerExecution,
+    host_path: &Path,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let relative = host_path
+        .strip_prefix(&container.managed_scratch_root)
+        .map_err(|_| "scratch path escaped the managed root")?;
+    if relative.as_os_str().is_empty()
+        || relative
+            .components()
+            .any(|part| !matches!(part, std::path::Component::Normal(_)))
+    {
+        return Err("scratch path is not a direct managed descendant".into());
+    }
+    Ok(container.container_scratch_root.join(relative))
+}
+
+fn copy_private(source: &Path, destination: &Path) -> io::Result<()> {
+    require_private_regular(source)?;
+    fs::copy(source, destination)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(destination, fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(())
 }
 
 fn catalogue_id(request: &Request) -> String {
@@ -358,6 +518,24 @@ impl Scratch {
         }
         Ok(Self { path })
     }
+
+    fn create_in(root: &Path) -> io::Result<Self> {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(io::Error::other)?
+            .as_nanos();
+        let path = root.join(format!(
+            ".pinakotheke-capture-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir(&path)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o700))?;
+        }
+        Ok(Self { path })
+    }
 }
 impl Drop for Scratch {
     fn drop(&mut self) {
@@ -400,9 +578,10 @@ mod tests {
             schema_version: CONFIG_SCHEMA.into(),
             endpoint_id: "endpoint-1".into(),
             curl_executable: curl,
-            dasobjectstore_remote_executable: remote,
-            dasobjectstore_remote_config: remote_config,
-            daemon_socket: root.join("daemon.sock"),
+            dasobjectstore_remote_executable: Some(remote),
+            dasobjectstore_remote_config: Some(remote_config),
+            daemon_socket: Some(root.join("daemon.sock")),
+            container_execution: None,
             max_image_bytes: Some(1024),
         };
         let mut request = Request {
@@ -470,11 +649,93 @@ mod tests {
             schema_version: CONFIG_SCHEMA.into(),
             endpoint_id: "endpoint-1".into(),
             curl_executable: PathBuf::from("/does/not/run"),
-            dasobjectstore_remote_executable: PathBuf::from("/does/not/run"),
-            dasobjectstore_remote_config: PathBuf::from("/does/not/read"),
-            daemon_socket: PathBuf::from("/does/not/connect"),
+            dasobjectstore_remote_executable: Some(PathBuf::from("/does/not/run")),
+            dasobjectstore_remote_config: Some(PathBuf::from("/does/not/read")),
+            daemon_socket: Some(PathBuf::from("/does/not/connect")),
+            container_execution: None,
             max_image_bytes: Some(1024),
         };
         assert!(validate_request(&request, &config).is_err());
+    }
+
+    #[test]
+    fn container_execution_translates_only_managed_scratch_and_cleans_credentials() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-container-helper-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir(&root).unwrap();
+        let curl = root.join("curl");
+        let docker = root.join("docker");
+        let arguments = root.join("arguments");
+        executable(
+            &curl,
+            "#!/bin/sh\nout=''\nwhile [ $# -gt 0 ]; do [ \"$1\" = --output ] && { shift; out=$1; }; shift; done\nprintf fixture > \"$out\"\nprintf image/png\n",
+        );
+        executable(
+            &docker,
+            &format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" > '{}'\nprintf 'Final: job state=Complete stage=remote_s3_transfer_complete\\n'\n",
+                arguments.display()
+            ),
+        );
+        let compose = root.join("compose.yml");
+        let remote_config = root.join("remote.json");
+        let credentials = root.join("credentials");
+        fs::write(&compose, "services: {}\n").unwrap();
+        fs::write(&remote_config, "{}\n").unwrap();
+        fs::write(&credentials, "[dasobjectstore]\nsecret_access_key=test\n").unwrap();
+        for file in [&compose, &remote_config, &credentials] {
+            fs::set_permissions(file, fs::Permissions::from_mode(0o600)).unwrap();
+        }
+        let managed = root.join("managed");
+        fs::create_dir(&managed).unwrap();
+        let config = Config {
+            schema_version: CONFIG_SCHEMA.into(),
+            endpoint_id: "endpoint-1".into(),
+            curl_executable: curl,
+            dasobjectstore_remote_executable: None,
+            dasobjectstore_remote_config: None,
+            daemon_socket: None,
+            container_execution: Some(ContainerExecution {
+                docker_executable: docker,
+                compose_file: compose,
+                managed_scratch_root: managed.clone(),
+                container_scratch_root: PathBuf::from("/Volumes/Seagate/DASObjectStore"),
+                remote_config,
+                aws_credentials: credentials,
+                service: "dasobjectstored".into(),
+                daemon_socket: PathBuf::from("/run/dasobjectstore/dasobjectstored.sock"),
+            }),
+            max_image_bytes: Some(1024),
+        };
+        let request = Request {
+            schema_version: REQUEST_SCHEMA.into(),
+            plan_id: "plan-1".into(),
+            site_id: "site-1".into(),
+            origin: "https://example.invalid".into(),
+            canonical_page_url: "https://example.invalid/gallery".into(),
+            canonical_media_url: "https://media.invalid/image.png".into(),
+            capture_kind: "explicit_original".into(),
+            width: 10,
+            height: 10,
+            adapter_version: "1.0.0".into(),
+            endpoint_id: "endpoint-1".into(),
+            object_store_id: "store-1".into(),
+        };
+        let receipt = acquire(&request, &config).unwrap();
+        assert_eq!(receipt.content_length, 7);
+        let arguments = fs::read_to_string(arguments).unwrap();
+        assert!(arguments.contains("compose -f"));
+        assert!(
+            arguments.contains(
+                "exec -T -e AWS_SHARED_CREDENTIALS_FILE=/Volumes/Seagate/DASObjectStore/"
+            )
+        );
+        assert!(arguments.contains("dasobjectstored dasobjectstore-remote --config"));
+        assert!(arguments.contains("--daemon-socket /run/dasobjectstore/dasobjectstored.sock"));
+        assert_eq!(fs::read_dir(&managed).unwrap().count(), 0);
+        let _ = fs::remove_dir_all(root);
     }
 }

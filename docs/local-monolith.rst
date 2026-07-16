@@ -270,7 +270,15 @@ for the private helper configuration.
 
 DASObjectStore commit ``01a8c385`` now packages that version-matched remote
 client together with a digest-pinned AWS CLI in the local authority image. The
-next Pinakotheke adapter must invoke it only through a reviewed fixed container
-identity, translate sources only from DAS-managed scratch, and keep scoped
-credentials in the authority context. A capture request will never be allowed
-to provide a Docker name, host path, socket path, or credential.
+Pinakotheke capture helper can now invoke it only through the reviewed fixed
+``dasobjectstored`` Compose service, translate sources only from a canonical
+DAS-managed scratch root, and copy scoped credentials into the private,
+automatically removed job directory. A capture request cannot provide a Docker
+name, host path, socket path, or credential. See :doc:`firefox-capture` for the
+strict mutually exclusive native/container configuration.
+
+Isolated profiles require DASObjectStore commit ``720ae9c1`` or later. It
+keeps a non-default four-port Garage range aligned with Compose and provisions
+the canonical folder binding before remote completion reaches capacity
+admission. Do not substitute a direct S3 write when either authority contract
+is missing.

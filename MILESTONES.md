@@ -329,6 +329,18 @@ Pinakotheke work is a narrow host adapter that maps only DAS-managed scratch
 into that container execution context and supplies scoped authority credentials
 without exposing Docker, paths, or secrets to browser requests.
 
+That adapter now exists behind the unchanged host-authenticated acquisition
+protocol. Native and container transports are mutually exclusive; local Docker
+uses the fixed authority service/socket, translates only a canonical managed
+scratch descendant, hands off scoped files through the private job directory,
+and deletes that directory on every outcome. Live isolated commit/read/restart
+evidence remains before XIMG-094 and the Firefox vertical can close. The first
+live run found and fixed mismatched non-default Garage listener ports and a
+missing capacity profile binding in DASObjectStore commit ``720ae9c1``; Docker
+Desktop did not restore its daemon socket after the subsequent authorized
+restart, so the corrected authority rerun remains explicit rather than being
+replaced with direct-S3 evidence.
+
 - XIMG-050 implements the Mnemosyne-compatible Monas shell (commit `9e9cabb`):
   semantic-token CSS, compact header, responsive accessible empty state, and
   one mandatory footer provenance mark; host authentication remains Monas-owned.
