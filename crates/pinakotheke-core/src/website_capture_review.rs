@@ -146,6 +146,8 @@ mod tests {
             adapter_kind: AdapterKind::ExperimentalGeneric,
             adapter_version: "1.0.0".into(),
             capture_kind: CaptureKind::ObservedThumbnail,
+            width: 320,
+            height: 200,
             state: CapturePlanState::AwaitingApprovedAcquisition,
         }
     }

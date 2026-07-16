@@ -298,6 +298,11 @@ impl GalleryCatalogue {
             next_offset,
         })
     }
+
+    #[must_use]
+    pub fn items(&self) -> &[GalleryItem] {
+        &self.items
+    }
 }
 
 fn validate_item(item: &GalleryItem) -> Result<(), GalleryCatalogueError> {

@@ -16,6 +16,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 - Persist the Monas gallery's metadata-only ObjectStore references in a strict,
   bounded, private, atomically replaced document loaded by the local monolith,
   with fail-closed schema/corruption handling and restart coverage.
+- Bridge verified Firefox image acquisitions through website provenance and the
+  common review queue into persistent gallery cards, with idempotent thumbnail
+  admission and independently committed explicit-original enrichment.
 - Add the XIMG-200 Synoptikon product manifest, strict tenant/account/project
   host scope, and bounded authenticated catalogue projection over immutable
   DASObjectStore references.

@@ -396,6 +396,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   remains outstanding because Docker Desktop's engine did not recover after
   two clean/hard restarts on 2026-07-16 (``docker info`` remained unavailable).
   This environmental evidence gap does not mark XIMG-096 complete.
+  Verified Firefox image admission now bridges committed acquisition evidence,
+  website provenance, the common ``New`` review queue, and atomic persistent
+  gallery replacement. Observed thumbnails create cards; explicitly opened
+  originals enrich an existing card only after their own verified commit and
+  with the same endpoint/ObjectStore. Original-first, uncommitted, conflicting,
+  and destination-changing attempts fail closed; server-generated delivery
+  paths and restart tests preserve both immutable objects without payload
+  bytes. Live worker composition, authorized object streaming, real Firefox,
+  large-catalogue virtualization, and the container evidence rerun remain.
 
 ## 0.6.0 — Firefox capture
 

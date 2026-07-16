@@ -71,6 +71,30 @@ record through a new store instance and preserve its catalogue ID,
 endpoint/ObjectStore identity, checksum, review state, and availability without
 retaining payload bytes.
 
-Capture/review admission must now populate this store through verified commit
-evidence. Authorized image/video delivery composition and the real-Firefox
+The verified image admission boundary below now populates this store. Live
+worker composition, authorized image/video delivery, and the real-Firefox
 restart proof remain the next XIMG-096 slices.
+
+Verified Firefox image admission
+--------------------------------
+
+``PersistentWebsiteGalleryAdmission`` joins the existing website-capture plan,
+acquisition state machine, common review queue, and persistent gallery store.
+It is an internal worker boundary, not a browser endpoint. Firefox cannot send
+an ObjectStore reference or delivery path and cannot mark a record committed.
+
+An observed thumbnail creates a ``New`` image card only when the acquisition is
+already ``Committed`` with verified endpoint, ObjectStore, object-reference,
+and checksum evidence and the capture plan passes website review admission.
+The server derives the source classification and a host-local thumbnail route.
+Replaying the same immutable object is idempotent; changing the object for the
+same card is an explicit conflict.
+
+An explicitly opened original may attach to an existing observed-thumbnail
+card only after its own independent verified commit. Original-first admission
+is rejected. The endpoint and logical ObjectStore must match the reviewed
+thumbnail destination; an original cannot silently move the card to another
+store. The server generates the original delivery path and atomically replaces
+the complete metadata document. A restart test proves that one card retains
+both object references, dimensions, ``New`` review state, and ready
+availability without retaining image bytes.

@@ -58,6 +58,8 @@ pub struct CapturePlan {
     pub adapter_kind: AdapterKind,
     pub adapter_version: String,
     pub capture_kind: CaptureKind,
+    pub width: u32,
+    pub height: u32,
     pub state: CapturePlanState,
 }
 
@@ -240,6 +242,8 @@ impl CapturePlanService {
             adapter_kind: request.adapter_kind,
             adapter_version: request.adapter_version,
             capture_kind: request.capture_kind,
+            width: request.width,
+            height: request.height,
             state: CapturePlanState::AwaitingApprovedAcquisition,
         })
     }

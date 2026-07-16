@@ -86,6 +86,11 @@ metadata catalogue from ``state/gallery-catalogue.v1.json`` below the monolith
 root. It retains only review metadata and verified DASObjectStore references;
 media bytes are never stored in the Pinakotheke root. Missing state is empty,
 while corrupt, future-schema, oversized, or symlinked state fails closed.
+Verified Firefox image admission now joins committed acquisition evidence and
+the common website review queue to this store. An observed thumbnail creates a
+card; an explicitly opened and independently committed original can enrich that
+same card. Original-first, uncommitted, destination-changing, and conflicting
+replays are rejected, and delivery paths are generated server-side.
 
 The release hardening path now includes one deterministic fault/recovery
 command, ``scripts/faults/check.sh``. It covers critical authority, ingest,
