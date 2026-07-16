@@ -14,6 +14,12 @@ Current XIMG-092 authenticated forwarding baseline: ``../monas`` commit
 owns the Pinakotheke mount, Prosopikon cookie verification, strict context
 injection, streaming loopback forwarding, and private dispatch configuration.
 
+Current XIMG-095 login baseline: ``../monas`` commit
+``a0fabe2d250f2d217765ee59a95cc2a04610bedc`` (workspace ``0.3.0``). Monas
+owns the responsive login/Yew shell, strict same-origin deep-link return,
+Prosopikon session establishment and revocation, approved-brand asset boundary,
+and Pinakotheke redirect gate.
+
 Status: proposed planning contract
 Snapshot: 2026-07-14 UTC
 TODO: XIMG-003

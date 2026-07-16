@@ -28,6 +28,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
   Pinakotheke backend and Monas host, including private credential generation,
   guarded transactional replacement, status/restart/log access, and
   data-preserving uninstall.
+- Complete XIMG-095 with the Monas ``0.3.0`` host-owned login/Yew shell,
+  same-origin Pinakotheke deep-link return, Prosopikon session lifecycle, and
+  approved Mnemosyne branding asset boundary.
 
 ## [1.0.0] - 2026-07-15
 

@@ -90,7 +90,8 @@ dispatch headers are removed before product code runs. When configured,
 readiness reports the trusted dispatch boundary as ``Ready``; this means only
 that the backend is prepared for Monas dispatch, not that a login has occurred.
 
-Monas ``0.2.0`` provides the matching authenticated forwarding mount. Create
+Monas ``0.3.0`` provides the matching authenticated forwarding mount and login
+screen. Create
 one private credential and start the backend on a separate loopback port, then
 start Monas as the only user-facing listener:
 

@@ -763,7 +763,8 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   isolated-home lifecycle proved install, status, health, direct-route
   rejection, restart, log discovery, private files, agent removal, stopped
   listeners, and retained state.
-- [ ] **XIMG-095 P0 — Deliver the Monas-owned login and session screen.** The
+- [x] **XIMG-095 P0 — Deliver the Monas-owned login and session screen.**
+  Completed in Monas ``0.3.0`` commit ``a0fabe2``. The
   current Monas Yew surface is a placeholder even though XIMG-092 completed the
   authentication APIs, Prosopikon authority, session cookie, product mount,
   forwarding, and host-context injection. Add a user-facing sign-in experience
@@ -786,7 +787,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   logout and expiry revoke access, direct backend requests still fail, and no
   secret appears in Pinakotheke state, browser local storage, URL, or logs.
   Record the exact Monas, Prosopikon, DASObjectStore design reference, and
-  Mnemosyne design-language commits. XIMG-094 depends on this item.
+  Mnemosyne design-language commits. Monas native/WASM tests prove safe return,
+  login, session admission, logout revocation, invalid/external targets, and
+  re-gating; a real browser proved the Pinakotheke deep-link redirect and
+  accessible branded login DOM. Approved assets are served from the packaged
+  Mnemosyne branding root (or an explicit development root), never redrawn.
+  Pinakotheke never receives the password or cookie. XIMG-094 is now unblocked.
 - [ ] **XIMG-094 P0 — Prove clean-home monolith operation.** In an isolated
   temporary home, start the service, complete Monas login, select the managed
   local ObjectStore, commit and read one synthetic object through scoped DAS

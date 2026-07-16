@@ -72,7 +72,7 @@ integration. The first local monolith slice can now run a loopback Axum service
 with an isolated private metadata root. Explicit local-profile commands now
 provision and discover a named DASObjectStore-managed ObjectStore without
 granting Pinakotheke direct filesystem authority. Monas authentication
-composes through the Monas ``0.2.0`` authenticated forwarding mount and a
+composes through the Monas ``0.3.0`` authenticated forwarding/login shell and a
 fail-closed, process-credentialed backend boundary. Pinakotheke does not parse
 Monas cookies or issue sessions. A non-root macOS ``launchd`` manager controls
 the two coordinated agents without deleting application data. See
