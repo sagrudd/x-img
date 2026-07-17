@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use axum_server::tls_rustls::RustlsConfig;
 use clap::{Args, Subcommand};
 use serde::Deserialize;
 use x_img_core::{
@@ -28,6 +29,12 @@ pub(crate) struct ServeArgs {
     /// Listener port.
     #[arg(long, default_value_t = DEFAULT_PORT)]
     port: u16,
+    /// PEM certificate chain terminated directly by Axum/Rustls.
+    #[arg(long, requires = "tls_private_key")]
+    tls_certificate_chain: Option<PathBuf>,
+    /// PEM private key paired with --tls-certificate-chain.
+    #[arg(long, requires = "tls_certificate_chain")]
+    tls_private_key: Option<PathBuf>,
     /// Explicitly acknowledge that a non-loopback listener has no composed authentication yet.
     #[arg(long)]
     allow_non_loopback_without_authentication: bool,
@@ -218,6 +225,50 @@ fn socket_address(arguments: &ServeArgs) -> io::Result<SocketAddr> {
     Ok(SocketAddr::new(arguments.bind, arguments.port))
 }
 
+fn tls_paths(arguments: &ServeArgs) -> io::Result<Option<(&Path, &Path)>> {
+    match (
+        arguments.tls_certificate_chain.as_deref(),
+        arguments.tls_private_key.as_deref(),
+    ) {
+        (None, None) => Ok(None),
+        (Some(certificate), Some(key)) => {
+            for (label, path) in [
+                ("TLS certificate chain", certificate),
+                ("TLS private key", key),
+            ] {
+                if !path.is_absolute() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        format!("{label} path must be absolute"),
+                    ));
+                }
+                let metadata = std::fs::symlink_metadata(path)?;
+                if metadata.file_type().is_symlink() || !metadata.is_file() || metadata.len() == 0 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        format!("{label} must be a non-empty regular file"),
+                    ));
+                }
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if std::fs::metadata(key)?.permissions().mode() & 0o077 != 0 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "TLS private key must not be accessible by group or other users",
+                    ));
+                }
+            }
+            Ok(Some((certificate, key)))
+        }
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "TLS certificate chain and private key must be supplied together",
+        )),
+    }
+}
+
 fn resolve_web_root(
     requested: Option<PathBuf>,
     product_root: &Path,
@@ -306,6 +357,8 @@ fn validate_web_tree(path: &Path, files: &mut usize, bytes: &mut u64) -> io::Res
 
 pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Error>> {
     let address = socket_address(&arguments)?;
+    let tls = tls_paths(&arguments)?
+        .map(|(certificate, key)| (certificate.to_path_buf(), key.to_path_buf()));
     let layout = LocalRootLayout::resolve(arguments.root)?;
     let _lease = CaptureWorkerLease::acquire(&layout.root)?;
     let web_root = resolve_web_root(
@@ -398,13 +451,13 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
     }
     let runtime = tokio::runtime::Runtime::new()?;
     runtime.block_on(async move {
-        let listener = tokio::net::TcpListener::bind(address).await?;
         let storage_ready = crate::local_objectstore::is_ready(&layout.root);
         let gallery = gallery_store
             .load_or_empty()
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
         println!(
-            "Pinakotheke {} listening on http://{address}",
+            "Pinakotheke {} listening on {}://{address}",
+            if tls.is_some() { "https" } else { "http" },
             env!("CARGO_PKG_VERSION")
         );
         println!("metadata root: {}", layout.root.display());
@@ -431,11 +484,13 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                 "Not configured"
             }
         );
-        println!("readiness: http://{address}/ready");
-        match (object_read_backend, capture_plans) {
+        println!(
+            "readiness: {}://{address}/ready",
+            if tls.is_some() { "https" } else { "http" }
+        );
+        let router = match (object_read_backend, capture_plans) {
             (Some(backend), capture_plans) => {
-                x_img_api::serve_monolith_with_gallery_web_delivery_and_capture(
-                    listener,
+                x_img_api::monolith_router_with_gallery_web_delivery_and_capture_authority(
                     storage_ready,
                     monas_dispatch,
                     gallery,
@@ -458,29 +513,31 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                         }
                     }),
                 )
-                .await
             }
             (None, Some(capture_plans)) => {
-                x_img_api::serve_monolith_with_gallery_web_and_capture(
-                    listener,
+                x_img_api::monolith_router_with_gallery_web_and_capture_authority(
                     storage_ready,
                     monas_dispatch,
                     gallery,
                     web_root,
                     capture_plans,
                 )
-                .await
             }
-            (None, None) => {
-                x_img_api::serve_monolith_with_gallery_and_web(
-                    listener,
-                    storage_ready,
-                    monas_dispatch,
-                    gallery,
-                    web_root,
-                )
+            (None, None) => x_img_api::monolith_router_with_gallery_and_web_authority(
+                storage_ready,
+                monas_dispatch,
+                gallery,
+                web_root,
+            ),
+        };
+        if let Some((certificate, key)) = tls {
+            let config = RustlsConfig::from_pem_file(certificate, key).await?;
+            axum_server::bind_rustls(address, config)
+                .serve(router.into_make_service())
                 .await
-            }
+        } else {
+            let listener = tokio::net::TcpListener::bind(address).await?;
+            axum::serve(listener, router).await
         }
     })?;
     Ok(())
@@ -710,6 +767,8 @@ mod tests {
             root: None,
             bind: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
             port: DEFAULT_PORT,
+            tls_certificate_chain: None,
+            tls_private_key: None,
             allow_non_loopback_without_authentication: false,
             monas_dispatch_token_file: None,
             web_root: None,
@@ -730,6 +789,56 @@ mod tests {
             socket_address(&reviewed).unwrap(),
             SocketAddr::from((Ipv4Addr::UNSPECIFIED, DEFAULT_PORT))
         );
+    }
+
+    #[test]
+    fn tls_assets_are_paired_absolute_regular_and_private() {
+        let root = temporary_root();
+        std::fs::create_dir_all(&root).unwrap();
+        let certificate = root.join("server.crt");
+        let key = root.join("server.key");
+        std::fs::write(&certificate, "synthetic certificate").unwrap();
+        std::fs::write(&key, "synthetic private key").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&key, std::fs::Permissions::from_mode(0o600)).unwrap();
+        }
+        let mut arguments = ServeArgs {
+            root: None,
+            bind: IpAddr::V4(Ipv4Addr::LOCALHOST),
+            port: DEFAULT_PORT,
+            tls_certificate_chain: Some(certificate.clone()),
+            tls_private_key: Some(key.clone()),
+            allow_non_loopback_without_authentication: false,
+            monas_dispatch_token_file: None,
+            web_root: None,
+            object_read_helper: None,
+            capture_authority_file: None,
+            capture_completion_token_file: None,
+            capture_acquire_helper: None,
+        };
+        assert_eq!(
+            tls_paths(&arguments).unwrap(),
+            Some((certificate.as_path(), key.as_path()))
+        );
+
+        arguments.tls_private_key = None;
+        assert_eq!(
+            tls_paths(&arguments).unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+        arguments.tls_private_key = Some(key.clone());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&key, std::fs::Permissions::from_mode(0o640)).unwrap();
+            assert_eq!(
+                tls_paths(&arguments).unwrap_err().kind(),
+                io::ErrorKind::PermissionDenied
+            );
+        }
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

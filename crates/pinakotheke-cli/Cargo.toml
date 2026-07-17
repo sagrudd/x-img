@@ -26,6 +26,7 @@ path = "src/bin/pinakotheke.rs"
 
 [dependencies]
 axum.workspace = true
+axum-server.workspace = true
 bytes.workspace = true
 clap.workspace = true
 futures-core.workspace = true

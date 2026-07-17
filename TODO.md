@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.10.0
+Version: 1.11.0
 
 Updated: 2026-07-17
 
@@ -1284,6 +1284,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   source account/origin label, and normalization state. Prove prompt loading,
   seeking, missing-object behavior, and that the viewer never contacts the
   source website.
+
+- [ ] **XIMG-114 P0 — Terminate trusted HTTPS directly in Axum.**
+  Add paired certificate-chain/private-key CLI arguments and a Rustls listener.
+  Reject partial pairs, relative paths, symlinks, empty assets, and group/other
+  readable private keys before binding. Preserve HTTP only as an explicit local
+  development mode. Document CA trust, SANs, verification, rotation, service
+  management, migration, and rollback in the authoritative root guide. Deploy
+  to DASServer on port 8731 with nginx absent from the request path and prove
+  `/ready`, Monas/Yew application access, and extension download over trusted
+  HTTPS.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

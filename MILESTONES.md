@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.10.0
+Version: 1.11.0
 
 Updated: 2026-07-17
 
@@ -1003,6 +1003,22 @@ The Pinakotheke library exposes a dedicated playable-video view. Its viewer
 uses only authorized DASObjectStore delivery, a committed poster when
 available, native controls, inline playback, and the established range-capable
 normalized-video route; it never falls back to the source website.
+
+## 1.11.0 — Direct trusted Axum HTTPS
+
+Goal: remove the reverse proxy from the Pinakotheke request path. The Rust
+process binds the public service port and terminates TLS with Rustls using an
+explicit operator-supplied certificate chain and private key. Startup fails on
+partial, missing, symlinked, empty, or overly permissive key material. Existing
+Monas authentication, Yew assets, Firefox downloads, and authorized
+DASObjectStore range delivery share the same direct HTTPS listener.
+
+``TRUSTED_CERTIFICATES_AND_AXUM.md`` is the authoritative cross-product
+deployment summary for private-CA and public-CA trust, SAN identity, key
+permissions, verification, rotation, service management, proxy removal, and
+rollback. DASServer acceptance requires stopping nginx on port 8731, binding
+Pinakotheke directly there, and proving the trusted `/ready`, app, and download
+routes.
 
 ## Post-1.0 candidates
 

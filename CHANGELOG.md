@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.0 - 2026-07-17
+
+- Terminate HTTPS directly in the Pinakotheke Axum service with Rustls using an
+  explicit certificate-chain/private-key pair; nginx is no longer required.
+- Add an authoritative root-level deployment guide for trusted local and public
+  certificates, direct Axum HTTPS, rotation, verification, and proxy removal.
+
 ## 1.10.0 - 2026-07-17
 
 - Permit trusted-play progressive video plans from any explicitly enabled

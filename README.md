@@ -65,7 +65,7 @@ release remains available from its historical
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
 and dual-architecture upgrade/rollback evidence.
 
-The `1.10.0` development workspace provides shared model and core boundaries, a `clap`
+The `1.11.0` development workspace provides shared model and core boundaries, a `clap`
 CLI, an Axum composition boundary, and a Yew client boundary. It compiles
 without enabling unconfigured source, storage, authentication, or media-payload
 integration. The first local monolith slice can now run a loopback Axum service
@@ -80,6 +80,11 @@ the two coordinated agents without deleting application data. See
 [MILESTONES.md](MILESTONES.md) for release gates
 and [TODO.md](TODO.md) for dependency-ordered work. Automated contributors must
 follow [AGENTS.md](AGENTS.md).
+
+Production HTTPS is terminated directly by the Rust/Axum service; nginx is not
+part of the Pinakotheke request path. Certificate trust, issuance, deployment,
+rotation, and the reusable Mnemosyne pattern are defined in
+[TRUSTED_CERTIFICATES_AND_AXUM.md](TRUSTED_CERTIFICATES_AND_AXUM.md).
 
 The Monas-authenticated gallery now loads a strict, bounded, atomically replaced
 metadata catalogue from ``state/gallery-catalogue.v1.json`` below the monolith
