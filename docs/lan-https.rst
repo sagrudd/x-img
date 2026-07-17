@@ -38,17 +38,24 @@ Verify the exact address without disabling certificate checks:
    curl --cacert "$(mkcert -CAROOT)/rootCA.pem" \
      https://192.168.1.192:8731/
 
-The development XPI is unsigned. Load it with ``about:debugging`` → ``This
-Firefox`` → ``Load Temporary Add-on`` and choose the current platform XPI under
-``dist/firefox/``. Temporary installation is removed when Firefox exits;
-persistent public installation still requires Mozilla signing. Pair the
-extension with ``https://192.168.1.192:8731`` only after the page loads without
-a certificate warning.
+Mozilla has signed the unlisted Pinakotheke ``1.2.1`` XPI. Install the signed
+artifact from ``https://192.168.1.192:8731/downloads/pinakotheke-1.2.1.xpi``;
+unsigned platform builds below ``dist/firefox/`` remain temporary development
+artifacts. Pair the extension with ``https://192.168.1.192:8731`` only after
+the page loads without a certificate warning.
+
+The deployed listener handles nginx's internal ``497``
+plain-request-on-TLS-port condition with a narrow permanent redirect to the
+same host, port, path, and query over ``https``. This recovery occurs before
+Monas and carries no authentication state; it prevents an accidentally copied
+``http://192.168.1.192:8731`` XPI link from ending at nginx's opaque 400 page.
+The HTTPS endpoint remains canonical, and HSTS is intentionally deferred until
+every local client trusts the private CA.
 
 The 2026-07-17 DASServer proof used TLS 1.3 with certificate verification
-enabled in Firefox 152.0.6, installed the unsigned Pinakotheke 1.2.1 XPI through
-WebDriver BiDi, and loaded the Monas login route without an insecure-certificate
-override. The sibling patterns inspected were Mnemosyne
+enabled in Firefox 152.0.6, installed the Mozilla-signed Pinakotheke 1.2.1 XPI
+permanently through WebDriver BiDi, and loaded the Monas login route without an
+insecure-certificate override. The sibling patterns inspected were Mnemosyne
 ``52810176bf95a170f93d74a6f5daa94da5c6640e``, DASObjectStore
 ``d99e0c98736be9fa9443e78d91a0a2e04488b881``, Mnematikon
 ``de6f7d7074decc8a2fa7ca449b7fc713d7b33dc7``, and domain-cert

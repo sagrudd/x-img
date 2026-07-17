@@ -8,6 +8,8 @@
   validation, environment-only credentials, and signed-XPI identity checks.
 - Add isolated Firefox acceptance that requires a Mozilla-signed XPI to install
   permanently with the stable Pinakotheke extension identity.
+- Recover accidental plaintext requests to the private-LAN TLS installation
+  port by redirecting to the identical canonical HTTPS URL.
 - Correct the Firefox manifest's background and permission declarations and
   disclose the user-directed browsing, website-content, and save-action data
   transmitted to the configured Pinakotheke service.

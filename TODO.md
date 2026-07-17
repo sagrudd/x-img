@@ -1015,8 +1015,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   profile. Stable-identity upgrade, paired opted-in capture, and substitution
   fail-open acceptance passed against the exact signed source. The trusted
   DASServer download uses ``application/x-xpinstall`` and matches the approved
-  checksum. Completed by ``6406ac2`` and ``414ab49``; no developer-mode
-  artifact is release evidence.
+  checksum. The listener redirects nginx's internal plaintext-on-TLS-port
+  condition to the identical HTTPS URL, so an accidental ``http://`` install
+  link cannot strand Firefox on a 400 page. Completed by ``6406ac2`` and
+  ``414ab49``; no developer-mode artifact is release evidence.
 
 - [x] **XIMG-101 P0 — Correct Pinakotheke sign-on branding in Monas.** Monas
   now selects a product-aware Pinakotheke presentation only from the validated
