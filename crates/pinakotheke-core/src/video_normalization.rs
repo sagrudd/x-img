@@ -611,7 +611,7 @@ fn docker_prefix(
         .to_str()
         .filter(|value| !value.contains(['\n', '\r']))
         .ok_or(NormalizationError::InvalidPlan)?;
-    Ok(vec![
+    let mut arguments = vec![
         "run".into(),
         "--rm".into(),
         "--network".into(),
@@ -621,6 +621,19 @@ fn docker_prefix(
         "ALL".into(),
         "--security-opt".into(),
         "no-new-privileges".into(),
+    ];
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        let metadata =
+            fs::metadata(&plan.scratch_root).map_err(|_| NormalizationError::InvalidPlan)?;
+        arguments.extend([
+            "--user".into(),
+            format!("{}:{}", metadata.uid(), metadata.gid()),
+        ]);
+    }
+    arguments.extend([
         "--pids-limit".into(),
         "128".into(),
         "--cpus".into(),
@@ -633,10 +646,14 @@ fn docker_prefix(
             plan.executor.scratch_bytes_limit
         ),
         "--mount".into(),
-        format!("type=bind,src={scratch},dst=/work,rw"),
+        // Docker bind mounts are writable by default. `rw` is valid for the
+        // short `-v` syntax but is not a key=value field accepted by
+        // `--mount` on Linux Docker Engine.
+        format!("type=bind,src={scratch},dst=/work"),
         "--workdir".into(),
         "/work".into(),
-    ])
+    ]);
+    Ok(arguments)
 }
 
 fn extension(content_type: &str) -> &'static str {
@@ -987,6 +1004,18 @@ mod tests {
                 .arguments
                 .iter()
                 .any(|item| item.contains("@sha256:"))
+        );
+        assert!(commands[0].arguments.iter().any(|item| {
+            item.starts_with("type=bind,src=")
+                && item.ends_with(",dst=/work")
+                && !item.contains(",rw")
+        }));
+        #[cfg(unix)]
+        assert!(
+            commands[0]
+                .arguments
+                .windows(2)
+                .any(|item| item[0] == "--user" && item[1].contains(':'))
         );
         assert!(commands[2].capture_stdout);
     }

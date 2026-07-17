@@ -322,9 +322,16 @@ production worker-seam gap. Commit ``b46edce`` adds the first-party packaged
 stream helper that carries the protocol to native or containerized
 ``dasobjectstore-remote`` execution. An isolated live run against DASObjectStore
 ``093772da79bbb494da070965c7d4f49e5ad83f56`` verified a synthetic manifest
-commit, exact length, and content type in the selected ObjectStore. XIMG-096
-still requires the full normalized video/poster/manifest run plus Firefox
-playback, persistent gallery admission, and restart evidence.
+commit, exact length, and content type in the selected ObjectStore. The
+external-host Linux slice fixed Docker ``--mount`` syntax and runs the hardened,
+capability-free worker as the private scratch owner. An x86_64 DASServer run
+against DASObjectStore ``28e6d82cc8c25dd83838fde8b6de3aa16384eb95`` then
+normalized and committed the complete MP4/poster/manifest triplet with
+independent type and FFprobe verification. DGX Spark proved the same hardened
+three-output worker and cleanup on GB10 arm64 with fixture authority completion.
+XIMG-096 now requires Firefox playback, persistent gallery admission, and
+restart evidence; the DAS helper's root-owned Linux bind output is tracked as
+non-root provisioning debt.
 
 The clean-home authority run now provisions and strictly rediscovers a real
 isolated DASObjectStore endpoint/ObjectStore, including a mode-0600 persisted

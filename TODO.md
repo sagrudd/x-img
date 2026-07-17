@@ -386,8 +386,20 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   isolated live run against
   DASObjectStore ``093772da79bbb494da070965c7d4f49e5ad83f56`` committed and
   independently inspected a synthetic 33-byte JSON manifest with the expected
-  content type. The remaining gate is the live normalized video/poster triplet,
-  persistent gallery admission, and real Firefox playback/restart acceptance.
+  content type. The external-host slice then exposed and fixed invalid Linux
+  ``--mount`` syntax and capability-free private-scratch ownership. Against
+  DASObjectStore ``28e6d82cc8c25dd83838fde8b6de3aa16384eb95`` on the x86_64
+  DASServer, the fixed worker normalized a three-second synthetic source and
+  committed verified MP4, WebP poster, and JSON manifest objects with exact
+  types; independent FFprobe confirmed H.264/AAC, 320x240, and 3.041 seconds.
+  DGX Spark separately proved the hardened three-output worker and cleanup on
+  GB10 arm64 with a digest-pinned locally registered FFmpeg 8.1.2 image and a
+  fixture completion authority. The remaining gate is persistent gallery
+  admission plus real Firefox playback, seek, pause/resume, and restart
+  acceptance. External assurance also found that the DAS local-profile helper
+  creates a root-owned bind-mounted credential registry on Linux; the isolated
+  run used a scoped temporary ownership repair, and the sibling helper needs a
+  non-root reconciliation fix before this becomes routine Linux provisioning.
   Progress: slice 1 now defines a strict bounded Monas-hosted catalogue page
   whose image/video card and preview representations contain complete verified
   DASObjectStore references, explicit availability, and only host-local

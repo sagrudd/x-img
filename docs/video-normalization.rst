@@ -27,6 +27,13 @@ all Linux capabilities dropped, ``no-new-privileges``, process/CPU/memory
 limits, a temporary filesystem, and only the isolated scratch directory
 mounted at ``/work``.
 
+On Linux the structured ``--mount`` bind is writable by default and does not
+use the volume-only ``,rw`` token. The container runs as the scratch
+directory's numeric UID:GID so it can read mode-``0600`` input and create
+outputs after all capabilities have been dropped. Pinakotheke does not widen
+the mode-``0700`` directory, add DAC capabilities, or run a container entrypoint
+that requires root-time user or group mutation.
+
 The pinned FFmpeg container produces a normalized rendition and a poster.  A
 pinned containerized FFprobe invocation validates projected codec, dimensions,
 and duration metadata.  x-img calculates the output SHA-256 using bounded
@@ -125,10 +132,17 @@ This command makes the normalization adapter deployable, but does not itself
 admit a gallery card. The host must still record successful Firefox playback
 evidence and pass the normalized-video admission boundary. An isolated live
 XIMG-096 proof against DASObjectStore commit
-``093772da79bbb494da070965c7d4f49e5ad83f56`` committed a 33-byte synthetic
-manifest through the packaged container helper and independently confirmed its
-size and ``application/json`` content type in the selected ObjectStore. Full
-video normalization, gallery admission, and Firefox playback remain required.
+``28e6d82cc8c25dd83838fde8b6de3aa16384eb95`` on an x86_64 Linux DASServer
+normalized a redistributable three-second test pattern, committed its 129,594
+byte MP4, 4,086 byte WebP poster, and 428 byte JSON manifest through the
+packaged helper, then independently confirmed all three ObjectStore content
+types. FFprobe confirmed H.264/AAC, 320 by 240 pixels, and 3.041 seconds. A DGX
+Spark GB10 separately ran the same hardened worker and all three bounded helper
+streams on arm64, using a locally registered digest-pinned wrapper around
+static FFmpeg 8.1.2; scratch cleanup was verified. The DGX run used a fixture
+completion authority, not DASObjectStore, because the current helper requires
+a local daemon socket. Persistent gallery admission and real Firefox playback
+remain required.
 
 States and recovery
 -------------------

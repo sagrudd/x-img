@@ -5,6 +5,13 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ## [Unreleased]
 
+### Fixed
+
+- Make the hardened FFmpeg bind mount valid on Linux Docker Engine by using
+  the ``--mount`` key/value form and run the capability-free container as the
+  private scratch directory's numeric owner, preserving mode-0700/0600 access
+  without granting DAC override capability or widening host permissions.
+
 ### Added
 
 - Implement the packaged ``ingest-stream-v1`` DASObjectStore helper used by
