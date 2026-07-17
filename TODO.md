@@ -1179,14 +1179,19 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   with bounded tombstones, and never silently promote actor rules to a shared
   multi-user policy. Add export/import for recovery without credentials.
 
-- [ ] **XIMG-106 P0 — Make gallery delivery concurrent and provenance-led.**
-  Replace the single serialized object reader with a bounded 128-slot Axum pool.
-  Run blocking helper/provider/download/checksum work off async request threads,
-  apply backpressure beyond the bound, and prove independent reads overlap.
-  Use checksum-versioned private browser caching. Lead cards with the captured
-  X account and UTC capture time, retain honest generic-site fallback labels,
-  and classify newly admitted X records as X-account sources. Deploy to the
-  x86_64 DASServer and compare live small-library loading behavior.
+- [x] **XIMG-106 P0 — Make gallery delivery concurrent and provenance-led.**
+  Completed in ``6ae7bd9`` and deployed to the x86_64 DASServer as 1.7.3 on
+  2026-07-17. The former single serialized reader is a bounded 128-slot Axum
+  pool; blocking helper/provider/download/checksum work runs off async request
+  threads with backpressure. Eight-reader regression evidence proves overlap.
+  Checksum-versioned responses are private-cacheable for one hour. Cards lead
+  with the captured X account and UTC capture time, retain honest generic-site
+  fallback labels, and new X admissions use the X-account source class. All
+  193 workspace tests, strict Clippy, wasm compilation, quality checks, and the
+  pinned Sphinx container build/run passed. On the live server, 15 cold legacy
+  images totalling 1,344,774 bytes completed in 1.913 seconds concurrently,
+  versus 9.632 seconds sequentially; unchanged repeat browser views use the
+  private cache instead of retrieving the objects again.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

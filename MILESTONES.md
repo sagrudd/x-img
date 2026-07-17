@@ -953,6 +953,9 @@ DASObjectStore reads through a bounded 128-slot Axum delivery pool, away from
 async request workers, and privately caching checksum-versioned responses.
 Cards lead with the captured account and UTC capture time instead of generic
 capture copy, while new X admissions preserve their account classification.
+Delivered in ``6ae7bd9`` and deployed to the x86_64 DASServer on 2026-07-17.
+The 15-object cold-read probe improved from 9.632 seconds sequentially to 1.913
+seconds through the pool; repeat browser views reuse the private cache.
 
 ## Post-1.0 candidates
 
