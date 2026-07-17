@@ -820,6 +820,14 @@ data; DASObjectStore retains its independent lifecycle and storage authority.
 XIMG-097 completed this boundary in ``c32241a`` with inspected DEB, RPM, and
 macOS PKG evidence.
 
+The deployed application itself is also a release gate: Monas must forward the
+built Pinakotheke HTML, JavaScript, CSS, and WASM rather than an empty product
+shell. The library must visibly discover the authenticated DASObjectStore
+inventory and offer an endpoint/ObjectStore selector before capture review.
+Selection is not commit authority; the backend revalidates the exact stable
+endpoint/store pair immediately before every write. XIMG-098 tracks persistent
+selection and capture-plan consumption after the first visible deployed slice.
+
 ## Post-1.0 candidates
 
 - Synoptikon catalogue/plugin integration through the preserved host adapter

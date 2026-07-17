@@ -6,7 +6,7 @@ use serde::Deserialize;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{Event, HtmlElement, HtmlInputElement, KeyboardEvent};
+use web_sys::{Event, HtmlElement, HtmlInputElement, HtmlSelectElement, KeyboardEvent};
 use x_img_core::gallery_catalogue::{
     GALLERY_CATALOGUE_SCHEMA, GalleryItem, GalleryMediaKind, GalleryObjectAvailability,
     GalleryRepresentation, GalleryReviewState, GallerySourceKind,
@@ -21,6 +21,7 @@ pub fn run() {
 }
 
 const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue";
+const OBJECT_STORE_API: &str = "/products/dasobjectstore/api/v1/dashboard/object-stores";
 const GALLERY_PAGE_SIZE: usize = 100;
 const GALLERY_WINDOW_ROWS: usize = 8;
 const GALLERY_OVERSCAN_ROWS: usize = 2;
@@ -71,6 +72,34 @@ struct GalleryPageResponse {
     next_offset: Option<usize>,
     matched_items: usize,
     total_items: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct ObjectStoreDashboard {
+    stores: Vec<ObjectStoreRow>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct ObjectStoreRow {
+    store_id: String,
+    display_name: String,
+    health: String,
+    writeable: bool,
+    writer_policy: ObjectStoreWriterPolicy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct ObjectStoreWriterPolicy {
+    writeable_by_current_user: bool,
+    state: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ObjectStoreLoadState {
+    Loading,
+    Ready(Vec<ObjectStoreRow>),
+    PermissionDenied,
+    Unavailable,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,6 +232,29 @@ pub fn app() -> Html {
     let gallery_scroll_top = use_state(|| 0_usize);
     let gallery_viewport_width = use_state(initial_viewport_width);
     let keyboard_focus_pending = use_state(|| false);
+    let object_stores = use_state(|| ObjectStoreLoadState::Loading);
+    let selected_object_store = use_state(String::new);
+
+    {
+        let object_stores = object_stores.clone();
+        use_effect_with((), move |()| {
+            spawn_local(async move {
+                let state = match Request::get(OBJECT_STORE_API).send().await {
+                    Ok(response) if matches!(response.status(), 401 | 403) => {
+                        ObjectStoreLoadState::PermissionDenied
+                    }
+                    Ok(response) if response.ok() => response
+                        .json::<ObjectStoreDashboard>()
+                        .await
+                        .map(|dashboard| ObjectStoreLoadState::Ready(dashboard.stores))
+                        .unwrap_or(ObjectStoreLoadState::Unavailable),
+                    Ok(_) | Err(_) => ObjectStoreLoadState::Unavailable,
+                };
+                object_stores.set(state);
+            });
+            || ()
+        });
+    }
 
     {
         let gallery_viewport_width = gallery_viewport_width.clone();
@@ -331,6 +383,48 @@ pub fn app() -> Html {
                 <p class="ximg-shell__eyebrow">{ "Media workspace" }</p>
                 <h1>{ "x-img library" }</h1>
                 <p>{ "Review committed media from configured sources." }</p>
+
+                <section class="ximg-destination" aria-labelledby="destination-title">
+                    <h2 id="destination-title">{ "Storage destination" }</h2>
+                    <p>{ "Choose the DASObjectStore that Pinakotheke should present for reviewed capture plans. The server revalidates the destination before any commit." }</p>
+                    { match &*object_stores {
+                        ObjectStoreLoadState::Loading => html! { <p role="status">{ "Loading ObjectStores…" }</p> },
+                        ObjectStoreLoadState::PermissionDenied => html! { <p role="alert">{ "Monas did not authorize ObjectStore discovery." }</p> },
+                        ObjectStoreLoadState::Unavailable => html! { <p role="alert">{ "DASObjectStore inventory is unavailable. Media browsing remains available." }</p> },
+                        ObjectStoreLoadState::Ready(stores) => html! {
+                            <>
+                                <label for="object-store-select">{ "DASServer · ObjectStore" }</label>
+                                <select
+                                    id="object-store-select"
+                                    value={(*selected_object_store).clone()}
+                                    onchange={{
+                                        let selected_object_store = selected_object_store.clone();
+                                        Callback::from(move |event: Event| {
+                                            selected_object_store.set(event.target_unchecked_into::<HtmlSelectElement>().value());
+                                        })
+                                    }}
+                                >
+                                    <option value="">{ "Select an ObjectStore…" }</option>
+                                    { for stores.iter().map(|store| {
+                                        let ready = store.health == "healthy" && store.writeable && store.writer_policy.writeable_by_current_user;
+                                        html! {
+                                            <option value={store.store_id.clone()} disabled={!ready}>
+                                                { format!("{} · {}", store.display_name, if ready { "Ready" } else { "Read-only or unavailable" }) }
+                                            </option>
+                                        }
+                                    }) }
+                                </select>
+                                <p role="status" aria-live="polite">{
+                                    if selected_object_store.is_empty() {
+                                        "No ObjectStore selected for this review session.".to_owned()
+                                    } else {
+                                        format!("Selected: DASServer · {}. This choice will be shown during capture review.", *selected_object_store)
+                                    }
+                                }</p>
+                            </>
+                        },
+                    }}
+                </section>
 
                 <section class="ximg-filters" aria-label="Browse metadata filters">
                     <label>

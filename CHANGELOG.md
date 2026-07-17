@@ -18,6 +18,10 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Added
 
+- Load the Monas-authenticated DASObjectStore inventory in the Pinakotheke
+  library and present a keyboard-accessible endpoint/ObjectStore selector with
+  explicit Ready, read-only, and unavailable states.
+
 - Implement the packaged ``ingest-stream-v1`` DASObjectStore helper used by
   video normalization, with exact-length stdin framing, streaming checksum,
   native or fixed-container daemon completion, bounded private scratch, strict

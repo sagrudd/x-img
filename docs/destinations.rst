@@ -31,8 +31,9 @@ Selection and commit safety
 ---------------------------
 
 After pairing, the authority supplies every visible ObjectStore. XIMG-037
-exposes each one as a structured destination row; its future task pane will
-show endpoint and store together, including stable IDs, labels, health, write
+exposes each one as a structured destination row. The Pinakotheke library now
+loads the signed-in actor's inventory through Monas and shows endpoint and
+store together, including stable IDs, labels, health, write
 capability, quota, and compatible object types. It must show
 ``Ready``, ``Read-only``, ``Unavailable``, or ``Needs reconnect`` in words;
 colour is only supplementary.
@@ -48,5 +49,8 @@ host context, pairing/TLS state, endpoint/store existence, health, writable
 capability, object type, policy, quota, and reviewed stable-ID pair. The
 catalogue provenance records endpoint ID, ObjectStore ID, object key, checksum,
 actor/session reference, and commit time. XIMG-037 validates reviewed rows and
-revalidates the exact stable-ID pair against authority state. A rendered Yew
-task pane and live discovery/pairing transport remain future adapter work.
+revalidates the exact stable-ID pair against authority state. The current Yew
+selector establishes the destination displayed during the browser review
+session; server-side persistence and capture-plan consumption remain the
+explicit XIMG-098 completion gate. A browser choice alone is never write
+authority.

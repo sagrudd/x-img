@@ -979,6 +979,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``c32241a``; real x86_64 DEB/RPM metadata and an arm64 macOS PKG prerequisite
   were inspected, with no DASObjectStore payload found.
 
+- [ ] **XIMG-098 P0 — Complete the live storage-destination workflow.** The
+  first deployed slice renders the real Yew application through Monas and
+  discovers the signed-in actor's DASObjectStore inventory in a visible,
+  keyboard-accessible selector. Ready stores are selectable and unhealthy,
+  read-only, unauthorized, and unavailable states remain explicit. Complete
+  this item by persisting the reviewed endpoint/ObjectStore stable IDs in the
+  Pinakotheke authority, restoring them after restart, and proving that capture
+  planning and pre-commit revalidation consume that exact selection without a
+  fallback. Monas forwarding fix: sibling commit ``51d90d2`` (local commit;
+  push pending restored GitHub credentials).
+
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by
   default, requires an absolute non-symlink root, creates only private

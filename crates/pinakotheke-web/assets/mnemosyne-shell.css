@@ -12,6 +12,9 @@
 .ximg-shell__empty { background: var(--mn-color-surface-raised); border: 1px solid var(--mn-color-border-subtle); margin-top: var(--mn-space-6); padding: var(--mn-space-4); }
 .ximg-source-nav { margin-top: var(--mn-space-6); }
 .ximg-refresh { background:var(--mn-color-surface-raised); border:1px solid var(--mn-color-border-subtle); margin-top:var(--mn-space-6); padding:var(--mn-space-4); }
+.ximg-destination { background:var(--mn-color-surface-raised); border:1px solid var(--mn-color-border-subtle); margin-top:var(--mn-space-6); padding:var(--mn-space-4); }
+.ximg-destination label { display:block; font-weight:700; margin-bottom:var(--mn-space-2); }
+.ximg-destination select { background:var(--mn-color-surface); border:1px solid var(--mn-color-border-strong); color:var(--mn-color-text); font:inherit; min-height:2.75rem; padding:var(--mn-space-2); width:min(100%,32rem); }
 .ximg-review { background:var(--mn-color-surface-raised); border:1px solid var(--mn-color-border-subtle); margin-top:var(--mn-space-6); padding:var(--mn-space-4); }
 .ximg-filters { margin-top:var(--mn-space-4); }.ximg-filters input { border:1px solid var(--mn-color-border-subtle); font:inherit; padding:var(--mn-space-2); }
 .ximg-source-nav ul { display: flex; flex-wrap: wrap; gap: var(--mn-space-2); list-style: none; padding: 0; }
