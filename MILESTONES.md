@@ -828,6 +828,11 @@ and installation prompt. The patch retains the signed extension identity,
 uses aspect-preserving transparent icon derivatives at Firefox-native sizes,
 and requires a new Mozilla unlisted signature before deployment.
 
+XIMG-102 completed in ``67980e2`` on 2026-07-17. The signed artifact passed
+Mozilla envelope, stable-identity, version, archive-icon, and permanent Firefox
+installation checks. The checksum-identical DASServer copy is deployed over
+trusted HTTPS with the required XPI media type and no-store headers.
+
 The deployed application itself is also a release gate: Monas must forward the
 built Pinakotheke HTML, JavaScript, CSS, and WASM rather than an empty product
 shell. The library must visibly discover the authenticated DASObjectStore

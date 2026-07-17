@@ -38,8 +38,9 @@ Verify the exact address without disabling certificate checks:
    curl --cacert "$(mkcert -CAROOT)/rootCA.pem" \
      https://192.168.1.192:8731/
 
-Mozilla has signed the unlisted Pinakotheke ``1.2.1`` XPI. Install the signed
-artifact from ``https://192.168.1.192:8731/downloads/pinakotheke-1.2.1.xpi``;
+Mozilla has signed the branded unlisted Pinakotheke ``1.2.2`` XPI. Install the
+signed artifact from
+``https://192.168.1.192:8731/downloads/pinakotheke-1.2.2.xpi``;
 unsigned platform builds below ``dist/firefox/`` remain temporary development
 artifacts. Pair the extension with ``https://192.168.1.192:8731`` only after
 the page loads without a certificate warning.
@@ -53,7 +54,7 @@ The HTTPS endpoint remains canonical, and HSTS is intentionally deferred until
 every local client trusts the private CA.
 
 The 2026-07-17 DASServer proof used TLS 1.3 with certificate verification
-enabled in Firefox 152.0.6, installed the Mozilla-signed Pinakotheke 1.2.1 XPI
+enabled in Firefox 152.0.6, installed the Mozilla-signed Pinakotheke 1.2.2 XPI
 permanently through WebDriver BiDi, and loaded the Monas login route without an
 insecure-certificate override. The sibling patterns inspected were Mnemosyne
 ``52810176bf95a170f93d74a6f5daa94da5c6640e``, DASObjectStore

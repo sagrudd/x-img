@@ -85,3 +85,18 @@ DASServer copy is served from
 ``https://192.168.1.192:8731/downloads/pinakotheke-1.2.1.xpi`` with
 ``application/x-xpinstall``, ``nosniff``, and ``private, no-store`` headers;
 the downloaded checksum matches the approved artifact.
+
+Branded signed release evidence
+-------------------------------
+
+Mozilla approved the branded unlisted Pinakotheke ``1.2.2`` submission on
+2026-07-17. Its SHA-256 is
+``ba1f518a50027bd5941f8868f9f80b2ccbc98c9706b5dfd622593a652be922fc``.
+Firefox accepted it as a permanent add-on with the unchanged
+``x-img@example.invalid`` identity, and the signed archive contains the
+approved 16, 32, 48, and 96 pixel Mnemosyne icon derivatives.
+
+The verified DASServer copy is available at
+``https://192.168.1.192:8731/downloads/pinakotheke-1.2.2.xpi`` with the XPI
+media type and no-store headers. Its downloaded checksum is identical to the
+Mozilla-returned artifact.
