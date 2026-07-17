@@ -46,9 +46,15 @@ struct Config {
     dasobjectstore_remote_config: Option<PathBuf>,
     #[serde(default)]
     daemon_socket: Option<PathBuf>,
+    #[serde(default = "default_submit_to_daemon")]
+    submit_to_daemon: bool,
     #[serde(default)]
     container_execution: Option<ContainerExecution>,
     max_image_bytes: Option<u64>,
+}
+
+const fn default_submit_to_daemon() -> bool {
+    true
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,10 +155,11 @@ fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
                     .as_deref()
                     .ok_or("native DAS remote config is required")?,
             )?;
-            if !config
-                .daemon_socket
-                .as_deref()
-                .is_some_and(Path::is_absolute)
+            if config.submit_to_daemon
+                && !config
+                    .daemon_socket
+                    .as_deref()
+                    .is_some_and(Path::is_absolute)
             {
                 return Err("native DAS daemon socket must be absolute".into());
             }
@@ -236,7 +243,7 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         return Err("retrieved image payload is invalid".into());
     }
     let checksum = sha256_file(&payload)?;
-    let object_key = format!("media/{checksum}");
+    let object_key = format!("media-{checksum}");
     let version = u64::from_str_radix(&checksum[..16], 16).unwrap_or(1).max(1);
     let mut upload = upload_command(
         config,
@@ -251,11 +258,14 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         return Err("DASObjectStore remote upload failed".into());
     }
     let report = String::from_utf8(upload_stdout)?;
-    if !report.lines().any(|line| {
+    let daemon_verified = report.lines().any(|line| {
         line.starts_with("Final:")
             && line.contains("state=Complete")
             && line.contains("stage=remote_s3_transfer_complete")
-    }) {
+    });
+    let direct_verified =
+        !config.submit_to_daemon && report.lines().any(|line| line == "Upload complete");
+    if !daemon_verified && !direct_verified {
         return Err("DASObjectStore did not report verified completion".into());
     }
     Ok(Committed {
@@ -348,14 +358,16 @@ fn upload_command(
         .arg(object_key)
         .arg("--content-type")
         .arg(content_type)
-        .args(["--no-progress", "--submit-to-daemon", "--daemon-socket"])
-        .arg(
+        .arg("--no-progress");
+    if config.submit_to_daemon {
+        command.args(["--submit-to-daemon", "--daemon-socket"]).arg(
             config
                 .daemon_socket
                 .as_deref()
                 .ok_or("native DAS daemon socket is required")?,
-        )
-        .stderr(Stdio::null());
+        );
+    }
+    command.stderr(Stdio::null());
     Ok(command)
 }
 
@@ -603,12 +615,12 @@ mod tests {
         );
         executable(
             &remote,
-            "#!/bin/sh\nprintf '%s' \"$*\" | grep -q -- '--config .* upload dos-store-1 --source .* --key media/.* --content-type image/png --no-progress --submit-to-daemon --daemon-socket' || exit 9\nprintf 'Daemon remote upload job submitted\\nFinal: job state=Complete stage=remote_s3_transfer_complete\\n'\n",
+            "#!/bin/sh\nprintf '%s' \"$*\" | grep -q -- '--config .* upload dos-store-1 --source .* --key media-.* --content-type image/png --no-progress --submit-to-daemon --daemon-socket' || exit 9\nprintf 'Daemon remote upload job submitted\\nFinal: job state=Complete stage=remote_s3_transfer_complete\\n'\n",
         );
         let remote_config = root.join("remote.json");
         fs::write(&remote_config, "{}").unwrap();
         fs::set_permissions(&remote_config, fs::Permissions::from_mode(0o600)).unwrap();
-        let config = Config {
+        let mut config = Config {
             schema_version: CONFIG_SCHEMA.into(),
             endpoint_id: "endpoint-1".into(),
             object_store_bucket: Some("dos-store-1".into()),
@@ -616,6 +628,7 @@ mod tests {
             dasobjectstore_remote_executable: Some(remote),
             dasobjectstore_remote_config: Some(remote_config),
             daemon_socket: Some(root.join("daemon.sock")),
+            submit_to_daemon: true,
             container_execution: None,
             max_image_bytes: Some(1024),
         };
@@ -646,7 +659,7 @@ mod tests {
         assert_eq!(receipt.content_length, 7);
         assert_eq!(receipt.content_type, "image/png");
         assert_eq!(receipt.object_store_id, "store-1");
-        assert!(receipt.object_key.starts_with("media/"));
+        assert!(receipt.object_key.starts_with("media-"));
         assert!(receipt.object_version > 0);
         assert_eq!(receipt.catalogue_id, catalogue_id(&request));
         request.canonical_media_url = "https://media.invalid/second.png".into();
@@ -661,6 +674,17 @@ mod tests {
             })
             .collect();
         assert_eq!(before.len(), after.len());
+        executable(
+            config
+                .dasobjectstore_remote_executable
+                .as_deref()
+                .expect("remote fixture"),
+            "#!/bin/sh\nprintf '%s' \"$*\" | grep -q -- '--no-progress' || exit 9\nprintf '%s' \"$*\" | grep -q -- '--submit-to-daemon' && exit 10\nprintf 'Upload complete\\n'\n",
+        );
+        config.submit_to_daemon = false;
+        config.daemon_socket = None;
+        let direct = acquire(&request, &config).expect("scoped direct DAS upload completes");
+        assert_eq!(direct.object_store_id, "store-1");
         let _ = fs::remove_dir_all(root);
     }
 
@@ -688,6 +712,7 @@ mod tests {
             dasobjectstore_remote_executable: Some(PathBuf::from("/does/not/run")),
             dasobjectstore_remote_config: Some(PathBuf::from("/does/not/read")),
             daemon_socket: Some(PathBuf::from("/does/not/connect")),
+            submit_to_daemon: true,
             container_execution: None,
             max_image_bytes: Some(1024),
         };
@@ -754,6 +779,7 @@ mod tests {
             dasobjectstore_remote_executable: None,
             dasobjectstore_remote_config: None,
             daemon_socket: None,
+            submit_to_daemon: true,
             container_execution: Some(ContainerExecution {
                 docker_executable: docker,
                 compose_file: compose,

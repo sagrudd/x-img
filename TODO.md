@@ -1065,10 +1065,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   live gallery admission. Firefox then applies a browser-only two-pixel green
   border. Full workspace tests, strict clippy, wasm, zero-warning extension
   lint, quality checks, and the pinned Sphinx container build/run pass. The
-  task remains open: trusted video play is detected and honestly reported, but
-  must next be composed with the normalized-video worker and equivalent
-  verified gallery/status path. Live DASServer image proof also requires the
-  capture helper authority and a Mozilla-signed 1.5.0 extension.
+  A live x86_64 DASServer proof on 2026-07-17 settled a restart-recovered plan,
+  committed the object through scoped DASObjectStore access, and immediately
+  produced one gallery item. X ingress now admits only ``pbs.twimg.com`` image
+  media, excluding interface artwork and emoji. The task remains open: trusted
+  video play is detected and honestly reported, but must next be composed with
+  the normalized-video worker and equivalent verified gallery/status path; a
+  Mozilla-signed 1.5.0 extension is also still required for user installation.
   Treat an enabled exact-origin site rule as the user's standing consent to
   cache the selected media classes. Cache displayed thumbnails immediately;
   cache an image original only after the user opens it, and cache video only

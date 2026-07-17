@@ -240,6 +240,11 @@ schema is
 Run-one acquisition helper
 --------------------------
 
+For X ingress, automatic thumbnail observation admits only media delivered by
+X's dedicated image-media host. Interface artwork, emoji, and other decorative
+assets from application hosts are excluded. Generic opted-in websites retain
+their adapter-defined visible-media behaviour.
+
 The first production-worker boundary is an offline, run-one CLI operation. A
 reviewed host executable receives one approved canonical plan and the fixed
 endpoint/ObjectStore identity, performs any permitted public retrieval and the
@@ -273,6 +278,16 @@ and malformed receipts fail before settlement. ``policy_blocked``,
 
 The executable exchange is defined by
 ``contracts/dasobjectstore/pinakotheke-capture-acquire-helper.v1.schema.json``.
+
+The native helper prefers daemon-submitted uploads. Where a DASObjectStore
+release cannot yet map a logical ObjectStore identifier to its S3 export
+bucket during daemon admission, an administrator may set
+``submit_to_daemon`` to ``false`` in the private helper configuration. The
+helper then uses the same scoped ``dasobjectstore-remote`` client and store
+credential directly, requires its successful completion acknowledgement, and
+still records the logical ObjectStore identity in provenance. This is an
+explicit compatibility mode, not browser-side storage or a payload copy in
+Pinakotheke.
 This run-one interface is testable now and is the adapter seam for a later
 continuously scheduled host worker; it is not permission to scrape, traverse,
 open hidden media, ingest DRM-protected material, or forward browser cookies.

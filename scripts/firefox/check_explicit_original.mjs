@@ -50,7 +50,7 @@ const browser = {
       async set(values) { Object.assign(storage, values); },
     },
   },
-  tabs: { async query() { return []; } },
+  tabs: { async query() { return []; }, async sendMessage() {} },
   scripting: {
     async executeScript() { return []; },
     async getRegisteredContentScripts() { return registeredScripts; },
@@ -62,8 +62,11 @@ const fetchFixture = async (url, options) => {
   if (String(url).startsWith("moz-extension://")) {
     return { async json() { return registry; } };
   }
+  if (String(url).includes("/capture-plans/")) {
+    return { ok: true, async json() { return { schema_version: "pinakotheke.capture-plan-status.v1", state: "stored" }; } };
+  }
   captures.push({ url: String(url), options });
-  return { ok: true };
+  return { ok: true, async json() { return { plan_id: "capture-plan-fixture" }; } };
 };
 const source = fs.readFileSync("firefox-extension/background.js", "utf8");
 const backgroundContext = vm.createContext({
@@ -94,6 +97,18 @@ assert.equal(observed.length, 1);
 assert.equal(observed[0].url, "https://media.example.invalid/thumb.jpg?signed=drop");
 assert.equal(observed[0].presentationUrl, "https://media.example.invalid/open.jpg?signed=drop");
 
+const xRule = { xIngress: true };
+const xObserved = vm.runInContext(`eligibleObservedImages("https://x.com", ${JSON.stringify(xRule)}, [
+  { url: "https://pbs.twimg.com/media/synthetic.jpg" },
+  { url: "https://abs.twimg.com/emoji/v2/svg/1f380.svg" },
+  { url: "not-a-url" }
+])`, backgroundContext);
+assert.deepEqual(Array.from(xObserved, item => item.url), ["https://pbs.twimg.com/media/synthetic.jpg"]);
+const genericObserved = vm.runInContext(`eligibleObservedImages("https://art.example.invalid", {}, [
+  { url: "https://media.example.invalid/synthetic.jpg" }
+])`, backgroundContext);
+assert.equal(genericObserved.length, 1);
+
 const sync = await messageListener({ command: "sync-capture-observers" }, {});
 assert.equal(sync.registered, 1);
 assert.equal(registeredScripts.length, 1);
@@ -120,16 +135,28 @@ openedImage.naturalWidth = 2048;
 openedImage.naturalHeight = 1365;
 const contentSource = fs.readFileSync("firefox-extension/content-explicit-open.js", "utf8");
 vm.runInNewContext(contentSource, {
-  browser: { runtime: { sendMessage(message) { contentMessages.push(message); } } },
+  browser: { runtime: {
+    sendMessage(message) { contentMessages.push(message); },
+    onMessage: { addListener() {} },
+  } },
   document: {
     contentType: "text/html",
+    documentElement: {},
+    head: { append() {} },
+    createElement() { return { textContent: "" }; },
+    querySelectorAll() { return []; },
     addEventListener(kind, callback, capture) {
-      assert.equal(kind, "click");
-      assert.equal(capture, true);
-      clickListener = callback;
+      if (kind === "click") {
+        assert.equal(capture, true);
+        clickListener = callback;
+      }
     },
   },
   Element: FixtureElement,
+  HTMLVideoElement: class {},
+  MutationObserver: class { observe() {} },
+  setTimeout() { return 1; },
+  clearTimeout() {},
   URL,
 });
 assert.equal(typeof clickListener, "function");
@@ -162,7 +189,8 @@ assert.equal(body.page_url, sender.tab.url, "page provenance must come from Fire
 assert.equal(body.media_url, "https://media.example.invalid/original.jpg");
 assert.equal(body.presentation_url, "https://media.example.invalid/original.jpg");
 assert.equal(body.width, 1920);
-assert.equal(storage.siteDiagnostics[body.origin].state, "Original queued");
+assert.equal(storage.siteDiagnostics[body.origin].state, "Stored in ObjectStore");
+assert.equal(storage.siteDiagnostics[body.origin].storedInObjectStore, true);
 
 storage.sites[0].capture = false;
 await messageListener({

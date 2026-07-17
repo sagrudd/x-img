@@ -285,6 +285,17 @@ function displayedImages() {
     .slice(0, 16);
 }
 
+function eligibleObservedImages(origin, rule, images) {
+  if (origin !== "https://x.com" || !rule.xIngress) return images;
+  return images.filter(observed => {
+    try {
+      return new URL(observed.url).hostname === "pbs.twimg.com";
+    } catch (_) {
+      return false;
+    }
+  });
+}
+
 function displayedVideos() {
   return [...document.querySelectorAll("video")]
     .filter(video => {
@@ -437,9 +448,10 @@ async function runCacheForTab(tab) {
       || !instanceUrl || !instanceId || !pairId) return;
     const adapter = await matchingAdapter(tab.url);
     if (!adapter) return;
-    const images = rule.media.includes("images")
+    const displayed = rule.media.includes("images")
       ? (await browser.scripting.executeScript({ target: { tabId: tab.id }, func: displayedImages }))[0].result || []
       : [];
+    const images = eligibleObservedImages(origin, rule, displayed);
     for (const observed of images) {
       if (rule.capture && adapter.capabilities.observed_thumbnail) {
         void captureAndFrame(
