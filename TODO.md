@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.6.1
+Version: 1.7.0
 
 Updated: 2026-07-17
 
@@ -1084,6 +1084,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   health, and live XPI delivery passed for 1.6.1. Fresh browsing is required to
   create query-preserving plans; the four earlier queryless plans remain
   honestly pending and cannot be repaired without their discarded variants.
+  Live 1.6.1 testing exposed an observability blocker: the extension produced
+  no new plans after installation while the server discarded helper failures.
+  Pinakotheke 1.7.0 adds a bounded Firefox event ring and JSON download plus
+  structured server admission/acquisition/settlement/gallery logs. Events omit
+  media/page URLs, credentials, cookies, and browsing history outside enabled
+  origins. This must be used for the next live X and generic-site capture proof.
   Image delivery landed in ``dc09fe6``: enabled pages debounce load, mutation,
   and scroll observations; meaningful visible images are submitted without a
   toolbar action; linked originals retain the trusted-click boundary; and an

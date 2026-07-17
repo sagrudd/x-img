@@ -25,7 +25,7 @@ pub(crate) fn backend(
     validate_helper(helper)?;
     let helper = helper.to_owned();
     Ok(HostCaptureAcquireBackend::new(Box::new(move |plan| {
-        acquire(&helper, plan, &endpoint_id, &object_store_id).map_err(|_| ())
+        acquire(&helper, plan, &endpoint_id, &object_store_id).map_err(|error| error.to_string())
     })))
 }
 

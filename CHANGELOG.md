@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add a bounded, credential-free Firefox diagnostic event ring with visible
+  recent events and JSON export, covering observer registration, viewport
+  scans, eligibility counts, plan HTTP outcomes, and stored/pending status.
+- Emit structured Pinakotheke service logs when capture plans are admitted,
+  acquisition helpers fail, settlement fails, or gallery admission completes;
+  retain the helper's bounded error class instead of silently discarding it.
 - Preserve X CDN ``format`` and ``name`` variants while continuing to discard
   arbitrary query parameters, so DASObjectStore acquisition fetches the image
   Firefox actually displayed instead of a queryless 404 URL.

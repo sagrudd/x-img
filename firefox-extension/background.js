@@ -19,6 +19,17 @@ browser.runtime.onStartup.addListener(syncExplicitOpenObservers);
 const EXPLICIT_OPEN_SCRIPT_ID = "pinakotheke-explicit-open-v1";
 const captureInFlight = new Set();
 
+async function traceEvent(stage, outcome, detail = "", origin = "") {
+  try {
+    const stored = await browser.storage.local.get(["diagnosticEvents"]);
+    const events = Array.isArray(stored.diagnosticEvents) ? stored.diagnosticEvents : [];
+    events.push({ at: new Date().toISOString(), stage, outcome, detail: String(detail).slice(0, 160), origin });
+    await browser.storage.local.set({ diagnosticEvents: events.slice(-100) });
+  } catch (_) {
+    // Diagnostics must never interfere with browsing or capture.
+  }
+}
+
 function localRuleFromServer(rule) {
   return {
     origin: rule.origin,
@@ -111,7 +122,10 @@ async function syncExplicitOpenObservers() {
     const adapter = await matchingAdapter(site.origin);
     if (adapter?.capabilities.explicit_original) eligible.push({ site, adapter });
   }
-  if (!eligible.length) return { registered: 0 };
+  if (!eligible.length) {
+    await traceEvent("observer_registration", "none", "no enabled image/video capture rules");
+    return { registered: 0 };
+  }
   await browser.scripting.registerContentScripts([{
     id: EXPLICIT_OPEN_SCRIPT_ID,
     js: ["content-explicit-open.js"],
@@ -122,6 +136,7 @@ async function syncExplicitOpenObservers() {
     persistAcrossSessions: true,
     runAt: "document_idle",
   }]);
+  await traceEvent("observer_registration", "registered", `${eligible.length} exact-origin rule(s)`);
   return { registered: eligible.length };
 }
 
@@ -148,25 +163,40 @@ async function submitCapture(instanceUrl, pairId, origin, pageUrl, adapter, capt
 
 async function captureAndFrame(tabId, instanceUrl, pairId, origin, pageUrl, adapter, captureKind, media) {
   const key = `${origin}|${captureKind}|${canonicalAlias(media.url)}`;
-  if (captureInFlight.has(key)) return { outcome: "in_flight" };
+  if (captureInFlight.has(key)) {
+    await traceEvent("capture_plan", "coalesced", captureKind, origin);
+    return { outcome: "in_flight" };
+  }
   captureInFlight.add(key);
   try {
     const response = await submitCapture(instanceUrl, pairId, origin, pageUrl, adapter, captureKind, media);
-    if (!response.ok) return { outcome: "rejected" };
+    if (!response.ok) {
+      await traceEvent("capture_plan", "rejected", `${captureKind}; HTTP ${response.status}`, origin);
+      return { outcome: "rejected" };
+    }
     const plan = await response.json();
-    if (!plan.plan_id) return { outcome: "invalid" };
+    if (!plan.plan_id) {
+      await traceEvent("capture_plan", "invalid", `${captureKind}; missing plan id`, origin);
+      return { outcome: "invalid" };
+    }
+    await traceEvent("capture_plan", "admitted", `${captureKind}; ${plan.plan_id}`, origin);
     for (let attempt = 0; attempt < 15; attempt += 1) {
       const status = await fetch(`${instanceUrl}/products/pinakotheke/api/extension/v1/capture-plans/${encodeURIComponent(plan.plan_id)}`, { cache: "no-store", headers: { "x-pinakotheke-pairing": pairId } });
       if (status.ok) {
         const state = await status.json();
         if (state.schema_version === "pinakotheke.capture-plan-status.v1" && state.state === "stored") {
           await browser.tabs.sendMessage(tabId, { command: "frame-stored", mediaUrl: media.url });
+          await traceEvent("capture_status", "stored", `${captureKind}; ${plan.plan_id}`, origin);
           return { outcome: "stored" };
         }
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
+    await traceEvent("capture_status", "pending", `${captureKind}; ${plan.plan_id}`, origin);
     return { outcome: "pending" };
+  } catch (error) {
+    await traceEvent("capture_plan", "error", `${captureKind}; ${error?.message || "request failed"}`, origin);
+    return { outcome: "error" };
   } finally {
     captureInFlight.delete(key);
   }
@@ -454,18 +484,35 @@ async function recordSegmentedOriginFallback(origin, kind) {
 
 async function runCacheForTab(tab) {
   try {
-    if (!tab.id || !tab.url) return;
+    if (!tab.id || !tab.url) {
+      await traceEvent("viewport_scan", "skipped", "tab identity unavailable");
+      return;
+    }
     const origin = new URL(tab.url).origin;
     const { instanceUrl, instanceId, pairId, sites = [] } = await browser.storage.local.get(["instanceUrl", "instanceId", "pairId", "sites"]);
     const rule = sites.find(site => site.origin === origin);
-    if (!rule || (!rule.capture && !rule.substitution)
-      || !instanceUrl || !pairId) return;
+    if (!rule) {
+      await traceEvent("viewport_scan", "skipped", "origin is not enabled", origin);
+      return;
+    }
+    if (!rule.capture && !rule.substitution) {
+      await traceEvent("viewport_scan", "skipped", "capture and substitution are paused", origin);
+      return;
+    }
+    if (!instanceUrl || !pairId) {
+      await traceEvent("viewport_scan", "skipped", "Pinakotheke pairing is incomplete", origin);
+      return;
+    }
     const adapter = await matchingAdapter(tab.url);
-    if (!adapter) return;
+    if (!adapter) {
+      await traceEvent("viewport_scan", "skipped", "no eligible adapter", origin);
+      return;
+    }
     const displayed = rule.media.includes("images")
       ? (await browser.scripting.executeScript({ target: { tabId: tab.id }, func: displayedImages }))[0].result || []
       : [];
     const images = eligibleObservedImages(origin, rule, displayed);
+    await traceEvent("viewport_scan", "complete", `${displayed.length} visible image(s); ${images.length} eligible`, origin);
     for (const observed of images) {
       if (rule.capture && adapter.capabilities.observed_thumbnail) {
         void captureAndFrame(
@@ -561,6 +608,7 @@ async function runCacheForTab(tab) {
           previouslyObserved: false,
           storedInObjectStore: false,
         });
+        await traceEvent("viewport_scan", "error", "cache operation unavailable", origin);
       } catch (_) {
         // Non-Web tabs have no site policy or diagnostic record.
       }
@@ -579,6 +627,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     return { completed: true };
   }
   if (message?.command === "visible-media-changed" && sender?.tab) {
+    await traceEvent("content_observer", "signal", "visible media changed", new URL(sender.tab.url).origin);
     await runCacheForTab(sender.tab);
     return { completed: true };
   }

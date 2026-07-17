@@ -95,7 +95,7 @@ pub struct ExtensionOnboardingAuthority {
 
 /// Process-isolated callback that returns verified authority metadata only.
 pub type HostCaptureAcquire =
-    Box<dyn FnMut(&CapturePlan) -> Result<VerifiedCaptureCompletion, ()> + Send>;
+    Box<dyn FnMut(&CapturePlan) -> Result<VerifiedCaptureCompletion, String> + Send>;
 
 /// Host adapter wrapping one process-isolated acquisition callback.
 pub struct HostCaptureAcquireBackend {
@@ -301,7 +301,7 @@ impl HostCaptureAcquireBackend {
         Self { acquire }
     }
 
-    fn acquire(&mut self, plan: &CapturePlan) -> Result<VerifiedCaptureCompletion, ()> {
+    fn acquire(&mut self, plan: &CapturePlan) -> Result<VerifiedCaptureCompletion, String> {
         (self.acquire)(plan)
     }
 }
@@ -1447,6 +1447,10 @@ async fn capture_plan(
     let plan = capture_plans
         .plan(context.actor_id(), now, request)
         .map_err(capture_plan_status)?;
+    eprintln!(
+        "pinakotheke_ingress event=plan_admitted plan_id={} kind={:?} origin={} site_id={}",
+        plan.plan_id, plan.capture_kind, plan.origin, plan.site_id
+    );
     drop(capture_plans);
     if let Some(runtime) = runtime.map(|runtime| runtime.0) {
         schedule_capture_runtime(&runtime, context.actor_id().to_owned(), plan.clone())
@@ -1542,12 +1546,27 @@ fn schedule_capture_runtime(
     };
     let runtime = Arc::clone(runtime);
     handle.spawn_blocking(move || {
-        let evidence = runtime
-            .acquire
-            .as_ref()
-            .and_then(|backend| backend.lock().ok()?.acquire(&plan).ok());
-        if let Some(evidence) = evidence {
-            let _ = settle_capture_runtime(&runtime, &actor_id, evidence);
+        let acquired = runtime.acquire.as_ref().ok_or_else(|| String::from("acquire backend unavailable")).and_then(|backend| {
+            backend
+                .lock()
+                .map_err(|_| String::from("acquire backend lock poisoned"))?
+                .acquire(&plan)
+        });
+        match acquired {
+            Ok(evidence) => match settle_capture_runtime(&runtime, &actor_id, evidence) {
+                Ok(_) => eprintln!(
+                    "pinakotheke_ingress event=gallery_admitted plan_id={} kind={:?}",
+                    plan.plan_id, plan.capture_kind
+                ),
+                Err(error) => eprintln!(
+                    "pinakotheke_ingress event=settlement_failed plan_id={} kind={:?} reason={error:?}",
+                    plan.plan_id, plan.capture_kind
+                ),
+            },
+            Err(reason) => eprintln!(
+                "pinakotheke_ingress event=acquisition_failed plan_id={} kind={:?} reason={}",
+                plan.plan_id, plan.capture_kind, reason
+            ),
         }
         if let Ok(mut in_flight) = runtime.in_flight.lock() {
             in_flight.remove(&key);
@@ -3502,7 +3521,9 @@ mod tests {
                         .unwrap(),
                     ),
                 )
-                .with_acquire(HostCaptureAcquireBackend::new(Box::new(|_| Err(())))),
+                .with_acquire(HostCaptureAcquireBackend::new(Box::new(|_| {
+                    Err("synthetic helper failure".into())
+                }))),
             ),
         );
         let planned = app

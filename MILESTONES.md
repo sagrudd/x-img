@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.6.1
+Version: 1.7.0
 
 Updated: 2026-07-17
 
@@ -921,6 +921,15 @@ images use the bytes Firefox rendered while retaining the status-page URL only
 as provenance, so successful image commits can flow directly into the gallery.
 XIMG-104 remains open until opened video completes the equivalent normalized
 ObjectStore and gallery path.
+
+## 1.7.0 — Diagnosable ingress
+
+Goal: make every enabled-page capture explainable across Firefox, Pinakotheke,
+the acquisition helper, DASObjectStore verification, and gallery admission.
+The extension provides a bounded redacted event log and JSON export; the
+service journal records plan admission and terminal worker outcomes without
+source URLs or secrets. A live failure must identify its exact stage rather
+than remaining indefinitely and opaquely ``pending``.
 
 ## Post-1.0 candidates
 

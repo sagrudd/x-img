@@ -54,6 +54,28 @@ not depend on the substitution-specific instance identifier, and Firefox
 reports capture and substitution results separately so an origin-served video
 does not overwrite image-ingress evidence.
 
+Ingress diagnostics
+-------------------
+
+The Firefox toolbar exposes the twelve newest diagnostic events and can
+download a bounded ``pinakotheke.extension-diagnostics.v1`` JSON document of at
+most one hundred events. Events identify observer registration, viewport scan
+counts, rule/adapter/pairing skips, capture-plan HTTP outcomes, and
+stored/pending polling outcomes. They contain the enabled origin but never a
+page URL, media URL, cookie, authorization header, pairing reference, password,
+or site browsing history. Diagnostic failure never blocks browsing.
+
+The Pinakotheke service emits single-line ``pinakotheke_ingress`` journal
+records for ``plan_admitted``, ``acquisition_failed``, ``settlement_failed``,
+and ``gallery_admitted``. Identifiers, capture class, configured origin, and a
+bounded helper error class are retained; source URLs and credentials are not.
+On the DASServer inspect them with:
+
+.. code-block:: console
+
+   journalctl -u pinakotheke-preview.service --since "10 minutes ago" \
+     --no-pager | grep pinakotheke_ingress
+
 A trusted video ``play``
 gesture is now detected, but XIMG-104 remains open until that candidate is
 routed through the existing normalized-video worker, committed, admitted, and
