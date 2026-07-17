@@ -45,6 +45,29 @@ the rule is intended to collect user-observed X content. That checkbox records
 intent; it does not enable crawling, hidden traversal, automatic opening, or
 credential access.
 
+Persistent site corpus
+----------------------
+
+Site definitions are authenticated actor data, not disposable extension
+preferences. Pinakotheke persists a strict ``pinakotheke.site-corpus.v1``
+document below its private metadata root. Each successful replacement advances
+an actor-specific revision. Firefox retains a local working copy for ordinary
+browsing and synchronizes it after pairing and browser startup.
+
+On first pairing, existing local rules are uploaded when the server corpus is
+empty. On later starts, the server revision restores rules to a replacement
+profile or additional paired device. Every options-page change supplies the
+last observed revision. HTTP 409 means another device changed the corpus;
+Firefox restores that newer server value and asks the user to review it rather
+than overwriting it. A server or network failure retains the previous corpus
+and reports that the requested change was not saved.
+
+The corpus contains exact origins, image/video selection, capture,
+substitution, and X-ingress intent. It contains no pairing secret, site
+credential, cookie, browsing history, or downloaded payload. Rules remain
+actor-scoped even when immutable DASObjectStore payloads deduplicate across
+users.
+
 XIMG-060 supplies a Manifest V3 Firefox extension scaffold for one configured
 x-img instance. Its baseline permissions are only ``storage``, ``activeTab``,
 ``scripting``, and ``permissions``. Site access is an optional exact HTTPS

@@ -29,6 +29,7 @@ pub mod reconciliation;
 pub mod review_admission;
 pub mod scheduler;
 pub mod segmented_video;
+pub mod site_corpus;
 pub mod synoptikon_catalogue;
 pub mod video_candidate;
 pub mod video_normalization;
@@ -40,7 +41,7 @@ pub mod x_followed_accounts;
 pub mod x_oauth;
 
 use std::{
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -205,7 +206,7 @@ impl ConfigStore {
 fn sync_directory(path: &Path) -> Result<(), io::Error> {
     #[cfg(unix)]
     {
-        File::open(path)?.sync_all()
+        fs::File::open(path)?.sync_all()
     }
     #[cfg(not(unix))]
     {
@@ -250,7 +251,7 @@ mod tests {
 
     #[test]
     fn summary_contains_the_workspace_version() {
-        assert_eq!(build_info().summary(), "Pinakotheke 1.3.1");
+        assert_eq!(build_info().summary(), "Pinakotheke 1.4.0");
     }
 
     #[test]

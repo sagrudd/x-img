@@ -11,6 +11,7 @@ use clap::{Args, Subcommand};
 use serde::Deserialize;
 use x_img_core::{
     gallery_catalogue::GalleryCatalogueStore,
+    site_corpus::SiteCorpusStore,
     viewed_media::{AdapterKind, CapturePairing, CapturePlanService, SiteCapturePolicy},
 };
 
@@ -448,7 +449,11 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                             None => composition,
                         };
                         match extension_onboarding {
-                            Some(onboarding) => composition.with_onboarding(onboarding),
+                            Some(onboarding) => composition
+                                .with_onboarding(onboarding)
+                                .with_site_corpus(SiteCorpusStore::new(
+                                    layout.root.join("state/site-corpus.v1.json"),
+                                )),
                             None => composition,
                         }
                     }),

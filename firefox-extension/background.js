@@ -10,12 +10,72 @@ async function initializeStorage(details) {
     if (Object.keys(missing).length) await browser.storage.local.set(missing);
   }
   await syncExplicitOpenObservers();
+  await syncSiteCorpusFromServer();
 }
 
 browser.runtime.onInstalled.addListener(initializeStorage);
 browser.runtime.onStartup.addListener(syncExplicitOpenObservers);
 
 const EXPLICIT_OPEN_SCRIPT_ID = "pinakotheke-explicit-open-v1";
+
+function localRuleFromServer(rule) {
+  return {
+    origin: rule.origin,
+    capture: rule.capture,
+    substitution: rule.substitution,
+    xIngress: rule.x_ingress,
+    media: [...(rule.images ? ["images"] : []), ...(rule.videos ? ["videos"] : [])],
+  };
+}
+
+async function syncSiteCorpusFromServer() {
+  const stored = await browser.storage.local.get(["instanceUrl", "pairId", "siteCorpusRevision", "sites"]);
+  if (!stored.instanceUrl || !stored.pairId) return { outcome: "not_paired" };
+  try {
+    const response = await fetch(`${stored.instanceUrl}/products/pinakotheke/api/extension/v1/site-corpus`, {
+      cache: "no-store",
+      headers: { "x-pinakotheke-pairing": stored.pairId },
+    });
+    if (!response.ok) return { outcome: "unavailable" };
+    const corpus = await response.json();
+    if (corpus.schema_version !== "pinakotheke.site-corpus.v1"
+      || !Number.isSafeInteger(corpus.revision) || !Array.isArray(corpus.rules)) return { outcome: "invalid" };
+    if (corpus.revision === 0 && corpus.rules.length === 0 && (stored.sites || []).length > 0) {
+      const upload = await fetch(`${stored.instanceUrl}/products/pinakotheke/api/extension/v1/site-corpus`, {
+        method: "PUT",
+        cache: "no-store",
+        headers: { "content-type": "application/json", "x-pinakotheke-pairing": stored.pairId },
+        body: JSON.stringify({
+          schema_version: "pinakotheke.site-corpus.v1",
+          expected_revision: 0,
+          rules: stored.sites.map(rule => ({
+            origin: rule.origin,
+            images: rule.media.includes("images"),
+            videos: rule.media.includes("videos"),
+            capture: rule.capture,
+            substitution: rule.substitution,
+            x_ingress: Boolean(rule.xIngress),
+          })),
+        }),
+      });
+      if (upload.ok) {
+        const saved = await upload.json();
+        await browser.storage.local.set({ siteCorpusRevision: saved.revision });
+        return { outcome: "uploaded", revision: saved.revision };
+      }
+      if (upload.status === 409) return syncSiteCorpusFromServer();
+      return { outcome: "unavailable" };
+    }
+    await browser.storage.local.set({
+      sites: corpus.rules.map(localRuleFromServer),
+      siteCorpusRevision: corpus.revision,
+    });
+    await syncExplicitOpenObservers();
+    return { outcome: "synchronized", revision: corpus.revision };
+  } catch (_) {
+    return { outcome: "unavailable" };
+  }
+}
 
 function originMatchPattern(rawOrigin) {
   const origin = new URL(rawOrigin);
@@ -457,6 +517,7 @@ async function runCacheForTab(tab) {
 }
 
 browser.runtime.onMessage.addListener(async (message, sender) => {
+  if (message?.command === "sync-site-corpus") return syncSiteCorpusFromServer();
   if (message?.command === "sync-capture-observers") {
     return syncExplicitOpenObservers();
   }

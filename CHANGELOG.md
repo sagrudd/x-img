@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added an authenticated actor-scoped site corpus with persistent revisions,
+  stale-write conflicts, first-pair migration, and Firefox startup/settings
+  synchronization across extension upgrades and browser profiles.
 - Added Monas-authenticated, DASObjectStore-gated Firefox download and pairing
   onboarding with live server verification and explicit X-ingress intent.
 - Use a narrow revocable Monas pairing credential for extension requests so

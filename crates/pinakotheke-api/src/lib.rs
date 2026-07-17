@@ -48,6 +48,7 @@ use x_img_core::{
     playback_delivery::{
         DirectPlaybackError, DirectPlaybackResponse, DirectPlaybackService, parse_single_range,
     },
+    site_corpus::{ReplaceSiteCorpus, SiteCorpusError, SiteCorpusStore},
     synoptikon_catalogue::{
         SynoptikonCatalogueError, SynoptikonCataloguePage, SynoptikonCatalogueProjection,
     },
@@ -61,6 +62,7 @@ type ImageDelivery = Arc<Mutex<AuthorizedObjectReader<HostObjectReadBackend>>>;
 type Operations = Arc<Mutex<OperationalTelemetry>>;
 type SynoptikonCatalogue = Arc<SynoptikonCatalogueProjection>;
 type MonasGalleryCatalogue = Arc<Mutex<GalleryCatalogue>>;
+type SiteCorpora = Arc<Mutex<SiteCorpusStore>>;
 
 /// Private host-worker authority used only to report independently verified
 /// DASObjectStore image commits.
@@ -78,6 +80,7 @@ pub struct CapturePlanComposition {
     completion: Option<CaptureCompletionAuthority>,
     acquire: Option<HostCaptureAcquireBackend>,
     onboarding: Option<ExtensionOnboardingAuthority>,
+    site_corpus: Option<SiteCorpusStore>,
 }
 
 /// Reviewed server identity and DASObjectStore destination exposed only to an
@@ -237,6 +240,7 @@ impl CapturePlanComposition {
             completion,
             acquire: None,
             onboarding: None,
+            site_corpus: None,
         }
     }
 
@@ -251,6 +255,13 @@ impl CapturePlanComposition {
     #[must_use]
     pub fn with_onboarding(mut self, authority: ExtensionOnboardingAuthority) -> Self {
         self.onboarding = Some(authority);
+        self
+    }
+
+    /// Adds actor-scoped persistent website import definitions.
+    #[must_use]
+    pub fn with_site_corpus(mut self, store: SiteCorpusStore) -> Self {
+        self.site_corpus = Some(store);
         self
     }
 }
@@ -709,6 +720,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             completion: completion_authority,
             acquire,
             onboarding,
+            site_corpus,
         } = capture;
         let capture_plans = Arc::new(Mutex::new(capture_plans));
         protected = protected.route(
@@ -722,6 +734,14 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                     get(extension_onboarding),
                 )
                 .layer(Extension(onboarding));
+        }
+        if let Some(site_corpus) = site_corpus {
+            protected = protected
+                .route(
+                    "/products/pinakotheke/api/extension/v1/site-corpus",
+                    get(get_site_corpus).put(put_site_corpus),
+                )
+                .layer(Extension(Arc::new(Mutex::new(site_corpus))));
         }
         protected = protected.layer(Extension(Arc::clone(&capture_plans)));
         if let Some(authority) = completion_authority {
@@ -770,6 +790,50 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             }),
         )
         .merge(protected)
+}
+
+async fn get_site_corpus(
+    Extension(context): Extension<AuthenticatedHostContext>,
+    Extension(store): Extension<SiteCorpora>,
+) -> Response {
+    if !context.permits(XIMG_ACCESS) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    match store
+        .lock()
+        .map_err(|_| ())
+        .and_then(|store| store.get(context.actor_id()).map_err(|_| ()))
+    {
+        Ok(corpus) => Json(corpus).into_response(),
+        Err(()) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+async fn put_site_corpus(
+    Extension(context): Extension<AuthenticatedHostContext>,
+    Extension(store): Extension<SiteCorpora>,
+    Json(request): Json<ReplaceSiteCorpus>,
+) -> Response {
+    if !context.permits(XIMG_ACCESS) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let Ok(store) = store.lock() else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    match store.replace(context.actor_id(), request) {
+        Ok(corpus) => Json(corpus).into_response(),
+        Err(SiteCorpusError::Conflict(current)) => {
+            (StatusCode::CONFLICT, Json(current)).into_response()
+        }
+        Err(
+            SiteCorpusError::Invalid
+            | SiteCorpusError::UnsupportedSchema
+            | SiteCorpusError::TooLarge,
+        ) => StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(SiteCorpusError::Io(_) | SiteCorpusError::Json(_)) => {
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
 async fn extension_onboarding(
@@ -2776,6 +2840,79 @@ mod tests {
         assert_eq!(body["pairing_reference"], "pair-0");
         assert_eq!(body["object_store_id"], "store-1");
         assert!(body.get("actor_id").is_none());
+    }
+
+    #[tokio::test]
+    async fn site_corpus_is_monas_scoped_persistent_and_conflict_safe() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-site-corpus-api-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let token = "synthetic-monas-dispatch-token-0001";
+        let composition = CapturePlanComposition::new(capture_plans(), None).with_site_corpus(
+            x_img_core::site_corpus::SiteCorpusStore::new(root.join("site-corpus.json")),
+        );
+        let app = monolith_router_with_gallery_web_delivery_and_capture_authority(
+            true,
+            Some(MonasDispatchVerifier::new(token.into()).unwrap()),
+            gallery_catalogue(),
+            None,
+            gallery_image_backend(),
+            Some(composition),
+        );
+        let direct = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/extension/v1/site-corpus")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(direct.status(), StatusCode::UNAUTHORIZED);
+        let body = Body::from(
+            r#"{"schema_version":"pinakotheke.site-corpus.v1","expected_revision":0,"rules":[{"origin":"https://x.com","images":true,"videos":true,"capture":true,"substitution":true,"x_ingress":true}]}"#,
+        );
+        let saved = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("PUT")
+                    .uri("/products/pinakotheke/api/extension/v1/site-corpus")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(body)
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(saved.status(), StatusCode::OK);
+        let saved_json: serde_json::Value =
+            serde_json::from_slice(&to_bytes(saved.into_body(), 4096).await.unwrap()).unwrap();
+        assert_eq!(saved_json["revision"], 1);
+        let stale = app.clone().oneshot(Request::builder().method("PUT").uri("/products/pinakotheke/api/extension/v1/site-corpus").header("content-type", "application/json").header("x-monas-dispatch-token", token).header("x-monas-host-context", MONAS_CONTEXT).body(Body::from(r#"{"schema_version":"pinakotheke.site-corpus.v1","expected_revision":0,"rules":[]}"#)).unwrap()).await.unwrap();
+        assert_eq!(stale.status(), StatusCode::CONFLICT);
+        let current: serde_json::Value =
+            serde_json::from_slice(&to_bytes(stale.into_body(), 4096).await.unwrap()).unwrap();
+        assert_eq!(current["revision"], 1);
+        let reloaded = app
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/extension/v1/site-corpus")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let reloaded_json: serde_json::Value =
+            serde_json::from_slice(&to_bytes(reloaded.into_body(), 4096).await.unwrap()).unwrap();
+        assert_eq!(reloaded_json["rules"][0]["origin"], "https://x.com");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[tokio::test]
