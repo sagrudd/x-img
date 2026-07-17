@@ -1,6 +1,33 @@
 Paired-device Docker video normalization
 ========================================
 
+Site-neutral trusted-play ingress
+---------------------------------
+
+Firefox site rules are intentionally origin-based rather than a compiled
+catalogue of services. A user must explicitly enable video capture for an HTTPS
+origin. Pinakotheke considers a candidate only when a recent trusted pointer or
+keyboard activation is followed by playback; merely loading, autoplaying, or
+scrolling past a video does not acquire it. The extension never forwards site
+cookies, authorization headers, passwords, or browser history.
+
+A concrete progressive HTTPS MP4 can enter the bounded acquisition worker. If
+FFprobe proves the browser profile (H.264 video with absent or AAC audio), the
+object is committed through the authoritative DASObjectStore completion path.
+An unfamiliar container or codec is a normalization requirement, not a failed
+permission check and never a reason to store an unverified local copy. The UI
+reports the codec/container tuple without retaining the source URL so operators
+can prioritize profiles without collecting browsing history.
+
+Segmented HLS/DASH, Media Source Extensions, encrypted media, and blob-only
+playback remain origin-served until a generic adapter proves a bounded,
+user-initiated candidate plan. DRM or access-control circumvention is never an
+adapter capability. A future handoff will place an eligible source in
+DAS-managed staging and invoke the worker below on the DASObjectStore host, the
+paired Firefox computer, or another explicitly paired worker. Until that
+handoff is complete, unsupported media remains visible as requiring
+normalization and is not catalogue-ready.
+
 The first implemented normalization worker runs only on an explicitly paired
 device that the user has approved for x-img.  It is a worker on the computer
 that may run Firefox, not Firefox itself: the browser never stores video

@@ -587,12 +587,6 @@ fn validate_request(request: &Request, config: &Config) -> Result<(), Box<dyn st
     {
         return Err("capture request URLs are not eligible HTTPS provenance".into());
     }
-    if request.capture_kind == "explicit_video"
-        && (request.origin != "https://x.com"
-            || media.authority().map(|value| value.host()) != Some("video.twimg.com"))
-    {
-        return Err("X video capture requires an eligible X media host".into());
-    }
     Ok(())
 }
 
@@ -936,6 +930,40 @@ mod tests {
             max_video_bytes: None,
         };
         assert!(validate_request(&request, &config).is_err());
+    }
+
+    #[test]
+    fn accepts_explicit_video_from_an_opted_in_https_site() {
+        let request = Request {
+            schema_version: REQUEST_SCHEMA.into(),
+            plan_id: "plan-video-1".into(),
+            site_id: "example-video".into(),
+            origin: "https://media.example.invalid".into(),
+            canonical_page_url: "https://media.example.invalid/watch/1".into(),
+            canonical_media_url: "https://cdn.example.invalid/media/1.mp4".into(),
+            canonical_presentation_url: "https://media.example.invalid/watch/1".into(),
+            capture_kind: "explicit_video".into(),
+            width: 1280,
+            height: 720,
+            adapter_version: "1.0.0".into(),
+            endpoint_id: "endpoint-1".into(),
+            object_store_id: "store-1".into(),
+        };
+        let config = Config {
+            schema_version: CONFIG_SCHEMA.into(),
+            endpoint_id: "endpoint-1".into(),
+            object_store_bucket: None,
+            curl_executable: PathBuf::from("/does/not/run"),
+            ffprobe_executable: Some(PathBuf::from("/does/not/run")),
+            dasobjectstore_remote_executable: Some(PathBuf::from("/does/not/run")),
+            dasobjectstore_remote_config: Some(PathBuf::from("/does/not/read")),
+            daemon_socket: Some(PathBuf::from("/does/not/connect")),
+            submit_to_daemon: true,
+            container_execution: None,
+            max_image_bytes: Some(1024),
+            max_video_bytes: Some(1024),
+        };
+        assert!(validate_request(&request, &config).is_ok());
     }
 
     #[test]

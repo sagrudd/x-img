@@ -311,6 +311,7 @@ fn gallery_url(offset: usize, selected: &str, text: &str, object_prefix: &str) -
     match selected {
         "x" => url.push_str("&source_kind=x_account"),
         "websites" => url.push_str("&source_kind=website"),
+        "videos" => url.push_str("&media_kind=normalized_video"),
         _ => {}
     }
     if !text.trim().is_empty() {
@@ -588,6 +589,14 @@ pub fn app() -> Html {
                 .filter(|item| item.source_kind == GallerySourceKind::Website)
                 .count(),
         ),
+        (
+            "videos",
+            "Playable videos",
+            items
+                .iter()
+                .filter(|item| item.media_kind == GalleryMediaKind::NormalizedVideo)
+                .count(),
+        ),
     ];
 
     {
@@ -848,7 +857,7 @@ pub fn app() -> Html {
                 </section>
 
                 <section class="ximg-source-nav" aria-labelledby="source-context">
-                    <h2 id="source-context">{ "Sources" }</h2>
+                    <h2 id="source-context">{ "Browse" }</h2>
                     <p>{ format!("Selected context: {}", sources.iter().find(|source| source.0 == (*selected).as_str()).map(|source| source.1).unwrap_or("All sources")) }</p>
                     <ul>
                         { for sources.iter().map(|(id, label, count)| {
@@ -861,7 +870,7 @@ pub fn app() -> Html {
                                         class={classes!("ximg-source-nav__item", is_selected.then_some("is-selected"))}
                                         aria-pressed={is_selected.to_string()}
                                         onclick={Callback::from(move |_| selected.set(id.clone()))}
-                                    ><span>{ *label }</span><span>{ format!("{} sources", count) }</span></button>
+                                    ><span>{ *label }</span><span>{ format!("{} loaded", count) }</span></button>
                                 </li>
                             }
                         }) }
@@ -1095,7 +1104,14 @@ pub fn app() -> Html {
                                             }
                                         } else if let Some(path) = selected_card.preview.as_ref().and_then(ready_path) {
                                             html! {
-                                                <video controls=true preload="metadata" src={path.to_owned()} aria-label={format!("Play {}", selected_card.title)}>
+                                                <video
+                                                    controls=true
+                                                    preload="metadata"
+                                                    playsinline=true
+                                                    poster={ready_url(&selected_card.thumbnail).unwrap_or_default().to_owned()}
+                                                    src={path.to_owned()}
+                                                    aria-label={format!("Play {}", selected_card.title)}
+                                                >
                                                     { "Your browser cannot play the verified normalized video." }
                                                 </video>
                                             }
@@ -1230,6 +1246,10 @@ mod tests {
         assert_eq!(
             gallery_url(0, "x", "", ""),
             "/products/pinakotheke/api/gallery/v1/catalogue?offset=0&limit=20&source_kind=x_account"
+        );
+        assert_eq!(
+            gallery_url(0, "videos", "", ""),
+            "/products/pinakotheke/api/gallery/v1/catalogue?offset=0&limit=20&media_kind=normalized_video"
         );
         assert_eq!(gallery_folders_url(""), GALLERY_FOLDERS_API);
         assert_eq!(

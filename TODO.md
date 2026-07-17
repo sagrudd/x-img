@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.9.0
+Version: 1.10.0
 
 Updated: 2026-07-17
 
@@ -1249,6 +1249,41 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   externally replicated provider placement, while this acceptance contract
   additionally requires automatic settlement into the store's two managed HDD
   copies and a fresh installed-Firefox capture proof.
+
+- [ ] **XIMG-110 P0 — Generalize trusted-play progressive video capture.**
+  Remove the accidental single-source restriction from the first-party capture
+  helper. Accept concrete progressive HTTPS video from any explicitly enabled
+  origin only after trusted playback, without browser credentials. Preserve
+  bounded retrieval, strict provenance, MP4 MIME and H.264/AAC verification,
+  authoritative DASObjectStore completion, idempotency, and fail-open behavior.
+  Website names must not be compiled into code, manifests, fixtures, or user
+  documentation. Acceptance requires generic-origin unit coverage and an
+  installed-Firefox proof against one operator-enabled origin.
+
+- [ ] **XIMG-111 P0 — Automate container normalization handoff.**
+  When progressive media is eligible but not already in the browser playback
+  profile, create a redacted codec-gap record and hand the bounded source to
+  DAS-managed staging. Select an authorized worker on the DASObjectStore host,
+  paired Firefox device, or governed remote worker; run the existing
+  digest-pinned network-isolated FFmpeg adapter; commit rendition, poster, and
+  provenance manifest as separate objects; delete staging; and admit only
+  after checksum, probe, and Firefox playback evidence. No unsupported source
+  may be mislabeled as stored or playable.
+
+- [ ] **XIMG-112 P0 — Prove generic segmented-video adapters.**
+  Add a site-neutral plan for user-played HLS/DASH or MSE media without hidden
+  traversal, playlist crawling, browser cookies, or authorization headers.
+  Permit an adapter only after bounded synthetic fixtures prove manifest and
+  segment identity, retry/idempotency, policy and DRM blocks, and fail-open
+  origin playback. Record only redacted codec/container diagnostics.
+
+- [ ] **XIMG-113 P1 — Complete the playable-video library campaign.**
+  Expose a dedicated Videos filter and a keyboard-accessible quick viewer using
+  authorized DASObjectStore range delivery, committed posters, native controls,
+  and inline playback. Add duration, dimensions, codec/profile, capture time,
+  source account/origin label, and normalization state. Prove prompt loading,
+  seeking, missing-object behavior, and that the viewer never contacts the
+  source website.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

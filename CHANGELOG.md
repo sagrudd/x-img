@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.10.0 - 2026-07-17
+
+- Permit trusted-play progressive video plans from any explicitly enabled
+  HTTPS origin while retaining bounded credential-free retrieval, provenance
+  validation, codec checks, and DASObjectStore authority.
+- Add a dedicated playable-video library filter and improve the quick viewer
+  with inline playback and a committed poster.
+- Define the site-neutral video campaign without embedding a website catalogue
+  in code, manifests, fixtures, or documentation.
+
 ## 1.9.0 - 2026-07-17
 
 - Capture a concrete progressive X MP4 only after a trusted user activation

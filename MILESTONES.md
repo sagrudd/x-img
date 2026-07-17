@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.9.0
+Version: 1.10.0
 
 Updated: 2026-07-17
 
@@ -985,6 +985,24 @@ settlement, and authoritative catalogue publication. A guarded live repair on
 2026-07-17 recovered 38 previously uncatalogued Garage objects into 76 verified
 HDD placements with no missing payload, size mismatch, hash mismatch, or
 unverified placement.
+
+## 1.10.0 — Site-neutral trusted-play video campaign
+
+Goal: extend the trusted-play capture boundary from one built-in source to any
+explicitly enabled HTTPS origin without encoding a catalogue of website names.
+Only a recent real pointer or keyboard activation followed by playback is
+eligible. Progressive media may be retrieved without browser credentials;
+segmented streams require a separately proven generic adapter, and DRM remains
+blocked. Directly compatible H.264/AAC MP4 is verified and committed through
+DASObjectStore. Other observed codec/container combinations enter a redacted
+normalization-gap queue for the existing digest-pinned, network-isolated
+FFmpeg worker and are not advertised as playable until normalized, committed,
+probed, and playback-verified.
+
+The Pinakotheke library exposes a dedicated playable-video view. Its viewer
+uses only authorized DASObjectStore delivery, a committed poster when
+available, native controls, inline playback, and the established range-capable
+normalized-video route; it never falls back to the source website.
 
 ## Post-1.0 candidates
 
