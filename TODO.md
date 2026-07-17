@@ -1090,6 +1090,9 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   structured server admission/acquisition/settlement/gallery logs. Events omit
   media/page URLs, credentials, cookies, and browsing history outside enabled
   origins. This must be used for the next live X and generic-site capture proof.
+  Its first deployment exposed non-protocol helper stderr from all four legacy
+  plans; the boundary now converts failures to bounded ``policy_blocked``,
+  ``unavailable``, or ``rejected`` outcomes without exposing source details.
   Image delivery landed in ``dc09fe6``: enabled pages debounce load, mutation,
   and scroll observations; meaningful visible images are submitted without a
   toolbar action; linked originals retain the trusted-click boundary; and an

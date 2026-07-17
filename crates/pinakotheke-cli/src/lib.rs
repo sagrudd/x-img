@@ -169,7 +169,7 @@ pub fn run(invocation: Invocation, cli: Cli) -> Result<(), Box<dyn std::error::E
         Some(Command::Service { command }) => launchd::run(command)?,
         Some(Command::Capture { command }) => monolith::run_capture(command)?,
         Some(Command::Video { command }) => video_normalize::run(command)?,
-        Some(Command::AcquireImageV1) => das_capture_helper::run()?,
+        Some(Command::AcquireImageV1) => das_capture_helper::run_protocol()?,
         Some(Command::ReadObjectV1) => das_object_read_helper::run()?,
         Some(Command::IngestStreamV1) => das_stream_ingest_helper::run()?,
     }

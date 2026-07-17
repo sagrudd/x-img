@@ -8,6 +8,9 @@
 - Emit structured Pinakotheke service logs when capture plans are admitted,
   acquisition helpers fail, settlement fails, or gallery admission completes;
   retain the helper's bounded error class instead of silently discarding it.
+- Normalize acquisition-helper failures to bounded protocol outcomes so the
+  journal reports policy-blocked, unavailable, or rejected instead of a JSON
+  parsing error.
 - Preserve X CDN ``format`` and ``name`` variants while continuing to discard
   arbitrary query parameters, so DASObjectStore acquisition fetches the image
   Firefox actually displayed instead of a queryless 404 URL.

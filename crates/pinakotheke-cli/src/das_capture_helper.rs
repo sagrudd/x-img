@@ -88,7 +88,46 @@ struct Committed {
     verified_at_epoch_seconds: u64,
 }
 
-pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
+#[derive(Debug, Serialize)]
+struct Failed {
+    outcome: &'static str,
+    schema_version: &'static str,
+}
+
+pub(crate) fn run_protocol() -> Result<(), Box<dyn std::error::Error>> {
+    match run() {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            let outcome = protocol_failure_outcome(error.as_ref());
+            serde_json::to_writer(
+                io::stderr().lock(),
+                &Failed {
+                    outcome,
+                    schema_version: REQUEST_SCHEMA,
+                },
+            )?;
+            eprintln!();
+            Ok(())
+        }
+    }
+}
+
+fn protocol_failure_outcome(error: &(dyn std::error::Error + 'static)) -> &'static str {
+    error
+        .downcast_ref::<io::Error>()
+        .map_or("rejected", |error| match error.kind() {
+            io::ErrorKind::PermissionDenied => "policy_blocked",
+            io::ErrorKind::WouldBlock
+            | io::ErrorKind::TimedOut
+            | io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::ConnectionRefused
+            | io::ErrorKind::ConnectionReset
+            | io::ErrorKind::NotConnected => "unavailable",
+            _ => "rejected",
+        })
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = std::env::var_os("PINAKOTHEKE_DAS_HELPER_CONFIG")
         .map(PathBuf::from)
         .or_else(|| {
@@ -646,6 +685,16 @@ impl Drop for Scratch {
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn protocol_failures_are_bounded_categories_without_error_text() {
+        let permission = io::Error::new(io::ErrorKind::PermissionDenied, "secret path");
+        let unavailable = io::Error::new(io::ErrorKind::TimedOut, "private URL");
+        let invalid = io::Error::new(io::ErrorKind::InvalidData, "signed query");
+        assert_eq!(protocol_failure_outcome(&permission), "policy_blocked");
+        assert_eq!(protocol_failure_outcome(&unavailable), "unavailable");
+        assert_eq!(protocol_failure_outcome(&invalid), "rejected");
+    }
 
     fn executable(path: &Path, body: &str) {
         fs::write(path, body).unwrap();

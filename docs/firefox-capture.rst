@@ -69,6 +69,9 @@ The Pinakotheke service emits single-line ``pinakotheke_ingress`` journal
 records for ``plan_admitted``, ``acquisition_failed``, ``settlement_failed``,
 and ``gallery_admitted``. Identifiers, capture class, configured origin, and a
 bounded helper error class are retained; source URLs and credentials are not.
+Helper failures use only ``policy-blocked``, ``unavailable``, or ``rejected``;
+raw downloader messages are excluded because they can contain signed URLs or
+local paths.
 On the DASServer inspect them with:
 
 .. code-block:: console
