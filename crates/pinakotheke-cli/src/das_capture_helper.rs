@@ -301,8 +301,10 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
     }
     #[cfg(unix)]
     if config.container_execution.is_none() {
-        use std::os::unix::fs::PermissionsExt;
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
         fs::set_permissions(&payload, fs::Permissions::from_mode(0o640))?;
+        let daemon_group = fs::symlink_metadata(&scratch.path)?.gid();
+        std::os::unix::fs::chown(&payload, None, Some(daemon_group))?;
     }
     if video {
         verify_firefox_mp4(
