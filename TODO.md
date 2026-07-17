@@ -1193,15 +1193,20 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   versus 9.632 seconds sequentially; unchanged repeat browser views use the
   private cache instead of retrieving the objects again.
 
-- [ ] **XIMG-107 P1 — Add latest-download and artist-folder browsing.**
-  Make the default graphical gallery the newest 20 downloads. Add a strict
-  authenticated folder projection with root and breadcrumb navigation,
-  immediate child counts, latest-capture times, and exact object-prefix
-  filtering. Present ``x.com/<artist>/<capture-class>`` as browsable catalogue
-  folders while keeping generic-site prefixes honest. Never expose filesystem
-  paths or broaden access to unrelated DASObjectStore objects. Preserve folder,
-  source, and text context when loading the next 20 cards. Follow the sibling
-  DASObjectStore Yew browser pattern and Mnemosyne semantic-token requirements.
+- [x] **XIMG-107 P1 — Add latest-download and artist-folder browsing.**
+  Completed in ``93db65d`` and deployed to the x86_64 DASServer as 1.8.0 on
+  2026-07-17. The default graphical gallery requests the newest 20 downloads.
+  A strict authenticated folder projection provides root and breadcrumb
+  navigation, immediate child counts, latest-capture times, and exact
+  object-prefix filtering while preserving folder/source/text context for the
+  next 20 cards. It presents ``x.com/<artist>/<capture-class>`` without exposing
+  filesystem paths or unrelated DASObjectStore objects. All 194 workspace
+  tests, strict Clippy, wasm compilation, quality checks, and the pinned Sphinx
+  container build/run passed. Live evidence projected 25 catalogue items, 24
+  under ``x.com``, 15 artist folders, and exactly three ``p0ttyprincess`` items
+  beneath its ``explicit_original`` child. This was checked against
+  DASObjectStore ``2e1e1669ff0bccc05324b3b74785300e00f53d90`` and design
+  language ``fbfa28e55d1c8111ef95a139d83927c231534b5f``.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

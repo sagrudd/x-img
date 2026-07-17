@@ -964,6 +964,9 @@ DASObjectStore-inspired folder browser over catalogue object prefixes. Root,
 ``x.com``, artist, and capture-class selections expose breadcrumbs, immediate
 children, counts, and latest-capture times, then filter the same authorized
 gallery without exposing filesystem paths or unscoped ObjectStore contents.
+Delivered in ``93db65d`` and deployed to the x86_64 DASServer on 2026-07-17.
+Live projection produced 15 artist folders from 24 X objects and exact-prefix
+selection returned only the chosen artist's three matching catalogue items.
 
 ## Post-1.0 candidates
 
