@@ -8,7 +8,7 @@ BASELINE_DIST ?=
 BASELINE_VERSION ?=
 PRODUCT ?= pinakotheke
 
-.PHONY: help all packages web firefox-gallery-check firefox-capture-check firefox-lint firefox-sign linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
+.PHONY: help all packages web firefox-gallery-check firefox-capture-check firefox-lint firefox-sign firefox-signed-install-check linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
 	linux-deb-x86_64 linux-deb-arm64 linux-rpm-x86_64 linux-rpm-arm64 \
 	macos-pkg macos-pkg-x86_64 macos-pkg-arm64 firefox firefox-macos-x86_64 \
 	firefox-macos-arm64 firefox-windows-x86_64 firefox-windows-arm64 \
@@ -25,6 +25,8 @@ help:
 	@echo "  make firefox               Build labelled XPIs for macOS/Windows/Linux x86_64/arm64"
 	@echo "  make firefox-lint          Run Mozilla's pinned AMO validator locally"
 	@echo "  make firefox-sign          Request an unlisted Mozilla-signed XPI (credentials in environment)"
+	@echo "  make firefox-signed-install-check XPI=..."
+	@echo "                              Permanently install a signed XPI in isolated Firefox"
 	@echo "  make verify                Verify produced package structure and checksums"
 	@echo "  make sbom                  Generate the deterministic CycloneDX release SBOM"
 	@echo "  make upgrade-rollback BASELINE_DIST=... BASELINE_VERSION=..."
@@ -59,6 +61,10 @@ firefox-sign: firefox-lint
 		--artifacts-dir "$(DIST)/firefox/signed"
 	python3 scripts/firefox/verify_signed_xpi.py --directory "$(DIST)/firefox/signed" \
 		--extension-id x-img@example.invalid --version $(VERSION)
+
+firefox-signed-install-check:
+	@test -n "$(XPI)" || { echo "XPI is required" >&2; exit 2; }
+	node scripts/firefox/check_signed_install.mjs "$(XPI)"
 
 linux: linux-x86_64 linux-arm64
 linux-deb: linux-deb-x86_64 linux-deb-arm64

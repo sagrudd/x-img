@@ -6,6 +6,8 @@
   Monas 0.6.2 while preserving Monas/Prosopikon authentication ownership.
 - Add an AMO-compatible unlisted Firefox signing workflow with pinned Mozilla
   validation, environment-only credentials, and signed-XPI identity checks.
+- Add isolated Firefox acceptance that requires a Mozilla-signed XPI to install
+  permanently with the stable Pinakotheke extension identity.
 - Correct the Firefox manifest's background and permission declarations and
   disclose the user-directed browsing, website-content, and save-action data
   transmitted to the configured Pinakotheke service.
