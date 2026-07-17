@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added Monas-authenticated, DASObjectStore-gated Firefox download and pairing
+  onboarding with live server verification and explicit X-ingress intent.
+
 - Replace Firefox's generic puzzle-piece fallback with correctly scaled,
   black-and-white Mnemosyne Biosciences icons for toolbar and add-on surfaces.
 - Adopt the product-aware, Mnemosyne-compliant Pinakotheke sign-on delivered by

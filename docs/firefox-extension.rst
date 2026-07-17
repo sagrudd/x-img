@@ -14,6 +14,34 @@ a transparent square canvas; the artwork is neither stretched nor recoloured.
 The 16/32 sizes serve the toolbar action and all four sizes serve Firefox's
 extension-management and installation surfaces.
 
+Server-led setup
+----------------
+
+Set up Firefox from the authenticated Pinakotheke web application, not by
+inventing values in the extension settings. The ordered prerequisites are:
+
+#. the DASObjectStore service is available;
+#. Pinakotheke is installed and the user signs in through Monas;
+#. a reviewed named writable ObjectStore is configured for Pinakotheke;
+#. the **Connect Firefox** task pane reports ``DASObjectStore: Ready`` and
+   presents the signed extension download, instance identifier, and
+   actor-bound pairing reference; and
+#. Firefox verifies those values against the same authenticated HTTPS server
+   before saving them.
+
+In the extension settings, enter the exact Pinakotheke origin (for example
+``https://192.168.1.192:8731``) and the two values shown by **Connect
+Firefox**, then choose **Pair**. A logged-out session, unavailable
+DASObjectStore, expired/revoked pairing, or changed value fails without saving
+the relationship. The pairing record contains stable endpoint and ObjectStore
+identifiers but no DAS credentials, site cookies, or passwords.
+
+Enable each website separately using its exact HTTPS origin. Select Images
+and/or Videos and explicitly check **This site is intended for X ingress** when
+the rule is intended to collect user-observed X content. That checkbox records
+intent; it does not enable crawling, hidden traversal, automatic opening, or
+credential access.
+
 XIMG-060 supplies a Manifest V3 Firefox extension scaffold for one configured
 x-img instance. Its baseline permissions are only ``storage``, ``activeTab``,
 ``scripting``, and ``permissions``. Site access is an optional exact HTTPS

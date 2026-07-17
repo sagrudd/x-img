@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.2.2
+Version: 1.3.0
 
 Updated: 2026-07-17
 
@@ -1040,6 +1040,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Completed in ``67980e2`` on 2026-07-17. Mozilla returned the signed 1.2.2
   XPI, Firefox accepted it as a permanent add-on, and the checksum-identical
   DASServer deployment is available over trusted HTTPS.
+
+- [ ] **XIMG-103 P0 — Deliver server-led Firefox onboarding.** The
+  Monas-authenticated Pinakotheke web UI must expose the current signed XPI and
+  an actor-bound pairing payload only when a reviewed named DASObjectStore is
+  configured. Firefox must validate the instance, pairing, and Ready
+  endpoint/ObjectStore response against the authenticated server before it
+  saves configuration. Site permissions remain exact-origin opt-ins, with an
+  explicit X-ingress intent checkbox. Acceptance requires a live DASServer
+  named ObjectStore, private capture authority, signed extension, authenticated
+  pairing proof, and failed pairing when logged out or when payload values are
+  changed.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

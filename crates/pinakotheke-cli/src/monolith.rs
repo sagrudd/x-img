@@ -373,6 +373,17 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
             )
         })
         .transpose()?;
+    let extension_onboarding = capture_authority
+        .as_ref()
+        .map(|authority| {
+            x_img_api::ExtensionOnboardingAuthority::new(
+                "pinakotheke-monolith".into(),
+                authority.endpoint_id.clone(),
+                authority.object_store_id.clone(),
+                format!("/downloads/pinakotheke-{}.xpi", env!("CARGO_PKG_VERSION")),
+            )
+        })
+        .transpose()?;
     let capture_plans = capture_authority.map(|authority| authority.plans);
     let monas_dispatch = arguments
         .monas_dispatch_token_file
@@ -432,8 +443,12 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                     capture_plans.map(|plans| {
                         let composition =
                             x_img_api::CapturePlanComposition::new(plans, capture_completion);
-                        match capture_acquire {
+                        let composition = match capture_acquire {
                             Some(backend) => composition.with_acquire(backend),
+                            None => composition,
+                        };
+                        match extension_onboarding {
+                            Some(onboarding) => composition.with_onboarding(onboarding),
                             None => composition,
                         }
                     }),

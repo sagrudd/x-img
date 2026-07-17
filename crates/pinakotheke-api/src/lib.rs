@@ -77,6 +77,17 @@ pub struct CapturePlanComposition {
     plans: CapturePlanService,
     completion: Option<CaptureCompletionAuthority>,
     acquire: Option<HostCaptureAcquireBackend>,
+    onboarding: Option<ExtensionOnboardingAuthority>,
+}
+
+/// Reviewed server identity and DASObjectStore destination exposed only to an
+/// authenticated Monas actor while pairing Firefox.
+#[derive(Clone)]
+pub struct ExtensionOnboardingAuthority {
+    instance_id: String,
+    endpoint_id: String,
+    object_store_id: String,
+    download_path: String,
 }
 
 /// Process-isolated callback that returns verified authority metadata only.
@@ -137,6 +148,17 @@ struct MonolithReadinessResponse {
     status: &'static str,
     root: &'static str,
     components: [MonolithComponentReadiness; 3],
+}
+
+#[derive(Debug, Serialize)]
+struct ExtensionOnboardingResponse {
+    schema_version: &'static str,
+    instance_id: String,
+    pairing_reference: String,
+    dasobjectstore_status: &'static str,
+    endpoint_id: String,
+    object_store_id: String,
+    extension_download_path: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -214,6 +236,7 @@ impl CapturePlanComposition {
             plans,
             completion,
             acquire: None,
+            onboarding: None,
         }
     }
 
@@ -222,6 +245,42 @@ impl CapturePlanComposition {
     pub fn with_acquire(mut self, acquire: HostCaptureAcquireBackend) -> Self {
         self.acquire = Some(acquire);
         self
+    }
+
+    /// Adds the authenticated Firefox download and pairing presentation.
+    #[must_use]
+    pub fn with_onboarding(mut self, authority: ExtensionOnboardingAuthority) -> Self {
+        self.onboarding = Some(authority);
+        self
+    }
+}
+
+impl ExtensionOnboardingAuthority {
+    /// Creates a reviewed onboarding authority. No credential is stored here.
+    pub fn new(
+        instance_id: String,
+        endpoint_id: String,
+        object_store_id: String,
+        download_path: String,
+    ) -> io::Result<Self> {
+        if !safe_authority_identifier(&instance_id)
+            || !safe_authority_identifier(&endpoint_id)
+            || !safe_authority_identifier(&object_store_id)
+            || !download_path.starts_with("/downloads/pinakotheke-")
+            || !download_path.ends_with(".xpi")
+            || download_path.contains(['?', '#'])
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Firefox onboarding authority is invalid",
+            ));
+        }
+        Ok(Self {
+            instance_id,
+            endpoint_id,
+            object_store_id,
+            download_path,
+        })
     }
 }
 
@@ -649,14 +708,22 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             plans: capture_plans,
             completion: completion_authority,
             acquire,
+            onboarding,
         } = capture;
         let capture_plans = Arc::new(Mutex::new(capture_plans));
-        protected = protected
-            .route(
-                "/products/pinakotheke/api/extension/v1/capture-plans",
-                get(capture_plans_pending).post(capture_plan),
-            )
-            .layer(Extension(Arc::clone(&capture_plans)));
+        protected = protected.route(
+            "/products/pinakotheke/api/extension/v1/capture-plans",
+            get(capture_plans_pending).post(capture_plan),
+        );
+        if let Some(onboarding) = onboarding {
+            protected = protected
+                .route(
+                    "/products/pinakotheke/api/extension/v1/onboarding",
+                    get(extension_onboarding),
+                )
+                .layer(Extension(onboarding));
+        }
+        protected = protected.layer(Extension(Arc::clone(&capture_plans)));
         if let Some(authority) = completion_authority {
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -703,6 +770,30 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             }),
         )
         .merge(protected)
+}
+
+async fn extension_onboarding(
+    Extension(context): Extension<AuthenticatedHostContext>,
+    Extension(plans): Extension<CapturePlans>,
+    Extension(authority): Extension<ExtensionOnboardingAuthority>,
+) -> Result<Json<ExtensionOnboardingResponse>, StatusCode> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_secs());
+    let pairing_reference = plans
+        .lock()
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+        .active_pairing_id(context.actor_id(), now)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    Ok(Json(ExtensionOnboardingResponse {
+        schema_version: "pinakotheke.extension-onboarding.v1",
+        instance_id: authority.instance_id,
+        pairing_reference,
+        dasobjectstore_status: "Ready",
+        endpoint_id: authority.endpoint_id,
+        object_store_id: authority.object_store_id,
+        extension_download_path: authority.download_path,
+    }))
 }
 
 async fn admit_monas_dispatch(
@@ -1853,10 +1944,10 @@ mod tests {
     };
 
     use super::{
-        CaptureCompletionAuthority, CapturePlanComposition, HostCaptureAcquireBackend,
-        HostObjectReadBackend, MonasDispatchVerifier, VerifiedCaptureCompletion, monolith_router,
-        monolith_router_with_authorities, monolith_router_with_gallery_authority,
-        monolith_router_with_gallery_delivery_authority,
+        CaptureCompletionAuthority, CapturePlanComposition, ExtensionOnboardingAuthority,
+        HostCaptureAcquireBackend, HostObjectReadBackend, MonasDispatchVerifier,
+        VerifiedCaptureCompletion, monolith_router, monolith_router_with_authorities,
+        monolith_router_with_gallery_authority, monolith_router_with_gallery_delivery_authority,
         monolith_router_with_gallery_web_and_capture_authority,
         monolith_router_with_gallery_web_delivery_and_capture_authority,
         monolith_router_with_gallery_web_delivery_authority, monolith_router_with_storage, router,
@@ -2635,6 +2726,56 @@ mod tests {
         let body = to_bytes(response.into_body(), 8192).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["items"][0]["catalogue_id"], "media-1");
+    }
+
+    #[tokio::test]
+    async fn onboarding_requires_monas_and_returns_only_the_actors_ready_pairing() {
+        let token = "synthetic-monas-dispatch-token-0001";
+        let composition = CapturePlanComposition::new(capture_plans(), None).with_onboarding(
+            ExtensionOnboardingAuthority::new(
+                "pinakotheke-test".into(),
+                "endpoint-1".into(),
+                "store-1".into(),
+                "/downloads/pinakotheke-1.3.0.xpi".into(),
+            )
+            .unwrap(),
+        );
+        let router = monolith_router_with_gallery_web_delivery_and_capture_authority(
+            true,
+            Some(MonasDispatchVerifier::new(token.into()).unwrap()),
+            gallery_catalogue(),
+            None,
+            gallery_image_backend(),
+            Some(composition),
+        );
+        let direct = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/extension/v1/onboarding")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(direct.status(), StatusCode::UNAUTHORIZED);
+        let admitted = router
+            .oneshot(
+                Request::builder()
+                    .uri("/products/pinakotheke/api/extension/v1/onboarding")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(admitted.status(), StatusCode::OK);
+        let body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(admitted.into_body(), 4096).await.unwrap()).unwrap();
+        assert_eq!(body["pairing_reference"], "pair-0");
+        assert_eq!(body["object_store_id"], "store-1");
+        assert!(body.get("actor_id").is_none());
     }
 
     #[tokio::test]

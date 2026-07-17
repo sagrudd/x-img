@@ -22,6 +22,7 @@ pub fn run() {
 
 const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue";
 const OBJECT_STORE_API: &str = "/products/dasobjectstore/api/v1/dashboard/object-stores";
+const EXTENSION_ONBOARDING_API: &str = "/products/pinakotheke/api/extension/v1/onboarding";
 const GALLERY_PAGE_SIZE: usize = 100;
 const GALLERY_WINDOW_ROWS: usize = 8;
 const GALLERY_OVERSCAN_ROWS: usize = 2;
@@ -100,6 +101,25 @@ enum ObjectStoreLoadState {
     Ready(Vec<ObjectStoreRow>),
     PermissionDenied,
     Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ExtensionOnboarding {
+    schema_version: String,
+    instance_id: String,
+    pairing_reference: String,
+    dasobjectstore_status: String,
+    endpoint_id: String,
+    object_store_id: String,
+    extension_download_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ExtensionOnboardingState {
+    Loading,
+    Ready(ExtensionOnboarding),
+    PrerequisiteMissing,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -234,6 +254,30 @@ pub fn app() -> Html {
     let keyboard_focus_pending = use_state(|| false);
     let object_stores = use_state(|| ObjectStoreLoadState::Loading);
     let selected_object_store = use_state(String::new);
+    let extension_onboarding = use_state(|| ExtensionOnboardingState::Loading);
+
+    {
+        let extension_onboarding = extension_onboarding.clone();
+        use_effect_with((), move |()| {
+            spawn_local(async move {
+                let state = match Request::get(EXTENSION_ONBOARDING_API).send().await {
+                    Ok(response) if response.ok() => response
+                        .json::<ExtensionOnboarding>()
+                        .await
+                        .ok()
+                        .filter(|payload| {
+                            payload.schema_version == "pinakotheke.extension-onboarding.v1"
+                                && payload.dasobjectstore_status == "Ready"
+                        })
+                        .map(ExtensionOnboardingState::Ready)
+                        .unwrap_or(ExtensionOnboardingState::PrerequisiteMissing),
+                    _ => ExtensionOnboardingState::PrerequisiteMissing,
+                };
+                extension_onboarding.set(state);
+            });
+            || ()
+        });
+    }
 
     {
         let object_stores = object_stores.clone();
@@ -383,6 +427,28 @@ pub fn app() -> Html {
                 <p class="ximg-shell__eyebrow">{ "Media workspace" }</p>
                 <h1>{ "x-img library" }</h1>
                 <p>{ "Review committed media from configured sources." }</p>
+
+                <section class="ximg-destination" aria-labelledby="firefox-setup-title">
+                    <h2 id="firefox-setup-title">{ "Connect Firefox" }</h2>
+                    <p>{ "Pinakotheke exposes its signed extension only after Monas authentication and a named DASObjectStore destination are ready." }</p>
+                    { match &*extension_onboarding {
+                        ExtensionOnboardingState::Loading => html! { <p role="status">{ "Checking Pinakotheke and DASObjectStore prerequisites…" }</p> },
+                        ExtensionOnboardingState::PrerequisiteMissing => html! { <p role="alert">{ "Firefox setup is unavailable. Confirm DASObjectStore availability, select a named writable ObjectStore, and configure capture authority." }</p> },
+                        ExtensionOnboardingState::Ready(setup) => html! {
+                            <div class="ximg-task-pane">
+                                <p><strong>{ "DASObjectStore: Ready" }</strong></p>
+                                <dl>
+                                    <div><dt>{ "Endpoint" }</dt><dd>{ setup.endpoint_id.clone() }</dd></div>
+                                    <div><dt>{ "Named ObjectStore" }</dt><dd>{ setup.object_store_id.clone() }</dd></div>
+                                </dl>
+                                <p><a href={setup.extension_download_path.clone()}>{ "Download signed Pinakotheke extension" }</a></p>
+                                <label>{ "Instance identifier" }<input readonly=true value={setup.instance_id.clone()} /></label>
+                                <label>{ "Pairing reference" }<input readonly=true value={setup.pairing_reference.clone()} /></label>
+                                <p>{ "Open the extension settings, enter this page's HTTPS origin and the two values above, then choose Pair. Firefox verifies them against this authenticated Monas session before saving them." }</p>
+                            </div>
+                        },
+                    }}
+                </section>
 
                 <section class="ximg-destination" aria-labelledby="destination-title">
                     <h2 id="destination-title">{ "Storage destination" }</h2>

@@ -149,6 +149,17 @@ pub struct CapturePlanService {
 }
 
 impl CapturePlanService {
+    /// Returns the active pairing reference owned by an authenticated actor.
+    #[must_use]
+    pub fn active_pairing_id(&self, actor_id: &str, now: u64) -> Option<String> {
+        self.pairings
+            .values()
+            .find(|pairing| {
+                pairing.actor_id == actor_id && !pairing.revoked && pairing.expires_at > now
+            })
+            .map(|pairing| pairing.pairing_id.clone())
+    }
+
     pub fn new(
         pairings: impl IntoIterator<Item = CapturePairing>,
         sites: impl IntoIterator<Item = SiteCapturePolicy>,

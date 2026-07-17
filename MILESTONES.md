@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.2.2
+Version: 1.3.0
 
 Updated: 2026-07-17
 
@@ -867,6 +867,22 @@ Pinakotheke return path selects the archive purpose, product sign-in label, and
 product-plus-Monas footer identity inside the common Mnemosyne shell. Unknown
 or unsafe destinations retain generic Monas presentation. XIMG-101 completed
 this gate in Monas ``0.6.2`` (``114ef95``) and the DASServer deployment.
+
+## 1.3.0 — Authenticated Firefox onboarding
+
+Goal: make the Pinakotheke web application the sole onboarding authority for
+the Firefox extension. DASObjectStore availability, a reviewed named writable
+ObjectStore, Monas authentication, and an actor-bound pairing are ordered
+prerequisites. The authenticated page distributes the current Mozilla-signed
+XPI and pairing payload; Firefox verifies that live payload before saving the
+server relationship. Exact website origins and X-ingress intent remain
+separate explicit browser choices. XIMG-103 tracks the live DASServer proof.
+
+Compatibility-sensitive references: Mnemosyne design language
+``5539df8f662a78ebdf7cf4c868d71831380c8cfd``, Monas
+``114ef95b6c0e001c0c167dcea324674c57ae6197``, DASObjectStore
+``df452a5535f378ccf2b856d8d040b0c2659559a7``, and Mnemosyne
+``52810176bf95a170f93d74a6f5daa94da5c6640e``.
 
 ## Post-1.0 candidates
 

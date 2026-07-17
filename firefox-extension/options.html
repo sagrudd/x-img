@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>x-img settings</title>
+  <title>Pinakotheke settings</title>
 </head>
 <body>
   <main>
-    <h1>x-img settings</h1>
+    <h1>Pinakotheke settings</h1>
     <fieldset>
-      <legend>Pair with one x-img instance</legend>
-      <label for="instance">x-img instance HTTPS URL</label>
-      <input id="instance" type="url" placeholder="https://x-img.example">
+      <legend>Pair with one Pinakotheke server</legend>
+      <label for="instance">Pinakotheke HTTPS URL</label>
+      <input id="instance" type="url" placeholder="https://pinakotheke.example">
       <label for="instance-id">Instance identifier</label>
       <input id="instance-id" autocomplete="off">
       <label for="pair">Pairing reference</label>
@@ -25,6 +25,7 @@
       <p>Enabling requests only this exact HTTPS origin. Capture admits only images displayed in the current viewport after a toolbar click; it never opens media or forwards site cookies. Substitution remains fail-open.</p>
       <label><input id="images" type="checkbox" checked> Images</label>
       <label><input id="videos" type="checkbox"> Videos</label>
+      <label><input id="x-ingress" type="checkbox"> This site is intended for X ingress</label>
       <button id="enable" type="button">Enable site</button>
     </fieldset>
     <h2>Enabled sites</h2>
