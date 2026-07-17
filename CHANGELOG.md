@@ -8,6 +8,8 @@
   certificates, direct Axum HTTPS, rotation, verification, and proxy removal.
 - Serve reviewed signed Firefox packages from the direct Axum listener so
   removing the proxy does not remove extension installation downloads.
+- Preserve graceful SIGTERM shutdown for direct TLS and local HTTP listeners so
+  service restarts release the capture-worker lease cleanly.
 
 ## 1.10.0 - 2026-07-17
 

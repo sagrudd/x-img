@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.11.1
+Version: 1.11.2
 
 Updated: 2026-07-17
 

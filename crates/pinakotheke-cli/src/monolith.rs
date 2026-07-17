@@ -481,8 +481,8 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
         println!(
             "Pinakotheke {} listening on {}://{address}",
-            if tls.is_some() { "https" } else { "http" },
-            env!("CARGO_PKG_VERSION")
+            env!("CARGO_PKG_VERSION"),
+            if tls.is_some() { "https" } else { "http" }
         );
         println!("metadata root: {}", layout.root.display());
         println!("gallery metadata: {}", gallery_path.display());
@@ -560,15 +560,40 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
         };
         if let Some((certificate, key)) = tls {
             let config = RustlsConfig::from_pem_file(certificate, key).await?;
+            let handle = axum_server::Handle::new();
+            let shutdown = handle.clone();
+            tokio::spawn(async move {
+                shutdown_signal().await;
+                shutdown.graceful_shutdown(Some(std::time::Duration::from_secs(10)));
+            });
             axum_server::bind_rustls(address, config)
+                .handle(handle)
                 .serve(router.into_make_service())
                 .await
         } else {
             let listener = tokio::net::TcpListener::bind(address).await?;
-            axum::serve(listener, router).await
+            axum::serve(listener, router)
+                .with_graceful_shutdown(shutdown_signal())
+                .await
         }
     })?;
     Ok(())
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        if let Ok(mut terminate) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {},
+                _ = terminate.recv() => {},
+            }
+            return;
+        }
+    }
+    let _ = tokio::signal::ctrl_c().await;
 }
 
 pub(crate) fn run_capture(command: CaptureCommand) -> Result<(), Box<dyn std::error::Error>> {
