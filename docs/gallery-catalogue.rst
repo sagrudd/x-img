@@ -99,6 +99,21 @@ render in the keyboard-accessible preview pane. The web client requests
 source-filtered pages using the returned X-account or website classification.
 Instagram capture remains part of the normal website class.
 
+Cards lead with the source account when it can be proven from X capture
+provenance, followed by the UTC capture time and the media/object/review state.
+Older records whose source label predates account-aware admission recover the
+same account from the validated ``x.com/<account>/...`` ObjectStore key. An
+unattributed or generic website record keeps its stored source label rather
+than guessing an author.
+
+Gallery image URLs include the committed SHA-256 as a cache version. Responses
+are private-cacheable for one hour, so revisiting an unchanged library does not
+repeat a DASObjectStore read. First-view reads enter a bounded 128-slot delivery
+pool. Each slot owns an independent host-helper exchange; blocking process,
+provider, download, and checksum work executes outside Axum's async request
+threads. Requests beyond the bound wait with backpressure. Pinakotheke still
+stores no durable payload bytes locally and never weakens checksum validation.
+
 The crate has a WebAssembly start entry and a checked-in Trunk document. A
 release build uses the canonical app mount as its public URL, and the monolith
 serves the resulting bounded static tree only after the same private Monas

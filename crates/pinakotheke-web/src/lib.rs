@@ -207,6 +207,58 @@ fn ready_path(representation: &GalleryRepresentation) -> Option<&str> {
         .flatten()
 }
 
+fn ready_url(representation: &GalleryRepresentation) -> Option<String> {
+    let path = ready_path(representation)?;
+    let checksum = representation.checksum.strip_prefix("sha256:")?;
+    Some(format!(
+        "{path}{}v={checksum}",
+        if path.contains('?') { '&' } else { '?' }
+    ))
+}
+
+fn source_display_label(item: &GalleryItem) -> String {
+    let account = std::iter::once(&item.thumbnail)
+        .chain(item.preview.iter())
+        .find_map(|representation| {
+            representation
+                .object_key
+                .strip_prefix("x.com/")
+                .and_then(|rest| rest.split('/').next())
+                .filter(|account| !account.is_empty() && *account != "_unattributed")
+        });
+    account.map_or_else(
+        || item.source_label.clone(),
+        |account| format!("@{account}"),
+    )
+}
+
+fn captured_at_label(epoch_seconds: u64) -> String {
+    let Ok(seconds) = i64::try_from(epoch_seconds) else {
+        return "Unknown date".to_owned();
+    };
+    let days = seconds.div_euclid(86_400);
+    let seconds_in_day = seconds.rem_euclid(86_400);
+    let (year, month, day) = civil_date_from_days(days);
+    let hour = seconds_in_day / 3_600;
+    let minute = seconds_in_day % 3_600 / 60;
+    format!("{year:04}-{month:02}-{day:02} · {hour:02}:{minute:02} UTC")
+}
+
+fn civil_date_from_days(days_since_epoch: i64) -> (i64, i64, i64) {
+    let z = days_since_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let day_of_era = z - era * 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let mut year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_prime = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_prime + 2) / 5 + 1;
+    let month = month_prime + if month_prime < 10 { 3 } else { -9 };
+    year += i64::from(month <= 2);
+    (year, month, day)
+}
+
 fn encode_query(value: &str) -> String {
     let mut encoded = String::new();
     for byte in value.as_bytes() {
@@ -753,7 +805,7 @@ pub fn app() -> Html {
                                     let gallery_scroll_top = gallery_scroll_top.clone();
                                     let keyboard_focus_pending = keyboard_focus_pending.clone();
                                     let is_selected = index == *active_card;
-                                    let thumbnail_path = ready_path(&item.thumbnail).map(ToOwned::to_owned);
+                                    let thumbnail_path = ready_url(&item.thumbnail);
                                     let record_count = records.len();
                                     let columns = window.columns;
                                     let row_height = window.row_height;
@@ -799,7 +851,8 @@ pub fn app() -> Html {
                                             } else {
                                                 html! { <span class="ximg-gallery__placeholder" aria-hidden="true">{ "Unavailable" }</span> }
                                             }}
-                                            <span>{ item.title.clone() }</span>
+                                            <strong>{ source_display_label(item) }</strong>
+                                            <small>{ format!("Captured {}", captured_at_label(item.discovered_at_epoch_seconds)) }</small>
                                             <small>{ format!("{} · {} · {}", media_label(item), object_label(item), review_label(item)) }</small>
                                         </button>
                                     }
@@ -894,8 +947,8 @@ pub fn app() -> Html {
                                 <div class="ximg-preview__layout">
                                     <section class={classes!("ximg-preview__visual", (view_mode == "Original size").then_some("is-original"))} aria-label="Media visual">
                                         { if selected_card.media_kind == GalleryMediaKind::Image {
-                                            if let Some(path) = selected_card.preview.as_ref().and_then(ready_path) {
-                                                html! { <img class="ximg-preview__image" src={path.to_owned()} alt={selected_card.title.clone()} /> }
+                                            if let Some(path) = selected_card.preview.as_ref().and_then(ready_url) {
+                                                html! { <img class="ximg-preview__image" src={path} alt={selected_card.title.clone()} /> }
                                             } else {
                                                 html! { <div class="ximg-preview__unavailable" role="status"><strong>{ "Original image unavailable" }</strong><p>{ "Pinakotheke does not fall back to the source website." }</p></div> }
                                             }
@@ -914,7 +967,8 @@ pub fn app() -> Html {
                                     </section>
                                     <aside class="ximg-preview__details" aria-label="Selected media details">
                                         <dl>
-                                            <div><dt>{ "Source" }</dt><dd>{ selected_card.source_label.clone() }</dd></div>
+                                            <div><dt>{ "Source account" }</dt><dd>{ source_display_label(&selected_card) }</dd></div>
+                                            <div><dt>{ "Captured" }</dt><dd>{ captured_at_label(selected_card.discovered_at_epoch_seconds) }</dd></div>
                                             <div><dt>{ "Media type" }</dt><dd>{ media_label(&selected_card) }</dd></div>
                                             <div><dt>{ "Object state" }</dt><dd>{ object_label(&selected_card) }</dd></div>
                                             <div><dt>{ "Dimensions" }</dt><dd>{ format!("{} × {}", selected_card.width, selected_card.height) }</dd></div>
@@ -1008,6 +1062,22 @@ mod tests {
         media.thumbnail = representation(GalleryObjectAvailability::Unavailable, None);
         assert_eq!(object_label(&media), "Object unavailable");
         assert_eq!(ready_path(&media.thumbnail), None);
+    }
+
+    #[test]
+    fn gallery_cards_derive_x_account_date_and_versioned_delivery_url() {
+        let mut media = item();
+        media.discovered_at_epoch_seconds = 1_784_310_000;
+        media.thumbnail.object_key = "x.com/fixture_artist/observed_thumbnail/checksum".into();
+        assert_eq!(source_display_label(&media), "@fixture_artist");
+        assert_eq!(captured_at_label(0), "1970-01-01 · 00:00 UTC");
+        assert_eq!(captured_at_label(1_784_310_000), "2026-07-17 · 17:40 UTC");
+        assert_eq!(
+            ready_url(&media.thumbnail).as_deref(),
+            Some(
+                "/products/pinakotheke/api/gallery/v1/objects/thumbnail-1?v=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            )
+        );
     }
 
     #[test]

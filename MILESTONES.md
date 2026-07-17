@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.7.2
+Version: 1.7.3
 
 Updated: 2026-07-17
 
@@ -945,6 +945,14 @@ set with each mutation/navigation signal so capture does not depend on a second
 privileged page execution. Restore legacy DAS S3-export image delivery by
 verifying complete downloaded bytes against the committed SHA-256 before
 streaming; range delivery remains blocked without authority checksum metadata.
+
+## 1.7.3 — Concurrent, provenance-led thumbnail browsing
+
+Goal: make a small library appear promptly by executing independent verified
+DASObjectStore reads through a bounded 128-slot Axum delivery pool, away from
+async request workers, and privately caching checksum-versioned responses.
+Cards lead with the captured account and UTC capture time instead of generic
+capture copy, while new X admissions preserve their account classification.
 
 ## Post-1.0 candidates
 

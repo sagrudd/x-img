@@ -22,6 +22,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use tokio::sync::Semaphore;
 use tower_http::services::ServeDir;
 use x_img_core::{
     cache_alias::{
@@ -41,8 +42,8 @@ use x_img_core::{
         AuthenticatedHostContext, HostContextAdapter, MonasHostContextAdapter, XIMG_ACCESS,
     },
     object_read::{
-        AuthorizedObjectReader, ObjectReadBackend, ObjectReadBackendError, ObjectReadRequest,
-        ObjectReadResult, ValidatedObjectRead,
+        AuthorizedObjectReader, ObjectReadBackend, ObjectReadBackendError, ObjectReadError,
+        ObjectReadRequest, ObjectReadResult, ValidatedObjectRead,
     },
     operations::{OperationalTelemetry, OperationsSnapshot},
     playback_delivery::{
@@ -58,7 +59,7 @@ use x_img_core::{
 type CapturePlans = Arc<Mutex<CapturePlanService>>;
 type PlaybackDelivery = Arc<Mutex<DirectPlaybackService<HostObjectReadBackend>>>;
 type CacheAliases = Arc<Mutex<CacheLookupService>>;
-type ImageDelivery = Arc<Mutex<AuthorizedObjectReader<HostObjectReadBackend>>>;
+type ImageDelivery = Arc<ObjectDeliveryPool>;
 type Operations = Arc<Mutex<OperationalTelemetry>>;
 type SynoptikonCatalogue = Arc<SynoptikonCatalogueProjection>;
 type MonasGalleryCatalogue = Arc<Mutex<GalleryCatalogue>>;
@@ -365,7 +366,14 @@ struct CaptureCompletionResponse {
 /// client to Axum. The callback returns a body stream and never exposes a
 /// filesystem location or browser credential to x-img.
 pub type HostObjectOpen = Box<
-    dyn FnMut(&ObjectReadRequest) -> Result<ObjectReadResult<Body>, ObjectReadBackendError> + Send,
+    dyn Fn(&ObjectReadRequest) -> Result<ObjectReadResult<Body>, ObjectReadBackendError>
+        + Send
+        + Sync,
+>;
+type SharedHostObjectOpen = Arc<
+    dyn Fn(&ObjectReadRequest) -> Result<ObjectReadResult<Body>, ObjectReadBackendError>
+        + Send
+        + Sync,
 >;
 
 /// Concrete host adapter for direct playback routes.
@@ -373,8 +381,59 @@ pub type HostObjectOpen = Box<
 /// The surrounding host is responsible for authenticated DASObjectStore
 /// transport and TLS. x-img validates the returned object metadata and makes
 /// the stream available only after its injected Monas context is authorized.
+#[derive(Clone)]
 pub struct HostObjectReadBackend {
-    open: HostObjectOpen,
+    open: SharedHostObjectOpen,
+}
+
+const DEFAULT_OBJECT_READ_CONCURRENCY: usize = 128;
+
+/// Bounded concurrent bridge from Axum to blocking host object-read helpers.
+///
+/// Each admitted read receives an independent reader clone. Process launch,
+/// provider lookup, download, and checksum verification run on Tokio's
+/// blocking pool so slow storage cannot occupy an async request worker.
+struct ObjectDeliveryPool {
+    reader: AuthorizedObjectReader<HostObjectReadBackend>,
+    permits: Arc<Semaphore>,
+}
+
+impl ObjectDeliveryPool {
+    fn new(backend: HostObjectReadBackend) -> Self {
+        Self::with_concurrency(backend, DEFAULT_OBJECT_READ_CONCURRENCY)
+    }
+
+    fn with_concurrency(backend: HostObjectReadBackend, concurrency: usize) -> Self {
+        Self {
+            reader: AuthorizedObjectReader::new(backend),
+            permits: Arc::new(Semaphore::new(concurrency.max(1))),
+        }
+    }
+
+    async fn open(
+        &self,
+        request: ObjectReadRequest,
+    ) -> Result<ValidatedObjectRead<Body>, ObjectReadError> {
+        let permit = Arc::clone(&self.permits)
+            .acquire_owned()
+            .await
+            .map_err(|_| {
+                ObjectReadError::Backend(ObjectReadBackendError::Unavailable(
+                    x_img_core::object_read::ObjectUnavailable::Unavailable,
+                ))
+            })?;
+        let mut reader = self.reader.clone();
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            reader.open(&request)
+        })
+        .await
+        .map_err(|_| {
+            ObjectReadError::Backend(ObjectReadBackendError::Unavailable(
+                x_img_core::object_read::ObjectUnavailable::Unavailable,
+            ))
+        })?
+    }
 }
 
 /// Serves the initial local monolith until interrupted.
@@ -523,7 +582,9 @@ async fn shutdown_signal() {
 impl HostObjectReadBackend {
     /// Creates the adapter from a scoped, server-side DASObjectStore opener.
     pub fn new(open: HostObjectOpen) -> Self {
-        Self { open }
+        Self {
+            open: Arc::from(open),
+        }
     }
 }
 
@@ -732,9 +793,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             get(deliver_gallery_video),
         )
         .layer(Extension(Arc::clone(&gallery)))
-        .layer(Extension(Arc::new(Mutex::new(
-            AuthorizedObjectReader::new(backend),
-        ))));
+        .layer(Extension(Arc::new(ObjectDeliveryPool::new(backend))));
     if let Some(capture) = capture {
         let CapturePlanComposition {
             plans: capture_plans,
@@ -1060,9 +1119,7 @@ pub fn router_with_gallery_delivery(
             get(deliver_gallery_video),
         )
         .layer(Extension(Arc::new(Mutex::new(catalogue))))
-        .layer(Extension(Arc::new(Mutex::new(
-            AuthorizedObjectReader::new(backend),
-        ))))
+        .layer(Extension(Arc::new(ObjectDeliveryPool::new(backend))))
 }
 
 #[derive(Debug, Deserialize)]
@@ -1178,17 +1235,18 @@ async fn deliver_gallery_image(
             .map(str::to_owned),
     };
     let delivery = delivery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
-    let mut delivery = delivery
-        .lock()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     match delivery
-        .open(&request)
+        .open(request)
+        .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?
     {
         ValidatedObjectRead::NotModified { etag } => Response::builder()
             .status(StatusCode::NOT_MODIFIED)
             .header(header::ETAG, etag)
-            .header(header::CACHE_CONTROL, "private, no-store")
+            .header(
+                header::CACHE_CONTROL,
+                "private, max-age=3600, must-revalidate",
+            )
             .header("cross-origin-resource-policy", "same-origin")
             .header("x-content-type-options", "nosniff")
             .body(Body::empty())
@@ -1205,7 +1263,10 @@ async fn deliver_gallery_image(
                 .header(header::CONTENT_TYPE, metadata.content_type)
                 .header(header::CONTENT_LENGTH, metadata.content_length)
                 .header(header::ETAG, metadata.etag)
-                .header(header::CACHE_CONTROL, "private, no-store")
+                .header(
+                    header::CACHE_CONTROL,
+                    "private, max-age=3600, must-revalidate",
+                )
                 .header("cross-origin-resource-policy", "same-origin")
                 .header("x-content-type-options", "nosniff")
                 .body(stream)
@@ -1265,11 +1326,9 @@ async fn deliver_gallery_video(
     };
     let delivery = delivery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
     let result = {
-        let mut delivery = delivery
-            .lock()
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         delivery
-            .open(&request)
+            .open(request)
+            .await
             .map_err(|_| StatusCode::BAD_GATEWAY)?
     };
     match result {
@@ -1383,9 +1442,7 @@ pub fn router_with_cache_substitution(
             get(deliver_cached_video),
         )
         .layer(Extension(Arc::new(Mutex::new(cache_aliases))))
-        .layer(Extension(Arc::new(Mutex::new(
-            AuthorizedObjectReader::new(backend),
-        ))))
+        .layer(Extension(Arc::new(ObjectDeliveryPool::new(backend))))
 }
 
 async fn health() -> Json<PublicHealthResponse> {
@@ -1859,10 +1916,10 @@ async fn deliver_cached_video(
     };
     let delivery = delivery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
     let result = {
-        let mut reader = delivery
-            .lock()
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        reader.open(&request).map_err(|_| StatusCode::BAD_GATEWAY)?
+        delivery
+            .open(request)
+            .await
+            .map_err(|_| StatusCode::BAD_GATEWAY)?
     };
     match result {
         ValidatedObjectRead::NotModified { etag } => Response::builder()
@@ -1965,11 +2022,9 @@ async fn deliver_cached_image(
         if_none_match_etag: if_none_match,
     };
     let image_delivery = image_delivery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
-    let mut image_delivery = image_delivery
-        .lock()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     match image_delivery
-        .open(&request)
+        .open(request)
+        .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?
     {
         ValidatedObjectRead::NotModified { etag } => Response::builder()
@@ -2082,8 +2137,60 @@ fn playback_status(error: DirectPlaybackError) -> StatusCode {
 mod tests {
     use std::{
         fs,
-        sync::{Arc, Mutex},
+        sync::{
+            Arc, Mutex,
+            atomic::{AtomicUsize, Ordering},
+        },
+        time::Duration,
     };
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn object_delivery_pool_runs_independent_reads_concurrently() {
+        let active = Arc::new(AtomicUsize::new(0));
+        let maximum = Arc::new(AtomicUsize::new(0));
+        let active_for_open = Arc::clone(&active);
+        let maximum_for_open = Arc::clone(&maximum);
+        let backend = HostObjectReadBackend::new(Box::new(move |request| {
+            let current = active_for_open.fetch_add(1, Ordering::SeqCst) + 1;
+            maximum_for_open.fetch_max(current, Ordering::SeqCst);
+            std::thread::sleep(Duration::from_millis(75));
+            active_for_open.fetch_sub(1, Ordering::SeqCst);
+            Ok(ObjectReadResult::Content {
+                metadata: ObjectContentMetadata {
+                    content_type: "image/jpeg".into(),
+                    content_length: 1,
+                    total_length: 1,
+                    checksum: request.object.checksum.clone(),
+                    etag: format!("\"{}\"", request.object.checksum),
+                    content_range: None,
+                },
+                stream: Body::from(vec![1_u8]),
+            })
+        }));
+        let pool = Arc::new(ObjectDeliveryPool::with_concurrency(backend, 8));
+        let request = ObjectReadRequest {
+            object: AuthorizedObjectReference {
+                endpoint_id: "endpoint-1".into(),
+                object_store_id: "store-1".into(),
+                object_key: "objects/image.jpg".into(),
+                object_version: 1,
+                checksum: CHECKSUM.into(),
+            },
+            range: None,
+            if_none_match_etag: None,
+        };
+        let reads = (0..8)
+            .map(|_| {
+                let pool = Arc::clone(&pool);
+                let request = request.clone();
+                tokio::spawn(async move { pool.open(request).await })
+            })
+            .collect::<Vec<_>>();
+        for read in reads {
+            read.await.unwrap().unwrap();
+        }
+        assert!(maximum.load(Ordering::SeqCst) >= 4);
+    }
 
     use axum::{
         Extension,
@@ -2104,7 +2211,7 @@ mod tests {
         host_context::{HostContextAdapter, MonasHostContextAdapter},
         object_read::{
             AuthorizedObjectReader, AuthorizedObjectReference, ObjectContentMetadata,
-            ObjectReadResult,
+            ObjectReadRequest, ObjectReadResult,
         },
         operations::{Component, EventCode, EventOutcome, HealthState, OperationalTelemetry},
         playback_delivery::{DirectPlaybackGrant, DirectPlaybackService},
@@ -2122,8 +2229,9 @@ mod tests {
     use super::{
         CaptureCompletionAuthority, CapturePlanComposition, ExtensionOnboardingAuthority,
         HostCaptureAcquireBackend, HostObjectReadBackend, MonasDispatchVerifier,
-        VerifiedCaptureCompletion, monolith_router, monolith_router_with_authorities,
-        monolith_router_with_gallery_authority, monolith_router_with_gallery_delivery_authority,
+        ObjectDeliveryPool, VerifiedCaptureCompletion, monolith_router,
+        monolith_router_with_authorities, monolith_router_with_gallery_authority,
+        monolith_router_with_gallery_delivery_authority,
         monolith_router_with_gallery_web_and_capture_authority,
         monolith_router_with_gallery_web_delivery_and_capture_authority,
         monolith_router_with_gallery_web_delivery_authority, monolith_router_with_storage, router,
@@ -2588,7 +2696,10 @@ mod tests {
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(response.headers()["content-type"], "image/jpeg");
-        assert_eq!(response.headers()["cache-control"], "private, no-store");
+        assert_eq!(
+            response.headers()["cache-control"],
+            "private, max-age=3600, must-revalidate"
+        );
         assert_eq!(
             to_bytes(response.into_body(), 64).await.unwrap().as_ref(),
             b"image-bytes!"

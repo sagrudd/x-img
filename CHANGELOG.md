@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Replace the serialized gallery read boundary with a 128-slot, backpressured
+  Axum delivery pool; provider lookup, object retrieval, and checksum
+  verification run on Tokio's blocking workers rather than request threads.
+- Version gallery image URLs by committed checksum and permit private browser
+  reuse for one hour, avoiding repeat DASObjectStore retrieval when revisiting
+  an unchanged library.
+- Lead thumbnail cards with the captured X account and UTC capture time;
+  newly admitted X records also carry an explicit X-account source identity.
 - Report bounded visible-image snapshots from the exact-origin Firefox content
   observer so X mutations and image-navigator changes trigger automatic
   thumbnail planning without a second privileged DOM execution.

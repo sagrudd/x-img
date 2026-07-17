@@ -117,13 +117,14 @@ impl PersistentWebsiteGalleryAdmission {
         let existing = items
             .iter_mut()
             .find(|item| item.catalogue_id == presentation.catalogue_id);
+        let (source_label, source_kind) = gallery_source(plan);
         let outcome = match (plan.capture_kind, existing) {
             (CaptureKind::ObservedThumbnail, None) => {
                 items.push(GalleryItem {
                     catalogue_id: presentation.catalogue_id,
                     title: presentation.title,
-                    source_label: format!("Website / {}", plan.site_id),
-                    source_kind: GallerySourceKind::Website,
+                    source_label: source_label.clone(),
+                    source_kind,
                     media_kind: GalleryMediaKind::Image,
                     review_state: GalleryReviewState::New,
                     discovered_at_epoch_seconds,
@@ -164,8 +165,8 @@ impl PersistentWebsiteGalleryAdmission {
                 items.push(GalleryItem {
                     catalogue_id: presentation.catalogue_id,
                     title: presentation.title,
-                    source_label: format!("Website / {}", plan.site_id),
-                    source_kind: GallerySourceKind::Website,
+                    source_label,
+                    source_kind,
                     media_kind: GalleryMediaKind::Image,
                     review_state: GalleryReviewState::New,
                     discovered_at_epoch_seconds,
@@ -199,6 +200,32 @@ impl PersistentWebsiteGalleryAdmission {
             .map_err(PersistentGalleryAdmissionError::Store)?;
         Ok(outcome)
     }
+}
+
+fn gallery_source(plan: &CapturePlan) -> (String, GallerySourceKind) {
+    for candidate in [&plan.canonical_presentation_url, &plan.canonical_page_url] {
+        if let Some(account) = candidate
+            .strip_prefix("https://x.com/")
+            .and_then(|rest| rest.split(['/', '?', '#']).next())
+            .filter(|account| {
+                !account.is_empty()
+                    && !matches!(
+                        *account,
+                        "home" | "i" | "search" | "explore" | "notifications"
+                    )
+                    && account.len() <= 15
+                    && account
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+            })
+        {
+            return (format!("X / @{account}"), GallerySourceKind::XAccount);
+        }
+    }
+    (
+        format!("Website / {}", plan.site_id),
+        GallerySourceKind::Website,
+    )
 }
 
 fn validate_presentation(
@@ -354,6 +381,18 @@ mod tests {
             GalleryObjectAvailability::Ready
         );
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn x_presentation_records_the_creator_as_gallery_source() {
+        let mut capture = plan(CaptureKind::ObservedThumbnail, "thumb", 320, 200);
+        capture.canonical_page_url = "https://x.com/home".into();
+        capture.canonical_presentation_url =
+            "https://x.com/Fixture_Artist/status/123/photo/1".into();
+        assert_eq!(
+            gallery_source(&capture),
+            ("X / @Fixture_Artist".into(), GallerySourceKind::XAccount)
+        );
     }
 
     #[test]

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.7.2
+Version: 1.7.3
 
 Updated: 2026-07-17
 
@@ -1178,6 +1178,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   revision/conflict handling, reject unknown schema majors, preserve deletions
   with bounded tombstones, and never silently promote actor rules to a shared
   multi-user policy. Add export/import for recovery without credentials.
+
+- [ ] **XIMG-106 P0 — Make gallery delivery concurrent and provenance-led.**
+  Replace the single serialized object reader with a bounded 128-slot Axum pool.
+  Run blocking helper/provider/download/checksum work off async request threads,
+  apply backpressure beyond the bound, and prove independent reads overlap.
+  Use checksum-versioned private browser caching. Lead cards with the captured
+  X account and UTC capture time, retain honest generic-site fallback labels,
+  and classify newly admitted X records as X-account sources. Deploy to the
+  x86_64 DASServer and compare live small-library loading behavior.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

@@ -123,6 +123,14 @@ pub struct AuthorizedObjectReader<B: ObjectReadBackend> {
     backend: B,
 }
 
+impl<B: ObjectReadBackend + Clone> Clone for AuthorizedObjectReader<B> {
+    fn clone(&self) -> Self {
+        Self {
+            backend: self.backend.clone(),
+        }
+    }
+}
+
 impl<B: ObjectReadBackend> AuthorizedObjectReader<B> {
     pub fn new(backend: B) -> Self {
         Self { backend }
