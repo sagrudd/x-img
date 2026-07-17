@@ -1118,6 +1118,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   The exact-origin observer now supplies its validated visible-image snapshot
   with each mutation signal, avoiding a second privileged DOM execution while
   retaining viewport, size, HTTPS, origin-policy, and candidate bounds.
+  Delivered in ``41d9cc3`` and deployed to the x86_64 DASServer on 2026-07-17.
+  A previously blank 59,263-byte JPEG was read from the configured logical
+  ObjectStore, independently SHA-256 verified against its catalogue reference,
+  and returned with the content helper protocol. The 1.7.2 DEB upgrade,
+  service restart, Mozilla signature verification, nginx configuration check,
+  and public ``application/x-xpinstall`` delivery all passed. Fresh browsing
+  with extension 1.7.2 remains the required live proof for automatic visible
+  X-thumbnail admission.
   Image delivery landed in ``dc09fe6``: enabled pages debounce load, mutation,
   and scroll observations; meaningful visible images are submitted without a
   toolbar action; linked originals retain the trusted-click boundary; and an
