@@ -1079,7 +1079,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   server corpus at startup, persists each settings change, reports conflicts,
   and provides credential-free bounded JSON export/import. Native core/API
   tests, strict clippy, wasm check, zero-warning ``web-ext`` lint, quality
-  checks, and the pinned Sphinx container build/run passed. Original scope:
+  checks, and the pinned Sphinx container build/run passed. The Monas-compatible
+  POST correction is ``18be683``. A live DASServer 1.4.0 deployment then saved
+  the user's ``https://x.com`` images/videos, capture/substitution, X-ingress
+  rule at revision 1 and returned the identical corpus after a Pinakotheke
+  restart. Original scope:
   store the
   strict versioned corpus of exact-origin rules under authenticated
   Pinakotheke authority, scoped to the actor and containing images/videos,
