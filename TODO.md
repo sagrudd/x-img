@@ -1101,6 +1101,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``format``/``name`` alias. Version 1.7.1 reuses the admission canonicalizer
   for alias validation and adds an exact regression test while retaining
   fail-closed rejection of arbitrary and signed query parameters.
+  Live recovery then exposed ``OriginalRequiresThumbnail`` because the opened
+  image arrived without an observed-thumbnail plan. Original-first admission
+  now creates a reviewable card using the same verified DAS object for its
+  initial thumbnail delivery role; a later thumbnail safely replaces that role.
   Image delivery landed in ``dc09fe6``: enabled pages debounce load, mutation,
   and scroll observations; meaningful visible images are submitted without a
   toolbar action; linked originals retain the trusted-click boundary; and an

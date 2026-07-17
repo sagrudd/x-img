@@ -138,10 +138,43 @@ impl PersistentWebsiteGalleryAdmission {
                 if item.thumbnail == representation {
                     return Ok(PersistentGalleryAdmissionOutcome::AlreadyPresent);
                 }
-                return Err(PersistentGalleryAdmissionError::ConflictingReplay);
+                if item.preview.as_ref().is_some_and(|preview| {
+                    item.thumbnail.object_key == preview.object_key
+                        && item.thumbnail.object_version == preview.object_version
+                        && item.thumbnail.checksum == preview.checksum
+                }) {
+                    if item.thumbnail.endpoint_id != representation.endpoint_id
+                        || item.thumbnail.object_store_id != representation.object_store_id
+                    {
+                        return Err(PersistentGalleryAdmissionError::DestinationMismatch);
+                    }
+                    item.thumbnail = representation;
+                    PersistentGalleryAdmissionOutcome::ThumbnailInserted
+                } else {
+                    return Err(PersistentGalleryAdmissionError::ConflictingReplay);
+                }
             }
             (CaptureKind::ExplicitOriginal, None) => {
-                return Err(PersistentGalleryAdmissionError::OriginalRequiresThumbnail);
+                let mut thumbnail = representation.clone();
+                thumbnail.kind = GalleryRepresentationKind::Thumbnail;
+                thumbnail.delivery_path = Some(format!(
+                    "/products/pinakotheke/api/gallery/v1/objects/{}/thumbnail",
+                    presentation.catalogue_id
+                ));
+                items.push(GalleryItem {
+                    catalogue_id: presentation.catalogue_id,
+                    title: presentation.title,
+                    source_label: format!("Website / {}", plan.site_id),
+                    source_kind: GallerySourceKind::Website,
+                    media_kind: GalleryMediaKind::Image,
+                    review_state: GalleryReviewState::New,
+                    discovered_at_epoch_seconds,
+                    width: plan.width,
+                    height: plan.height,
+                    thumbnail,
+                    preview: Some(representation),
+                });
+                PersistentGalleryAdmissionOutcome::OriginalAttached
             }
             (CaptureKind::ExplicitOriginal, Some(item)) => {
                 if item.thumbnail.endpoint_id != representation.endpoint_id
@@ -324,22 +357,66 @@ mod tests {
     }
 
     #[test]
-    fn rejects_uncommitted_original_first_destination_change_and_conflicting_replay() {
+    fn admits_original_first_and_replaces_its_renderable_fallback_with_a_thumbnail() {
         let (root, store) = temporary_store();
         let reconciliation = ReconciliationCatalogue::default();
         let thumbnail = plan(CaptureKind::ObservedThumbnail, "thumbnail", 320, 200);
         let original = plan(CaptureKind::ExplicitOriginal, "original", 1920, 1080);
         let mut admission = PersistentWebsiteGalleryAdmission::new(store.clone());
-        assert!(matches!(
-            admission.admit_image(
-                &committed(&original, &reconciliation, "original-object"),
-                &original,
-                &reconciliation,
-                presentation(),
-                1,
-            ),
-            Err(PersistentGalleryAdmissionError::OriginalRequiresThumbnail)
-        ));
+        assert_eq!(
+            admission
+                .admit_image(
+                    &committed(&original, &reconciliation, "original-object"),
+                    &original,
+                    &reconciliation,
+                    presentation(),
+                    1,
+                )
+                .unwrap(),
+            PersistentGalleryAdmissionOutcome::OriginalAttached
+        );
+        let original_first = store.load_or_empty().unwrap();
+        assert_eq!(original_first.items().len(), 1);
+        assert_eq!(
+            original_first.items()[0].thumbnail.object_key,
+            "original-object"
+        );
+        assert_eq!(
+            original_first.items()[0]
+                .preview
+                .as_ref()
+                .unwrap()
+                .object_key,
+            "original-object"
+        );
+        assert_eq!(
+            admission
+                .admit_image(
+                    &committed(&thumbnail, &reconciliation, "thumbnail-object"),
+                    &thumbnail,
+                    &reconciliation,
+                    presentation(),
+                    2,
+                )
+                .unwrap(),
+            PersistentGalleryAdmissionOutcome::ThumbnailInserted
+        );
+        let enriched = store.load_or_empty().unwrap();
+        assert_eq!(enriched.items()[0].thumbnail.object_key, "thumbnail-object");
+        assert_eq!(
+            enriched.items()[0].preview.as_ref().unwrap().object_key,
+            "original-object"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_uncommitted_destination_change_and_conflicting_replay() {
+        let (root, store) = temporary_store();
+        let reconciliation = ReconciliationCatalogue::default();
+        let thumbnail = plan(CaptureKind::ObservedThumbnail, "thumbnail", 320, 200);
+        let original = plan(CaptureKind::ExplicitOriginal, "original", 1920, 1080);
+        let mut admission = PersistentWebsiteGalleryAdmission::new(store.clone());
         let identity =
             WebsiteCaptureReviewAdmission::canonical_media_identity(&thumbnail, &reconciliation);
         let uncommitted = Acquisition::discovered(identity).unwrap();

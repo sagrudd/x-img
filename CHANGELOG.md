@@ -7,6 +7,9 @@
   into the gallery while continuing to reject arbitrary or signed queries.
 - Apply that same canonical rule when reopening the capture-plan journal so a
   safe X variant remains restart-recoverable.
+- Admit a verified explicitly opened image as an original-first gallery card;
+  its existing DAS object supplies the initial thumbnail delivery role until a
+  separately observed thumbnail is available, without duplicating bytes.
 - Add a bounded, credential-free Firefox diagnostic event ring with visible
   recent events and JSON export, covering observer registration, viewport
   scans, eligibility counts, plan HTTP outcomes, and stored/pending status.
