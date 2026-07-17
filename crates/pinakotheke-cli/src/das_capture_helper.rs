@@ -299,6 +299,11 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
     {
         return Err("retrieved media payload is invalid".into());
     }
+    #[cfg(unix)]
+    if config.container_execution.is_none() {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&payload, fs::Permissions::from_mode(0o640))?;
+    }
     if video {
         verify_firefox_mp4(
             config
