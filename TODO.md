@@ -1070,8 +1070,9 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   produced one gallery item. X ingress now admits only ``pbs.twimg.com`` image
   media, excluding interface artwork and emoji. The task remains open: trusted
   video play is detected and honestly reported, but must next be composed with
-  the normalized-video worker and equivalent verified gallery/status path; a
-  Mozilla-signed 1.5.1 extension is also still required for user installation.
+  the normalized-video worker and equivalent verified gallery/status path.
+  Mozilla signed extension 1.5.1 on 2026-07-17; permanent-install acceptance
+  passed and the authenticated application advertises the deployed LAN XPI.
   Treat an enabled exact-origin site rule as the user's standing consent to
   cache the selected media classes. Cache displayed thumbnails immediately;
   cache an image original only after the user opens it, and cache video only

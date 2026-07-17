@@ -111,3 +111,19 @@ panel binds its scoped pairing payload to named ObjectStore
 ``pinakotheke_media``; the live endpoint accepted the exact credential and
 rejected a changed credential with HTTP 401. The checksum-identical XPI is at
 ``https://192.168.1.192:8731/downloads/pinakotheke-1.3.1.xpi``.
+
+Automatic-cache release evidence
+--------------------------------
+
+Mozilla approved Pinakotheke ``1.5.1`` as an unlisted signed extension on
+2026-07-17. Its SHA-256 is
+``7493ab445af0e3afadb760f2ee66ad27b783d470b01292c38d66bd160e91e45d``.
+The permanent-install acceptance passed with the stable
+``x-img@example.invalid`` identity. Pinakotheke 1.5.1 now advertises the same
+versioned path from authenticated onboarding, and the signature-identical live
+copy is served at
+``https://192.168.1.192:8731/downloads/pinakotheke-1.5.1.xpi`` with
+``application/x-xpinstall``, ``nosniff``, and ``private, no-store`` headers.
+The AMO issuer and secret are held in access-controlled macOS Keychain entries
+for signing only; they are not present in the repository, artefact, config,
+documentation, command history, or service host.
