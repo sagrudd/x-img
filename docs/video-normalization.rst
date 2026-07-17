@@ -44,7 +44,7 @@ The first runnable host boundary is:
    pinakotheke video normalize \
      --plan /absolute/private/confirmed-plan.json \
      --docker /absolute/reviewed/docker \
-     --ingest-helper /absolute/reviewed/das-stream-helper
+     --ingest-helper /absolute/path/to/pinakotheke
 
 The plan must be a strict mode-``0600``
 ``pinakotheke.video-normalize-plan.v1`` document. It fixes the confirmed job,
@@ -58,6 +58,33 @@ The public JSON shapes are
 ``contracts/dasobjectstore/pinakotheke-video-normalize-plan.v1.schema.json``
 and
 ``contracts/dasobjectstore/pinakotheke-object-ingest-stream.v1.schema.json``.
+
+First-party DASObjectStore stream helper
+----------------------------------------
+
+The packaged ``pinakotheke`` executable also implements the hidden
+``ingest-stream-v1`` protocol consumed by ``video normalize``. Point
+``--ingest-helper`` at the same reviewed canonical executable and set
+``PINAKOTHEKE_DAS_STREAM_HELPER_CONFIG`` to an absolute private mode-``0600``
+``pinakotheke.das-stream-ingest-helper.v1`` configuration. Its public schema is
+``contracts/dasobjectstore/pinakotheke-das-stream-ingest-helper.v1.schema.json``.
+
+The configuration chooses exactly one authority transport:
+
+* native ``dasobjectstore-remote`` executable, private remote configuration,
+  and absolute daemon socket; or
+* the fixed ``dasobjectstored`` Compose service with reviewed Docker/Compose,
+  canonical DAS-managed scratch roots, private remote/AWS files, and the fixed
+  container daemon socket.
+
+The helper reads a bounded JSON header and exactly the declared payload bytes
+from stdin, computes SHA-256 while writing only private ephemeral scratch,
+rejects early EOF, trailing bytes, changed authority, unsupported MIME, unsafe
+keys, and objects over the configured cap, then invokes the existing daemon
+completion path. It emits a receipt only after DASObjectStore reports
+``Complete`` at ``remote_s3_transfer_complete``. Scratch, copied scoped
+credentials, and payload are removed on success or failure. Supported derived
+types are normalized MP4/WebM, WebP posters, and JSON provenance manifests.
 
 The Docker and ingest-helper paths must be absolute executable regular files,
 not symlinks. Pinakotheke invokes Docker with structured, network-isolated
@@ -74,10 +101,34 @@ The helper boundary was reviewed against DASObjectStore commit
 for scoped application identity, quota, provider verification, catalogue
 publication, capability replay, and the final completion decision.
 
+The packaged ``pinakotheke ingest-stream-v1`` command is the first-party
+implementation of that helper boundary. Its private configuration uses schema
+``pinakotheke.das-stream-ingest-helper.v1`` and chooses exactly one execution
+mode:
+
+* native mode pins the ``dasobjectstore-remote`` executable, its current JSON
+  remote-client grant, and the daemon socket; or
+* container mode pins the Docker executable, private Compose file, matching
+  host/container scratch roots, current JSON remote-client grant, AWS shared
+  credentials file, service name, and container daemon socket.
+
+The remote-client grant is not the daemon's legacy TOML storage-backend file.
+For container execution its endpoint must resolve inside the selected Compose
+network, and its writable grant must map the stable ObjectStore ID to the DAS
+bucket. The credentials and grant are copied mode-``0600`` into one job scratch
+directory and removed on every result. The helper accepts only MP4, WebM, WebP,
+or JSON, reads exactly the declared byte count, rejects trailing or
+checksum-mismatched input before authority invocation, and emits a receipt only
+after ``dasobjectstored`` reports ``remote_s3_transfer_complete``.
+
 This command makes the normalization adapter deployable, but does not itself
 admit a gallery card. The host must still record successful Firefox playback
-evidence and pass the normalized-video admission boundary. The live XIMG-096
-run must use the selected DASObjectStore rather than a fixture helper.
+evidence and pass the normalized-video admission boundary. An isolated live
+XIMG-096 proof against DASObjectStore commit
+``093772da79bbb494da070965c7d4f49e5ad83f56`` committed a 33-byte synthetic
+manifest through the packaged container helper and independently confirmed its
+size and ``application/json`` content type in the selected ObjectStore. Full
+video normalization, gallery admission, and Firefox playback remain required.
 
 States and recovery
 -------------------

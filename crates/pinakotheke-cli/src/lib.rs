@@ -9,6 +9,7 @@ use x_img_core::{ConfigStore, build_info};
 mod capture_worker_helper;
 mod das_capture_helper;
 mod das_object_read_helper;
+mod das_stream_ingest_helper;
 mod launchd;
 mod local_objectstore;
 mod monolith;
@@ -82,6 +83,9 @@ enum Command {
     /// Internal DASObjectStore-backed object read helper protocol.
     #[command(name = "read-v1", hide = true)]
     ReadObjectV1,
+    /// Internal DASObjectStore-backed streaming ingest helper protocol.
+    #[command(name = "ingest-stream-v1", hide = true)]
+    IngestStreamV1,
     /// Strictly validate and inspect a local versioned configuration file.
     Config {
         #[command(subcommand)]
@@ -167,6 +171,7 @@ pub fn run(invocation: Invocation, cli: Cli) -> Result<(), Box<dyn std::error::E
         Some(Command::Video { command }) => video_normalize::run(command)?,
         Some(Command::AcquireImageV1) => das_capture_helper::run()?,
         Some(Command::ReadObjectV1) => das_object_read_helper::run()?,
+        Some(Command::IngestStreamV1) => das_stream_ingest_helper::run()?,
     }
     Ok(())
 }
@@ -243,5 +248,12 @@ mod tests {
         let cli = parse_from(Invocation::Canonical, ["pinakotheke", "read-v1"])
             .expect("object read helper protocol parses");
         assert!(matches!(cli.command, Some(Command::ReadObjectV1)));
+    }
+
+    #[test]
+    fn packaged_binary_accepts_the_stream_ingest_helper_protocol_command() {
+        let cli = parse_from(Invocation::Canonical, ["pinakotheke", "ingest-stream-v1"])
+            .expect("stream ingest helper protocol parses");
+        assert!(matches!(cli.command, Some(Command::IngestStreamV1)));
     }
 }

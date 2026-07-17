@@ -7,6 +7,10 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Added
 
+- Implement the packaged ``ingest-stream-v1`` DASObjectStore helper used by
+  video normalization, with exact-length stdin framing, streaming checksum,
+  native or fixed-container daemon completion, bounded private scratch, strict
+  typed receipts, and cleanup on every outcome.
 - Add a packaged ``pinakotheke video normalize`` host command that accepts one
   private confirmed plan, runs the digest-pinned network-isolated Docker/FFmpeg
   adapter, streams video/poster/manifest bytes to a reviewed DASObjectStore

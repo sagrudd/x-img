@@ -379,8 +379,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   malformed or changed completion fails, unfinished children are killed, and
   pristine bounded scratch is removed on every outcome. A process-fixture test
   exercises all three byte streams and cleanup without retaining repository
-  media. The remaining gate is to run this seam against the selected live
-  authority and admit and play the verified result in real Firefox.
+  media. The first-party packaged ``pinakotheke ingest-stream-v1`` helper now
+  validates the exact bounded header, payload, and checksum, invokes only the
+  configured native or containerized DAS remote client, and emits a receipt
+  only after verified daemon completion. An isolated live run against
+  DASObjectStore ``093772da79bbb494da070965c7d4f49e5ad83f56`` committed and
+  independently inspected a synthetic 33-byte JSON manifest with the expected
+  content type. The remaining gate is the live normalized video/poster triplet,
+  persistent gallery admission, and real Firefox playback/restart acceptance.
   Progress: slice 1 now defines a strict bounded Monas-hosted catalogue page
   whose image/video card and preview representations contain complete verified
   DASObjectStore references, explicit availability, and only host-local

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sagrudd/pinakotheke/contracts/dasobjectstore/pinakotheke-das-stream-ingest-helper.v1.schema.json",
+  "title": "Pinakotheke DASObjectStore stream-ingest helper configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "endpoint_id"],
+  "oneOf": [
+    {
+      "required": ["dasobjectstore_remote_executable", "dasobjectstore_remote_config", "daemon_socket"],
+      "not": {"required": ["container_execution"]}
+    },
+    {
+      "required": ["container_execution"],
+      "not": {
+        "anyOf": [
+          {"required": ["dasobjectstore_remote_executable"]},
+          {"required": ["dasobjectstore_remote_config"]},
+          {"required": ["daemon_socket"]}
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": {"const": "pinakotheke.das-stream-ingest-helper.v1"},
+    "endpoint_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$"},
+    "dasobjectstore_remote_executable": {"type": "string", "pattern": "^/", "maxLength": 4096},
+    "dasobjectstore_remote_config": {"type": "string", "pattern": "^/", "maxLength": 4096},
+    "daemon_socket": {"type": "string", "pattern": "^/", "maxLength": 4096},
+    "container_execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["docker_executable", "compose_file", "managed_scratch_root", "container_scratch_root", "remote_config", "aws_credentials", "service", "daemon_socket"],
+      "properties": {
+        "docker_executable": {"type": "string", "pattern": "^/", "maxLength": 4096},
+        "compose_file": {"type": "string", "pattern": "^/", "maxLength": 4096},
+        "managed_scratch_root": {"type": "string", "pattern": "^/", "maxLength": 4096},
+        "container_scratch_root": {"type": "string", "pattern": "^/", "maxLength": 4096},
+        "remote_config": {"type": "string", "pattern": "^/", "maxLength": 4096},
+        "aws_credentials": {"type": "string", "pattern": "^/", "maxLength": 4096},
+        "service": {"const": "dasobjectstored"},
+        "daemon_socket": {"const": "/run/dasobjectstore/dasobjectstored.sock"}
+      }
+    },
+    "max_object_bytes": {"type": "integer", "minimum": 1, "maximum": 68719476736}
+  }
+}

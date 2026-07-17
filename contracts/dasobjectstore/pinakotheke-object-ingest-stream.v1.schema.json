@@ -6,7 +6,7 @@
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "ingest_id", "endpoint_id", "object_store_id", "object_key", "expected_size_bytes", "expected_checksum"],
+      "required": ["schema_version", "ingest_id", "endpoint_id", "object_store_id", "object_key", "expected_size_bytes", "expected_checksum", "content_type"],
       "properties": {
         "schema_version": { "const": "pinakotheke.object-ingest-stream.v1" },
         "ingest_id": { "$ref": "#/$defs/identifier" },
@@ -14,7 +14,8 @@
         "object_store_id": { "$ref": "#/$defs/identifier" },
         "object_key": { "$ref": "#/$defs/objectKey" },
         "expected_size_bytes": { "type": "integer", "minimum": 1 },
-        "expected_checksum": { "$ref": "#/$defs/checksum" }
+        "expected_checksum": { "$ref": "#/$defs/checksum" },
+        "content_type": { "enum": ["video/mp4", "video/webm", "image/webp", "application/json"] }
       }
     },
     {

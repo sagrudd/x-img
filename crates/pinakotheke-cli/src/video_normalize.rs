@@ -2,6 +2,7 @@
 //! Reviewed host-side video normalization and streaming DAS ingest.
 
 use std::{
+    collections::BTreeMap,
     fs,
     io::{self, Write},
     path::{Path, PathBuf},
@@ -44,7 +45,7 @@ pub(crate) struct NormalizeArgs {
     /// Reviewed Docker CLI executable (absolute, regular, not a symlink).
     #[arg(long)]
     docker: PathBuf,
-    /// Reviewed helper accepting a JSON header followed by exact payload bytes.
+    /// Reviewed Pinakotheke executable providing ingest-stream-v1.
     #[arg(long)]
     ingest_helper: PathBuf,
 }
@@ -85,6 +86,7 @@ struct IngestHeader<'a> {
     object_key: &'a str,
     expected_size_bytes: u64,
     expected_checksum: &'a str,
+    content_type: &'a str,
 }
 
 #[derive(Deserialize)]
@@ -116,13 +118,20 @@ impl Drop for Upload {
 
 struct ProcessIngestBackend {
     helper: PathBuf,
+    content_types: BTreeMap<String, &'static str>,
 }
 
 impl ObjectIngestBackend for ProcessIngestBackend {
     type Upload = Upload;
 
     fn begin(&mut self, request: &IngestRequest) -> Result<Self::Upload, IngestBackendError> {
+        let content_type = self
+            .content_types
+            .get(&request.object_key)
+            .copied()
+            .ok_or_else(|| rejected("ingest object type was not reviewed"))?;
         let mut child = Command::new(&self.helper)
+            .arg("ingest-stream-v1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -140,6 +149,7 @@ impl ObjectIngestBackend for ProcessIngestBackend {
             object_key: &request.object_key,
             expected_size_bytes: request.expected_size_bytes,
             expected_checksum: &request.expected_checksum,
+            content_type,
         };
         if serde_json::to_writer(&mut stdin, &header)
             .and_then(|()| stdin.write_all(b"\n").map_err(serde_json::Error::io))
@@ -214,8 +224,15 @@ pub(crate) fn run(command: VideoCommand) -> Result<(), Box<dyn std::error::Error
     }
     let document: PlanDocument = serde_json::from_slice(&fs::read(&arguments.plan)?)?;
     let plan = build_plan(document)?;
+    let profile = x_img_core::video_profile::playback_profile(&plan.profile_id)
+        .ok_or("normalization profile is unavailable")?;
     let backend = ProcessIngestBackend {
         helper: arguments.ingest_helper,
+        content_types: BTreeMap::from([
+            (plan.normalized_object_key.clone(), profile.content_type),
+            (plan.poster_object_key.clone(), "image/webp"),
+            (plan.manifest_object_key.clone(), "application/json"),
+        ]),
     };
     let mut ingestor = StreamingObjectIngestor::new(backend);
     let mut adapter = DockerFfmpegAdapter::new(SystemDockerRuntime::new(arguments.docker));
