@@ -318,9 +318,9 @@ packaged reviewed host command. A strict private confirmed plan drives the immut
 container, profile, and resource contract, while normalized video, poster, and
 manifest bytes stream to a helper-owned DASObjectStore authority over stdin;
 exact receipts are required and scratch is always removed. This closes the
-production worker-seam gap. The first-party packaged stream helper now carries
-that protocol to native or containerized ``dasobjectstore-remote`` execution.
-An isolated live run against DASObjectStore
+production worker-seam gap. Commit ``b46edce`` adds the first-party packaged
+stream helper that carries the protocol to native or containerized
+``dasobjectstore-remote`` execution. An isolated live run against DASObjectStore
 ``093772da79bbb494da070965c7d4f49e5ad83f56`` verified a synthetic manifest
 commit, exact length, and content type in the selected ObjectStore. XIMG-096
 still requires the full normalized video/poster/manifest run plus Firefox

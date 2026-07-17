@@ -379,10 +379,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   malformed or changed completion fails, unfinished children are killed, and
   pristine bounded scratch is removed on every outcome. A process-fixture test
   exercises all three byte streams and cleanup without retaining repository
-  media. The first-party packaged ``pinakotheke ingest-stream-v1`` helper now
-  validates the exact bounded header, payload, and checksum, invokes only the
-  configured native or containerized DAS remote client, and emits a receipt
-  only after verified daemon completion. An isolated live run against
+  media. Commit ``b46edce`` adds the first-party packaged ``pinakotheke
+  ingest-stream-v1`` helper, which validates the exact bounded header, payload,
+  and checksum, invokes only the configured native or containerized DAS remote
+  client, and emits a receipt only after verified daemon completion. An
+  isolated live run against
   DASObjectStore ``093772da79bbb494da070965c7d4f49e5ad83f56`` committed and
   independently inspected a synthetic 33-byte JSON manifest with the expected
   content type. The remaining gate is the live normalized video/poster triplet,
