@@ -18,6 +18,9 @@ All notable changes to Pinakotheke will be documented in this file. The project 
 
 ### Added
 
+- Document and prove a private-LAN HTTPS deployment using a locally trusted CA,
+  loopback Monas proxying, TLS 1.3, and a real Firefox temporary-XPI install.
+
 - Load the Monas-authenticated DASObjectStore inventory in the Pinakotheke
   library and present a keyboard-accessible endpoint/ObjectStore selector with
   explicit Ready, read-only, and unavailable states.

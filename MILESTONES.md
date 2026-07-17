@@ -828,6 +828,12 @@ Selection is not commit authority; the backend revalidates the exact stable
 endpoint/store pair immediately before every write. XIMG-098 tracks persistent
 selection and capture-plan consumption after the first visible deployed slice.
 
+Private-LAN Firefox deployments may use a locally trusted CA without any public
+DNS or external certificate service. The v1 operational gate requires TLS on
+the configured instance URL, a leaf certificate containing the exact LAN IP or
+hostname, a loopback-only Monas upstream, no CA private key on the server, and
+real Firefox verification with insecure-certificate overrides disabled.
+
 ## Post-1.0 candidates
 
 - Synoptikon catalogue/plugin integration through the preserved host adapter

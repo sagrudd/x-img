@@ -989,6 +989,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   planning and pre-commit revalidation consume that exact selection without a
   fallback. Monas forwarding fix: pushed sibling commit ``51d90d2``.
 
+- [x] **XIMG-099 P0 — Establish trusted local HTTPS for Firefox.** Completed
+  on 2026-07-17. The DASServer deployment now terminates TLS 1.3 on port 8731,
+  forwards to a loopback-only Monas listener, and uses a narrow leaf certificate
+  containing ``192.168.1.192`` signed by a Mac-local ``mkcert`` CA. The CA key
+  never left the Mac and the leaf key is private below ``~/.x-img/tls``. Curl
+  verified the chain without ``-k``; Firefox 152.0.6 with
+  ``acceptInsecureCerts=false`` loaded the Monas route and installed the current
+  unsigned Pinakotheke 1.2.1 XPI temporarily. The cPanel ``ZoneEdit`` probe
+  failed because that module is unavailable, so no non-functional DNS-01 or
+  external-service dependency was introduced.
+
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by
   default, requires an absolute non-symlink root, creates only private
