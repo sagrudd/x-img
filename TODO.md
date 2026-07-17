@@ -1238,6 +1238,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   the writer is restarted, and one fresh browser capture proves catalogue
   growth rather than provider-only growth. Compatibility was checked against
   DASObjectStore ``2e1e1669ff0bccc05324b3b74785300e00f53d90``.
+  On 2026-07-17, Pinakotheke ``1.9.0`` and DASObjectStore ``0.114.3`` were
+  deployed with distinct logical-store/provider-bucket daemon routing and a
+  bounded shared staging directory. A live checksum-bearing capture completed
+  through the daemon and appeared in the authoritative
+  ``profile_catalogue_objects`` table under ``provider:garage``; three live
+  completion records are now present and staging was empty after each run.
+  DASObjectStore commit ``6e89fd55`` supplies the reviewed bucket handoff.
+  Keep this item open: the current remote-completion contract records verified
+  externally replicated provider placement, while this acceptance contract
+  additionally requires automatic settlement into the store's two managed HDD
+  copies and a fresh installed-Firefox capture proof.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by
