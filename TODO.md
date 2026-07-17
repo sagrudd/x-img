@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.8.0
+Version: 1.9.0
 
 Updated: 2026-07-17
 
@@ -1207,6 +1207,19 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   beneath its ``explicit_original`` child. This was checked against
   DASObjectStore ``2e1e1669ff0bccc05324b3b74785300e00f53d90`` and design
   language ``fbfa28e55d1c8111ef95a139d83927c231534b5f``.
+
+- [ ] **XIMG-108 P0 — Capture trusted-click X progressive video.**
+  Detect only a recent trusted pointer/keyboard activation followed by playback,
+  select a concrete HTTPS MP4 exposed by Firefox from ``video.twimg.com``, and
+  submit an ``explicit_video`` plan. The first-party worker must retrieve it
+  without cookies, bound its size, require ``video/mp4``, prove H.264 video and
+  absent-or-AAC audio with ``ffprobe``, commit it through the reviewed
+  DASObjectStore, and admit a playable ``New`` gallery item under the X artist
+  folder. Autoplay, synthetic events, non-X media hosts, segmented/MSE-only
+  playback, and unsupported codecs must remain origin-served with a redacted
+  diagnostic. Acceptance requires native/extension tests, local documentation
+  verification, a signed extension, DASServer deployment, and a live X video
+  commit/playback proof.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by

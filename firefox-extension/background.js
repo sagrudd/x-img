@@ -648,6 +648,12 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     await runCacheForTab(sender.tab, message.images);
     return { completed: true };
   }
+  if (message?.command === "explicit-video-unresolved" && sender?.tab?.url) {
+    const origin = new URL(sender.tab.url).origin;
+    await recordSiteDiagnostic(origin, { channel: "capture", state: "Video unavailable", reason: "No progressive HTTPS video resource was exposed; segmented playback remains origin-served", previouslyObserved: true, storedInObjectStore: false });
+    await traceEvent("video_candidate", "segmented_or_unresolved", "no progressive HTTPS MP4 resource", origin);
+    return { completed: false };
+  }
   if (!["explicit-original-opened", "explicit-video-opened"].includes(message?.command) || !sender?.tab?.id || !sender.tab.url) {
     return undefined;
   }
@@ -660,10 +666,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     const video = message.command === "explicit-video-opened";
     if (!instanceUrl || !pairId || !rule?.capture || !rule.media.includes(video ? "videos" : "images")) return undefined;
     const adapter = await matchingAdapter(sender.tab.url);
-    if (!adapter?.capabilities.explicit_original || video) {
-      if (video) {
-        await recordSiteDiagnostic(origin, { channel: "capture", state: "Video observed", reason: "Opened video requires the normalized-video worker before ObjectStore admission", previouslyObserved: true, storedInObjectStore: false });
-      }
+    if (!adapter?.capabilities.explicit_original) {
       return { completed: false };
     }
     const width = Number(message.width);
@@ -672,15 +675,19 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
       || width < 1 || height < 1 || width > 32768 || height > 32768) return undefined;
     const mediaUrl = canonicalAlias(String(message.mediaUrl));
     const presentationUrl = canonicalAlias(String(message.presentationUrl || message.mediaUrl));
+    if (video && origin === "https://x.com" && new URL(mediaUrl).hostname !== "video.twimg.com") {
+      await recordSiteDiagnostic(origin, { channel: "capture", state: "Video unavailable", reason: "The opened X video did not expose an eligible X media resource", previouslyObserved: true, storedInObjectStore: false });
+      return { completed: false };
+    }
     const capture = await captureAndFrame(
-      sender.tab.id, instanceUrl, pairId, origin, sender.tab.url, adapter, "explicit_original",
+      sender.tab.id, instanceUrl, pairId, origin, sender.tab.url, adapter, video ? "explicit_video" : "explicit_original",
       { url: mediaUrl, presentationUrl, width, height },
     );
     if (capture.outcome === "stored") {
       await recordSiteDiagnostic(origin, {
         channel: "capture",
         state: "Stored in ObjectStore",
-        reason: "User-opened original committed and admitted to the gallery",
+        reason: video ? "User-played video committed and admitted to the gallery" : "User-opened original committed and admitted to the gallery",
         previouslyObserved: true,
         storedInObjectStore: true,
       });

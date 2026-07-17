@@ -28,6 +28,7 @@ pub struct GalleryImagePresentation {
 pub enum PersistentGalleryAdmissionOutcome {
     ThumbnailInserted,
     OriginalAttached,
+    VideoInserted,
     AlreadyPresent,
 }
 
@@ -90,6 +91,7 @@ impl PersistentWebsiteGalleryAdmission {
             kind: match plan.capture_kind {
                 CaptureKind::ObservedThumbnail => GalleryRepresentationKind::Thumbnail,
                 CaptureKind::ExplicitOriginal => GalleryRepresentationKind::OriginalImage,
+                CaptureKind::ExplicitVideo => GalleryRepresentationKind::NormalizedVideo,
             },
             availability: GalleryObjectAvailability::Ready,
             endpoint_id: object.endpoint_id.clone(),
@@ -105,6 +107,7 @@ impl PersistentWebsiteGalleryAdmission {
                 match plan.capture_kind {
                     CaptureKind::ObservedThumbnail => "thumbnail",
                     CaptureKind::ExplicitOriginal => "original",
+                    CaptureKind::ExplicitVideo => "video",
                 }
             )),
         };
@@ -194,6 +197,32 @@ impl PersistentWebsiteGalleryAdmission {
                 item.height = plan.height;
                 PersistentGalleryAdmissionOutcome::OriginalAttached
             }
+            (CaptureKind::ExplicitVideo, None) => {
+                let mut placeholder = representation.clone();
+                placeholder.kind = GalleryRepresentationKind::VideoPoster;
+                placeholder.availability = GalleryObjectAvailability::Unavailable;
+                placeholder.delivery_path = None;
+                items.push(GalleryItem {
+                    catalogue_id: presentation.catalogue_id,
+                    title: presentation.title,
+                    source_label,
+                    source_kind,
+                    media_kind: GalleryMediaKind::NormalizedVideo,
+                    review_state: GalleryReviewState::New,
+                    discovered_at_epoch_seconds,
+                    width: plan.width,
+                    height: plan.height,
+                    thumbnail: placeholder,
+                    preview: Some(representation),
+                });
+                PersistentGalleryAdmissionOutcome::VideoInserted
+            }
+            (CaptureKind::ExplicitVideo, Some(item)) => {
+                if item.preview.as_ref() == Some(&representation) {
+                    return Ok(PersistentGalleryAdmissionOutcome::AlreadyPresent);
+                }
+                return Err(PersistentGalleryAdmissionError::ConflictingReplay);
+            }
         };
         self.store
             .replace(items)
@@ -240,7 +269,8 @@ fn validate_presentation(
         || presentation.title.is_empty()
         || presentation.title.len() > 256
         || presentation.title.chars().any(char::is_control)
-        || !presentation.content_type.starts_with("image/")
+        || !(presentation.content_type.starts_with("image/")
+            || presentation.content_type == "video/mp4")
         || presentation.content_type.len() > 128
         || presentation.content_length == 0
     {
@@ -380,6 +410,43 @@ mod tests {
             item.preview.as_ref().unwrap().availability,
             GalleryObjectAvailability::Ready
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn verified_firefox_compatible_video_is_immediately_browsable() {
+        let (root, store) = temporary_store();
+        let reconciliation = ReconciliationCatalogue::default();
+        let mut video = plan(CaptureKind::ExplicitVideo, "video", 1280, 720);
+        video.canonical_media_url = "https://video.twimg.com/ext_tw_video/fixture/video.mp4".into();
+        video.catalogue_id = "gallery-video-1".into();
+        let presentation = GalleryImagePresentation {
+            catalogue_id: "gallery-video-1".into(),
+            title: "Captured video from x-web".into(),
+            content_type: "video/mp4".into(),
+            content_length: 42,
+        };
+        let mut admission = PersistentWebsiteGalleryAdmission::new(store.clone());
+        assert_eq!(
+            admission
+                .admit_image(
+                    &committed(&video, &reconciliation, "video-object"),
+                    &video,
+                    &reconciliation,
+                    presentation,
+                    42,
+                )
+                .unwrap(),
+            PersistentGalleryAdmissionOutcome::VideoInserted
+        );
+        let catalogue = store.load_or_empty().unwrap();
+        let item = &catalogue.items()[0];
+        assert_eq!(item.media_kind, GalleryMediaKind::NormalizedVideo);
+        assert_eq!(
+            item.thumbnail.availability,
+            GalleryObjectAvailability::Unavailable
+        );
+        assert_eq!(item.preview.as_ref().unwrap().content_type, "video/mp4");
         fs::remove_dir_all(root).unwrap();
     }
 

@@ -1619,10 +1619,12 @@ async fn ingestion_status(
         .len();
     Ok(Json(IngestionStatusResponse {
         schema_version: "pinakotheke.ingestion-status.v1",
-        observed_assets: activity.observed_thumbnails + activity.opened_originals,
+        observed_assets: activity.observed_thumbnails
+            + activity.opened_originals
+            + activity.opened_videos,
         observed_thumbnails: activity.observed_thumbnails,
         opened_originals: activity.opened_originals,
-        opened_videos: 0,
+        opened_videos: activity.opened_videos,
         pending: activity.pending,
         stored: activity.stored,
         gallery_items,
@@ -1759,6 +1761,7 @@ async fn complete_capture_plan(
         outcome: match outcome {
             CaptureCompletionOutcome::ThumbnailInserted => "thumbnail_inserted",
             CaptureCompletionOutcome::OriginalAttached => "original_attached",
+            CaptureCompletionOutcome::VideoInserted => "video_inserted",
             CaptureCompletionOutcome::AlreadyPresent => "already_present",
         },
     }))

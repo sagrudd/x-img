@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.0 - 2026-07-17
+
+- Capture a concrete progressive X MP4 only after a trusted user activation
+  starts playback, with explicit diagnostics for segmented or unresolved media.
+- Require the first-party acquisition helper to verify the bounded MP4 as the
+  Firefox H.264/AAC playback profile before DASObjectStore commit and immediate
+  gallery admission.
+- Report opened-video activity separately from opened images.
+
 ## Unreleased
 
 - Add an authenticated, prefix-bounded gallery-folder projection with

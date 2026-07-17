@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.8.0
+Version: 1.9.0
 
 Updated: 2026-07-17
 
@@ -967,6 +967,17 @@ gallery without exposing filesystem paths or unscoped ObjectStore contents.
 Delivered in ``93db65d`` and deployed to the x86_64 DASServer on 2026-07-17.
 Live projection produced 15 artist folders from 24 X objects and exact-prefix
 selection returned only the chosen artist's three matching catalogue items.
+
+## 1.9.0 — Trusted-click X progressive video capture
+
+Goal: turn a trusted pointer or keyboard activation followed by X video
+playback into an automatic capture only when Firefox exposes a concrete HTTPS
+MP4 from the X media host. The host worker retrieves it without browser cookies,
+checks the bounded payload and MIME type, proves the H.264/AAC Firefox playback
+profile with ``ffprobe``, commits it through DASObjectStore, and immediately
+admits a playable video card. Autoplay, synthetic events, blob-only and
+segmented/MSE playback, non-X media hosts, and unsupported codecs fail open with
+an explicit diagnostic rather than being misrepresented as stored.
 
 ## Post-1.0 candidates
 

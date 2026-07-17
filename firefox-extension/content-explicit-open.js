@@ -46,10 +46,48 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
     }
   });
 
+  const videoActivations = new WeakMap();
+  const rememberVideoActivation = event => {
+    if (!event.isTrusted) return;
+    let element = event.target instanceof Element ? event.target : null;
+    let video = element?.closest("video") || null;
+    for (let depth = 0; !video && element && depth < 5; depth += 1, element = element.parentElement) {
+      video = element.querySelector?.("video") || null;
+    }
+    if (video) videoActivations.set(video, Date.now());
+  };
+  document.addEventListener("pointerdown", rememberVideoActivation, true);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") rememberVideoActivation(event);
+  }, true);
   document.addEventListener("play", event => {
     if (!event.isTrusted || !(event.target instanceof HTMLVideoElement) || !event.target.currentSrc) return;
     const video = event.target;
-    void browser.runtime.sendMessage({ command: "explicit-video-opened", mediaUrl: video.currentSrc, width: video.videoWidth || video.clientWidth, height: video.videoHeight || video.clientHeight });
+    if (Date.now() - (videoActivations.get(video) || 0) > 2000) return;
+    // X frequently presents a blob: URL to the element while Firefox has
+    // already fetched a concrete, independently retrievable MP4 resource.
+    // Resource timing exposes URLs, not request headers or cookies. Prefer the
+    // newest HTTPS MP4 associated with the played element and retain the page
+    // URL only as provenance. Segmented/MSE playback remains origin-served.
+    const candidates = [video.currentSrc, ...performance.getEntriesByType("resource")
+      .map(entry => entry.name)
+      .filter(url => /^https:\/\//.test(url) && /\.mp4(?:\?|$)/i.test(url))
+      .slice(-12)
+      .reverse()];
+    const mediaUrl = candidates.find(url => {
+      try { return new URL(url).protocol === "https:"; } catch (_) { return false; }
+    });
+    if (!mediaUrl) {
+      void browser.runtime.sendMessage({ command: "explicit-video-unresolved" });
+      return;
+    }
+    void browser.runtime.sendMessage({
+      command: "explicit-video-opened",
+      mediaUrl,
+      presentationUrl: location.href,
+      width: video.videoWidth || video.clientWidth,
+      height: video.videoHeight || video.clientHeight,
+    });
   }, true);
   document.addEventListener("click", event => {
     if (!event.isTrusted || event.button !== 0) return;

@@ -80,10 +80,13 @@ On the DASServer inspect them with:
      --no-pager | grep pinakotheke_ingress
 
 A trusted video ``play``
-gesture is now detected, but XIMG-104 remains open until that candidate is
-routed through the existing normalized-video worker, committed, admitted, and
-reported through an equivalent verified status. The image helper intentionally
-continues to reject video bytes.
+gesture is detected. Pinakotheke 1.9 adds the first concrete X path: a trusted
+pointer or keyboard activation must be followed by playback, and Firefox must
+have exposed an HTTPS progressive MP4 from ``video.twimg.com``. That candidate
+is routed through the capture worker, profile-verified, committed, admitted,
+and reported through an equivalent verified status. Blob-only or segmented/MSE
+playback remains origin-served and produces a redacted diagnostic; it is not
+silently described as captured.
 
 XIMG-064 adds the first server-side admission boundary for Firefox observed
 media. It is deliberately a **capture plan**, not a browser upload or a
@@ -379,7 +382,9 @@ First-party DASObjectStore helper
 ---------------------------------
 
 The packaged ``pinakotheke`` binary implements its own hidden
-``acquire-image-v1`` helper mode. Point ``--capture-acquire-helper`` at the
+``acquire-image-v1`` helper mode (the protocol name is retained for
+compatibility and now accepts image and explicit-video plans). Point
+``--capture-acquire-helper`` at the
 absolute ``pinakotheke`` executable and provide a private helper configuration
 at ``$HOME/.x-img/config/das-capture-helper.json``. Alternatively set
 ``PINAKOTHEKE_DAS_HELPER_CONFIG`` to an absolute private configuration path.
@@ -393,10 +398,12 @@ regular file rather than a symlink.
      "endpoint_id": "local-docker-example",
      "object_store_bucket": "dos-pinakotheke-media",
      "curl_executable": "/usr/bin/curl",
+     "ffprobe_executable": "/usr/bin/ffprobe",
      "dasobjectstore_remote_executable": "/usr/local/bin/dasobjectstore-remote",
      "dasobjectstore_remote_config": "/Users/example/.config/dasobjectstore/remote.json",
      "daemon_socket": "/Users/example/.x-img/dasobjectstore/run/dasobjectstored.sock",
-     "max_image_bytes": 67108864
+     "max_image_bytes": 67108864,
+     "max_video_bytes": 1073741824
    }
 
 This document contains no DAS credential. The referenced DASObjectStore remote
@@ -423,6 +430,7 @@ the private host configuration:
      "schema_version": "pinakotheke.das-capture-helper.v1",
      "endpoint_id": "local-docker-example",
      "curl_executable": "/usr/bin/curl",
+     "ffprobe_executable": "/usr/bin/ffprobe",
      "container_execution": {
        "docker_executable": "/Applications/Docker.app/Contents/Resources/bin/docker",
        "compose_file": "/Users/example/.x-img/dasobjectstore/pinakotheke-local/compose.yml",
@@ -433,7 +441,8 @@ the private host configuration:
        "service": "dasobjectstored",
        "daemon_socket": "/run/dasobjectstore/dasobjectstored.sock"
      },
-     "max_image_bytes": 67108864
+     "max_image_bytes": 67108864,
+     "max_video_bytes": 1073741824
    }
 
 Native and container fields are mutually exclusive. The container service and

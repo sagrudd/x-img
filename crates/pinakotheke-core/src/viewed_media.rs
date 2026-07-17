@@ -26,6 +26,7 @@ pub const CAPTURE_PLAN_SCHEMA_VERSION: &str = "x-img.capture-plan.v1";
 pub enum CaptureKind {
     ObservedThumbnail,
     ExplicitOriginal,
+    ExplicitVideo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,6 +82,7 @@ pub enum CapturePlanState {
 pub struct CaptureActivitySummary {
     pub observed_thumbnails: usize,
     pub opened_originals: usize,
+    pub opened_videos: usize,
     pub pending: usize,
     pub stored: usize,
     pub last_observed_at_epoch_seconds: Option<u64>,
@@ -169,6 +171,7 @@ impl CapturePlanService {
             match pending.plan.capture_kind {
                 CaptureKind::ObservedThumbnail => summary.observed_thumbnails += 1,
                 CaptureKind::ExplicitOriginal => summary.opened_originals += 1,
+                CaptureKind::ExplicitVideo => summary.opened_videos += 1,
             }
             if pending.settled {
                 summary.stored += 1;
@@ -277,7 +280,9 @@ impl CapturePlanService {
                         && site.adapter_version == pending.plan.adapter_version
                         && match pending.plan.capture_kind {
                             CaptureKind::ObservedThumbnail => site.allow_observed_thumbnails,
-                            CaptureKind::ExplicitOriginal => site.allow_explicit_originals,
+                            CaptureKind::ExplicitOriginal | CaptureKind::ExplicitVideo => {
+                                site.allow_explicit_originals
+                            }
                         }
                 });
                 actor_authorized && site_authorized
@@ -360,6 +365,9 @@ impl CapturePlanService {
             CaptureKind::ExplicitOriginal if !site.allow_explicit_originals => {
                 return Err(CapturePlanError::CaptureNotEligible);
             }
+            CaptureKind::ExplicitVideo if !site.allow_explicit_originals => {
+                return Err(CapturePlanError::CaptureNotEligible);
+            }
             _ => {}
         }
         let canonical_page_url = canonical_page_url(&request.origin, &request.page_url)
@@ -396,11 +404,16 @@ impl CapturePlanService {
         self.next_plan = self.next_plan.saturating_add(1);
         let scheduler_job_id =
             self.schedule(actor_id, site.max_candidates_per_page, plan_id.clone())?;
-        let catalogue_id = capture_catalogue_id(
+        let mut catalogue_id = capture_catalogue_id(
             &site.site_id,
             &canonical_page_url,
             &canonical_presentation_url,
         );
+        if request.capture_kind == CaptureKind::ExplicitVideo {
+            let digest = format!("{:x}", Sha256::digest(canonical_media.as_bytes()));
+            catalogue_id.push_str("-video-");
+            catalogue_id.push_str(&digest[..12]);
+        }
         let plan = CapturePlan {
             schema_version: CAPTURE_PLAN_SCHEMA_VERSION,
             plan_id,
@@ -675,6 +688,11 @@ mod tests {
         original.capture_kind = CaptureKind::ExplicitOriginal;
         original.media_url = "https://example.invalid/media/original.webp".into();
         planner.plan("actor", 9, original).expect("original");
+        let mut video = request();
+        video.capture_kind = CaptureKind::ExplicitVideo;
+        video.media_url = "https://example.invalid/media/video.mp4".into();
+        let video = planner.plan("actor", 10, video).expect("video");
+        assert!(video.catalogue_id.contains("-video-"));
         planner
             .settle("actor", &thumbnail.plan_id)
             .expect("settle thumbnail");
@@ -684,9 +702,10 @@ mod tests {
             CaptureActivitySummary {
                 observed_thumbnails: 1,
                 opened_originals: 1,
-                pending: 1,
+                opened_videos: 1,
+                pending: 2,
                 stored: 1,
-                last_observed_at_epoch_seconds: Some(9),
+                last_observed_at_epoch_seconds: Some(10),
             }
         );
         assert_eq!(

@@ -25,6 +25,7 @@
     "schema_version": {"const": "pinakotheke.das-capture-helper.v1"},
     "endpoint_id": {"type": "string", "minLength": 1, "maxLength": 128},
     "curl_executable": {"type": "string", "pattern": "^/", "maxLength": 4096},
+    "ffprobe_executable": {"type": "string", "pattern": "^/", "maxLength": 4096},
     "dasobjectstore_remote_executable": {"type": "string", "pattern": "^/", "maxLength": 4096},
     "dasobjectstore_remote_config": {"type": "string", "pattern": "^/", "maxLength": 4096},
     "daemon_socket": {"type": "string", "pattern": "^/", "maxLength": 4096},
@@ -43,6 +44,7 @@
         "daemon_socket": {"const": "/run/dasobjectstore/dasobjectstored.sock"}
       }
     },
-    "max_image_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+    "max_image_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+    "max_video_bytes": {"type": "integer", "minimum": 1, "maximum": 8589934592}
   }
 }

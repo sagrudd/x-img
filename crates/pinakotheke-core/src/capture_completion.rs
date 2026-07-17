@@ -37,6 +37,7 @@ pub struct VerifiedCaptureCompletion {
 pub enum CaptureCompletionOutcome {
     ThumbnailInserted,
     OriginalAttached,
+    VideoInserted,
     AlreadyPresent,
 }
 
@@ -129,6 +130,7 @@ pub fn complete_verified_image(
         PersistentGalleryAdmissionOutcome::OriginalAttached => {
             CaptureCompletionOutcome::OriginalAttached
         }
+        PersistentGalleryAdmissionOutcome::VideoInserted => CaptureCompletionOutcome::VideoInserted,
         PersistentGalleryAdmissionOutcome::AlreadyPresent => {
             CaptureCompletionOutcome::AlreadyPresent
         }

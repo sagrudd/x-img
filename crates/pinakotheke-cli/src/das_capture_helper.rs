@@ -14,6 +14,7 @@ use std::{
 const REQUEST_SCHEMA: &str = "pinakotheke.capture-acquire-helper.v1";
 const CONFIG_SCHEMA: &str = "pinakotheke.das-capture-helper.v1";
 const DEFAULT_MAX_BYTES: u64 = 64 * 1024 * 1024;
+const DEFAULT_MAX_VIDEO_BYTES: u64 = 1024 * 1024 * 1024;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -42,6 +43,8 @@ struct Config {
     object_store_bucket: Option<String>,
     curl_executable: PathBuf,
     #[serde(default)]
+    ffprobe_executable: Option<PathBuf>,
+    #[serde(default)]
     dasobjectstore_remote_executable: Option<PathBuf>,
     #[serde(default)]
     dasobjectstore_remote_config: Option<PathBuf>,
@@ -52,6 +55,7 @@ struct Config {
     #[serde(default)]
     container_execution: Option<ContainerExecution>,
     max_image_bytes: Option<u64>,
+    max_video_bytes: Option<u64>,
 }
 
 const fn default_submit_to_daemon() -> bool {
@@ -159,6 +163,8 @@ fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
         || config.max_image_bytes.unwrap_or(DEFAULT_MAX_BYTES) == 0
         || config.max_image_bytes.unwrap_or(DEFAULT_MAX_BYTES) > 1024 * 1024 * 1024
+        || config.max_video_bytes.unwrap_or(DEFAULT_MAX_VIDEO_BYTES) == 0
+        || config.max_video_bytes.unwrap_or(DEFAULT_MAX_VIDEO_BYTES) > 8 * 1024 * 1024 * 1024
         || config.object_store_bucket.as_ref().is_some_and(|bucket| {
             bucket.is_empty()
                 || bucket.len() > 63
@@ -172,6 +178,9 @@ fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
         return Err("DAS capture helper config is invalid".into());
     }
     require_executable(&config.curl_executable)?;
+    if let Some(ffprobe) = &config.ffprobe_executable {
+        require_executable(ffprobe)?;
+    }
     match &config.container_execution {
         Some(container) => {
             if config.dasobjectstore_remote_executable.is_some()
@@ -240,7 +249,12 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         None => Scratch::create()?,
     };
     let payload = scratch.path.join("payload");
-    let max_bytes = config.max_image_bytes.unwrap_or(DEFAULT_MAX_BYTES);
+    let video = request.capture_kind == "explicit_video";
+    let max_bytes = if video {
+        config.max_video_bytes.unwrap_or(DEFAULT_MAX_VIDEO_BYTES)
+    } else {
+        config.max_image_bytes.unwrap_or(DEFAULT_MAX_BYTES)
+    };
     let max_bytes_text = max_bytes.to_string();
     let mut curl = Command::new(&config.curl_executable);
     curl.args([
@@ -268,11 +282,14 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
     .stderr(Stdio::null());
     let (curl_status, curl_stdout) = output_bounded(&mut curl, 128)?;
     if !curl_status.success() {
-        return Err("HTTPS image retrieval failed".into());
+        return Err("HTTPS media retrieval failed".into());
     }
     let content_type = String::from_utf8(curl_stdout)?.trim().to_ascii_lowercase();
-    if !content_type.starts_with("image/") || content_type.len() > 128 {
-        return Err("retrieved object is not a bounded image".into());
+    if (!video && !content_type.starts_with("image/"))
+        || (video && content_type != "video/mp4")
+        || content_type.len() > 128
+    {
+        return Err("retrieved object is not an eligible bounded medium".into());
     }
     let metadata = fs::symlink_metadata(&payload)?;
     if !metadata.is_file()
@@ -280,7 +297,16 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         || metadata.len() == 0
         || metadata.len() > max_bytes
     {
-        return Err("retrieved image payload is invalid".into());
+        return Err("retrieved media payload is invalid".into());
+    }
+    if video {
+        verify_firefox_mp4(
+            config
+                .ffprobe_executable
+                .as_deref()
+                .ok_or("video capture requires ffprobe")?,
+            &payload,
+        )?;
     }
     let checksum = sha256_file(&payload)?;
     let object_key = object_key(request, &checksum);
@@ -311,7 +337,11 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
     Ok(Committed {
         schema_version: REQUEST_SCHEMA,
         catalogue_id: catalogue_id(request),
-        title: format!("Captured image from {}", request.site_id),
+        title: format!(
+            "Captured {} from {}",
+            if video { "video" } else { "image" },
+            request.site_id
+        ),
         content_type,
         content_length: metadata.len(),
         endpoint_id: request.endpoint_id.clone(),
@@ -514,7 +544,7 @@ fn validate_request(request: &Request, config: &Config) -> Result<(), Box<dyn st
         || request.adapter_version.is_empty()
         || !matches!(
             request.capture_kind.as_str(),
-            "observed_thumbnail" | "explicit_original"
+            "observed_thumbnail" | "explicit_original" | "explicit_video"
         )
     {
         return Err("capture request is invalid or changed destination".into());
@@ -544,6 +574,45 @@ fn validate_request(request: &Request, config: &Config) -> Result<(), Box<dyn st
             .is_some_and(|value| value.as_str().contains('@'))
     {
         return Err("capture request URLs are not eligible HTTPS provenance".into());
+    }
+    if request.capture_kind == "explicit_video"
+        && (request.origin != "https://x.com"
+            || media.authority().map(|value| value.host()) != Some("video.twimg.com"))
+    {
+        return Err("X video capture requires an eligible X media host".into());
+    }
+    Ok(())
+}
+
+fn verify_firefox_mp4(ffprobe: &Path, payload: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let mut command = Command::new(ffprobe);
+    command
+        .args([
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_type,codec_name",
+            "-of",
+            "csv=p=0",
+        ])
+        .arg(payload)
+        .stderr(Stdio::null());
+    let (status, output) = output_bounded(&mut command, 4096)?;
+    if !status.success() {
+        return Err("video probe failed".into());
+    }
+    let streams = String::from_utf8(output)?;
+    let h264 = streams
+        .lines()
+        .any(|line| line == "h264,video" || line == "video,h264");
+    let audio_ok = !streams
+        .lines()
+        .any(|line| line.ends_with(",audio") || line.starts_with("audio,"))
+        || streams
+            .lines()
+            .any(|line| line == "aac,audio" || line == "audio,aac");
+    if !h264 || !audio_ok {
+        return Err("video requires containerized normalization before admission".into());
     }
     Ok(())
 }
@@ -696,6 +765,24 @@ mod tests {
         assert_eq!(protocol_failure_outcome(&invalid), "rejected");
     }
 
+    #[test]
+    fn video_probe_accepts_only_firefox_h264_aac_profile() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-video-probe-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir(&root).unwrap();
+        let probe = root.join("ffprobe");
+        let payload = root.join("video.mp4");
+        fs::write(&payload, b"synthetic").unwrap();
+        executable(&probe, "#!/bin/sh\nprintf 'h264,video\\naac,audio\\n'\n");
+        verify_firefox_mp4(&probe, &payload).unwrap();
+        executable(&probe, "#!/bin/sh\nprintf 'vp9,video\\nopus,audio\\n'\n");
+        assert!(verify_firefox_mp4(&probe, &payload).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
     fn executable(path: &Path, body: &str) {
         fs::write(path, body).unwrap();
         fs::set_permissions(path, fs::Permissions::from_mode(0o700)).unwrap();
@@ -727,12 +814,14 @@ mod tests {
             endpoint_id: "endpoint-1".into(),
             object_store_bucket: Some("dos-store-1".into()),
             curl_executable: curl,
+            ffprobe_executable: None,
             dasobjectstore_remote_executable: Some(remote),
             dasobjectstore_remote_config: Some(remote_config),
             daemon_socket: Some(root.join("daemon.sock")),
             submit_to_daemon: true,
             container_execution: None,
             max_image_bytes: Some(1024),
+            max_video_bytes: None,
         };
         let mut request = Request {
             schema_version: REQUEST_SCHEMA.into(),
@@ -817,12 +906,14 @@ mod tests {
             endpoint_id: "endpoint-1".into(),
             object_store_bucket: None,
             curl_executable: PathBuf::from("/does/not/run"),
+            ffprobe_executable: None,
             dasobjectstore_remote_executable: Some(PathBuf::from("/does/not/run")),
             dasobjectstore_remote_config: Some(PathBuf::from("/does/not/read")),
             daemon_socket: Some(PathBuf::from("/does/not/connect")),
             submit_to_daemon: true,
             container_execution: None,
             max_image_bytes: Some(1024),
+            max_video_bytes: None,
         };
         assert!(validate_request(&request, &config).is_err());
     }
@@ -907,6 +998,7 @@ mod tests {
             endpoint_id: "endpoint-1".into(),
             object_store_bucket: None,
             curl_executable: curl,
+            ffprobe_executable: None,
             dasobjectstore_remote_executable: None,
             dasobjectstore_remote_config: None,
             daemon_socket: None,
@@ -922,6 +1014,7 @@ mod tests {
                 daemon_socket: PathBuf::from("/run/dasobjectstore/dasobjectstored.sock"),
             }),
             max_image_bytes: Some(1024),
+            max_video_bytes: None,
         };
         let request = Request {
             schema_version: REQUEST_SCHEMA.into(),
