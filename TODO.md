@@ -987,8 +987,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   this item by persisting the reviewed endpoint/ObjectStore stable IDs in the
   Pinakotheke authority, restoring them after restart, and proving that capture
   planning and pre-commit revalidation consume that exact selection without a
-  fallback. Monas forwarding fix: sibling commit ``51d90d2`` (local commit;
-  push pending restored GitHub credentials).
+  fallback. Monas forwarding fix: pushed sibling commit ``51d90d2``.
 
 - [x] **XIMG-090 P0 — Scaffold the runnable Pinakotheke monolith.** Completed
   in ``2cfa1e1``. ``pinakotheke serve`` now resolves ``$HOME/.x-img`` by
