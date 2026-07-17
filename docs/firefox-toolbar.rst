@@ -1,10 +1,15 @@
 Firefox cache toolbar
 =====================
 
-The x-img toolbar popup is the per-site control and diagnostic surface for the
+The Pinakotheke toolbar popup is the per-site control and diagnostic surface for the
 external cache. It operates only on the active tab's exact, explicitly enabled
 HTTPS origin. Opening the popup does not scan media or contact x-img; the user
 selects ``Run cache for visible media`` to invoke bounded capture/substitution.
+
+The popup identifies itself as ``Pinakotheke cache`` and shows the installed
+Firefox extension version read directly from its signed package manifest. This
+lets an operator distinguish an older installed extension from a newer server
+without exposing browser or server credentials.
 
 Controls
 --------
@@ -12,7 +17,7 @@ Controls
 The popup shows ``Active``, ``Paused``, or ``Not enabled`` separately for
 capture and substitution. ``Pause substitution`` and ``Resume substitution``
 change only the current site's rule; origin browsing continues normally.
-``Settings`` opens site policy, while ``Open x-img source view`` opens the
+``Settings`` opens site policy, while ``Open Pinakotheke source view`` opens the
 paired host's Websites context for the already-configured origin.
 
 The permission explanation states that only user-enabled HTTPS origins are in
@@ -55,8 +60,8 @@ Verification
    docker run --rm x-img-docs:check
 
 Compatibility-sensitive contracts were inspected at DASObjectStore
-``42bf66a7494f4e0aa81f103100b71489b38164dc``, Monas
-``3d21b0bc7b83fa8408d01b93347a56f43f3a96b7``, Mnemosyne design language
-``5539df8f662a78ebdf7cf4c868d71831380c8cfd``, and future Synoptikon
+``d3763d1f3c40d3bedc812c6a733bb54f2bfe64d1``, Monas
+``817d956be8ebc3de1956b5e3b4c070098112bc3e``, Mnemosyne design language
+``6d654d26c6620381992e89f89e60423d3c02fd86``, and future Synoptikon
 ``52810176bf95a170f93d74a6f5daa94da5c6640e``. No unpublished path dependency
 is used.

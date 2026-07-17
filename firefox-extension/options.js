@@ -81,8 +81,8 @@ async function render() {
         if (key !== 'remove') selected[key] = !selected[key];
         try {
           const result = await persistSites(updated);
-          if (key === 'remove') await browser.permissions.remove({ origins: [originPattern(rule.origin)] });
           await browser.runtime.sendMessage({ command: 'sync-capture-observers' });
+          if (key === 'remove') await browser.permissions.remove({ origins: [originPattern(rule.origin)] });
           status.textContent = result.outcome === 'conflict' ? 'Another device changed the site corpus. Its newer version has been restored; review it before trying again.' : 'Site corpus saved by Pinakotheke.';
         } catch (_) { status.textContent = 'Pinakotheke could not save this change; the previous corpus was retained.'; }
         render();

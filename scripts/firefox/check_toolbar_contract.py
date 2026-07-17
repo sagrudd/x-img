@@ -21,11 +21,15 @@ def main() -> int:
     popup_script = (EXTENSION / "popup.js").read_text()
     options_script = (EXTENSION / "options.js").read_text()
     background = (EXTENSION / "background.js").read_text()
+    assert "Pinakotheke cache" in popup
+    assert 'id="extension-version"' in popup
+    assert "browser.runtime.getManifest()" in popup_script
+    assert manifest["version"] in (ROOT / "Cargo.toml").read_text()
     for phrase in (
         "Previously observed",
         "Stored in ObjectStore",
         "Pause substitution",
-        "Open x-img source view",
+        "Open Pinakotheke source view",
     ):
         assert phrase in popup + popup_script
     for forbidden_text in ("requestHeaders", "requestBody", "onAuthRequired"):

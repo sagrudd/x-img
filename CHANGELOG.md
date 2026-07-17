@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show the manifest-derived Firefox extension version in the toolbar popup and
+  use the canonical Pinakotheke product name there.
 - Automatically observe eligible visible images on enabled pages, poll an
   actor-scoped verified-capture status, and add a two-pixel green browser-only
   frame only after the object is admitted to the live gallery.
