@@ -322,9 +322,10 @@ production worker-seam gap. Commit ``b46edce`` adds the first-party packaged
 stream helper that carries the protocol to native or containerized
 ``dasobjectstore-remote`` execution. An isolated live run against DASObjectStore
 ``093772da79bbb494da070965c7d4f49e5ad83f56`` verified a synthetic manifest
-commit, exact length, and content type in the selected ObjectStore. The
-external-host Linux slice fixed Docker ``--mount`` syntax and runs the hardened,
-capability-free worker as the private scratch owner. An x86_64 DASServer run
+commit, exact length, and content type in the selected ObjectStore. Commit
+``c472973`` records the external-host Linux slice, which fixed Docker
+``--mount`` syntax and runs the hardened, capability-free worker as the private
+scratch owner. An x86_64 DASServer run
 against DASObjectStore ``28e6d82cc8c25dd83838fde8b6de3aa16384eb95`` then
 normalized and committed the complete MP4/poster/manifest triplet with
 independent type and FFprobe verification. DGX Spark proved the same hardened

@@ -386,8 +386,9 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   isolated live run against
   DASObjectStore ``093772da79bbb494da070965c7d4f49e5ad83f56`` committed and
   independently inspected a synthetic 33-byte JSON manifest with the expected
-  content type. The external-host slice then exposed and fixed invalid Linux
-  ``--mount`` syntax and capability-free private-scratch ownership. Against
+  content type. Commit ``c472973`` records the external-host slice, which
+  exposed and fixed invalid Linux ``--mount`` syntax and capability-free
+  private-scratch ownership. Against
   DASObjectStore ``28e6d82cc8c25dd83838fde8b6de3aa16384eb95`` on the x86_64
   DASServer, the fixed worker normalized a three-second synthetic source and
   committed verified MP4, WebP poster, and JSON manifest objects with exact
