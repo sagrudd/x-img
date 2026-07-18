@@ -257,15 +257,11 @@ fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
                 return Err("native and container DAS execution cannot be combined".into());
             }
             validate_container_execution(container)?;
-            if config
-                .normalization
-                .as_ref()
-                .is_some_and(|normalization| {
-                    !normalization
-                        .staging_root
-                        .starts_with(&container.managed_scratch_root)
-                })
-            {
+            if config.normalization.as_ref().is_some_and(|normalization| {
+                !normalization
+                    .staging_root
+                    .starts_with(&container.managed_scratch_root)
+            }) {
                 return Err("normalization staging must use the DAS managed root".into());
             }
         }

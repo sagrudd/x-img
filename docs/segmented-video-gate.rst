@@ -1,16 +1,44 @@
 Segmented video capability gate
 ===============================
 
-HLS and DASH are not progressive MP4 files.  Their manifests, segments,
-encryption, Media Source Extensions behavior, and changing signed URLs require
-an exact site adapter.  x-img therefore leaves segmented video origin-served
-unless every capability proof below is present.  The generic adapter has no
-segmented capability and cannot acquire one from a successful lookup.
+HLS, DASH, and Media Source Extensions are not progressive MP4 files. Their
+manifests, segments, encryption, and changing signed URLs require bounded
+identity evidence. Pinakotheke provides a site-neutral *planning* adapter for
+media Firefox already observed while the user played it. The planner does not
+fetch a manifest, enumerate a playlist, inspect hidden resources, or rewrite
+playback.
+
+The ``x-img.segmented-media-plan.v1`` request contains an exact enabled
+HTTPS origin, adapter and canonicalization versions, a canonical manifest or
+MSE-presentation SHA-256, and at most 256 ordered segment identity SHA-256
+values. It accepts at most 16 short codec/container family diagnostics and 16
+GiB of declared media. It contains no media URL, signed query, cookie,
+authorization header, browser credential, page title, or browsing history.
+
+Planning requirements
+---------------------
+
+Planning succeeds only when:
+
+* Firefox recorded a user play on the enabled origin;
+* every identity came from a resource already observed during that play;
+* no hidden traversal or playlist/channel crawl occurred;
+* policy permits capture and no authorization context was observed;
+* the presentation is clear, without encryption or DRM; and
+* the exact adapter proof covers identity, deterministic retry/idempotency,
+  policy and DRM blocking, and fail-open origin behavior.
+
+The plan ID is derived from the adapter version, manifest identity, and ordered
+segment identities. Repeating the same observation therefore returns exactly
+the same plan. Duplicate, unordered, empty, oversized, or malformed evidence
+is blocked. A block never changes the video element: normal origin playback
+continues.
 
 Required adapter evidence
 -------------------------
 
-The server-side ``x-img.segmented-video-gate.v1`` decision requires:
+After a planned source has been normalized, the separate server-side
+``x-img.segmented-video-gate.v1`` substitution decision still requires:
 
 * an exact HTTPS origin, adapter ID, and semantic adapter version;
 * an explicit HLS or DASH manifest kind;
@@ -23,20 +51,19 @@ The server-side ``x-img.segmented-video-gate.v1`` decision requires:
 
 Missing, malformed, stale, or mismatched evidence produces ``Origin served``.
 It never selects another adapter, endpoint, ObjectStore, source rendition, or
-credential path.  Approval is only the policy gate for a future exact adapter;
-it is not a generic manifest rewriter and does not itself fetch media.
+credential path. Planning does not itself authorize acquisition or fetch
+media; substitution requires a separately verified normalized rendition.
 
 Firefox behavior
 ----------------
 
-On an enabled video site, a toolbar action identifies visible manifest URLs by
-``.m3u8`` or ``.mpd`` and treats blob/MSE sources conservatively.  Because the
-current generic adapter declares no segmented proof, the extension does not
-query a delivery alias, rewrite a manifest, inspect segments, read cookies, or
-change the video element.  Settings show a bounded diagnostic such as
-``Origin served — HLS substitution requires a proven site adapter``.  It stores
-only the already-enabled origin and coarse reason, never a page/media URL or
-signed query.
+On an enabled video site, only a user play may begin observation. The extension
+may submit canonical identity hashes for network resources the browser already
+observed during that play; it may not fetch a playlist, follow unobserved
+references, read credentials, or retain raw signed URLs. Blob/MSE sources use a
+presentation identity and the same bounds. Until normalization and playback
+proof are ready, settings report a bounded ``Origin served`` diagnostic and do
+not change the video element.
 
 Progressive normalized MP4 remains supported through :doc:`mp4-substitution`.
 DRM/encrypted, unobserved, unopened, source-only, failed, or unverified media
@@ -53,9 +80,14 @@ Verification
    docker build --pull --progress=plain -f docs/Dockerfile -t x-img-docs:check .
    docker run --rm x-img-docs:check
 
+The redistributable fixture matrix is
+``fixtures/segmented-media/v1/cases.json``. It proves HLS planning and retry,
+DASH policy blocking, MSE DRM blocking, and authorization-context rejection
+without real sites, URLs, credentials, or payload bytes.
+
 Compatibility-sensitive contracts were inspected at DASObjectStore
-``42bf66a7494f4e0aa81f103100b71489b38164dc``, Monas
-``3d21b0bc7b83fa8408d01b93347a56f43f3a96b7``, Mnemosyne design language
-``5539df8f662a78ebdf7cf4c868d71831380c8cfd``, and future Synoptikon
+``8afcfb487120f5fa9d0431b3ae8ce0fc4a42af37``, Monas
+``799484eeb1f6d324500f8ed59bed8e43deed7be5``, Mnemosyne design language
+``fbfa28e55d1c8111ef95a139d83927c231534b5f``, and future Synoptikon
 ``52810176bf95a170f93d74a6f5daa94da5c6640e``.  No unpublished path dependency
 is used.

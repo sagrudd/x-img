@@ -1,0 +1,29 @@
+{
+  "schema_version": "x-img.segmented-media-fixtures.v1",
+  "cases": [
+    {
+      "id": "hls-user-played",
+      "expected": "planned",
+      "observation": {"schema_version":"x-img.segmented-media-plan.v1","adapter_id":"generic-observed-v1","adapter_version":"1.0.0","origin":"https://media.example.invalid","manifest_kind":"hls","user_played":true,"hidden_traversal":false,"authorization_context_observed":false,"policy":"allowed","protection":"clear","manifest_identity_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","observed_segments":[{"identity_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ordinal":0,"declared_bytes":1024},{"identity_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","ordinal":1,"declared_bytes":2048}],"diagnostics":[{"codec":"avc1","container":"fmp4"}]},
+      "proof": {"adapter_id":"generic-observed-v1","adapter_version":"1.0.0","manifest_kind":"hls","manifest_canonicalization_version":"1.0.0","segment_canonicalization_version":"1.0.0","synthetic_fixture_id":"segmented-matrix-v1","firefox_evidence_id":"firefox-play-v1","proves_identity":true,"proves_retry_idempotency":true,"proves_policy_and_drm_blocks":true,"proves_fail_open":true}
+    },
+    {
+      "id": "dash-policy-blocked",
+      "expected": "policy_blocked",
+      "observation": {"schema_version":"x-img.segmented-media-plan.v1","adapter_id":"generic-observed-v1","adapter_version":"1.0.0","origin":"https://media.example.invalid","manifest_kind":"dash","user_played":true,"hidden_traversal":false,"authorization_context_observed":false,"policy":"blocked","protection":"clear","manifest_identity_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","observed_segments":[{"identity_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ordinal":0,"declared_bytes":1024}],"diagnostics":[{"codec":"vp9","container":"webm"}]},
+      "proof": {"adapter_id":"generic-observed-v1","adapter_version":"1.0.0","manifest_kind":"dash","manifest_canonicalization_version":"1.0.0","segment_canonicalization_version":"1.0.0","synthetic_fixture_id":"segmented-matrix-v1","firefox_evidence_id":"firefox-play-v1","proves_identity":true,"proves_retry_idempotency":true,"proves_policy_and_drm_blocks":true,"proves_fail_open":true}
+    },
+    {
+      "id": "mse-drm-blocked",
+      "expected": "drm_or_encryption",
+      "observation": {"schema_version":"x-img.segmented-media-plan.v1","adapter_id":"generic-observed-v1","adapter_version":"1.0.0","origin":"https://media.example.invalid","manifest_kind":"mse","user_played":true,"hidden_traversal":false,"authorization_context_observed":false,"policy":"allowed","protection":"drm","manifest_identity_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","observed_segments":[{"identity_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ordinal":0,"declared_bytes":1024}],"diagnostics":[{"codec":"avc1","container":"fmp4"}]},
+      "proof": {"adapter_id":"generic-observed-v1","adapter_version":"1.0.0","manifest_kind":"mse","manifest_canonicalization_version":"1.0.0","segment_canonicalization_version":"1.0.0","synthetic_fixture_id":"segmented-matrix-v1","firefox_evidence_id":"firefox-play-v1","proves_identity":true,"proves_retry_idempotency":true,"proves_policy_and_drm_blocks":true,"proves_fail_open":true}
+    },
+    {
+      "id": "authorization-context-blocked",
+      "expected": "authorization_context",
+      "observation": {"schema_version":"x-img.segmented-media-plan.v1","adapter_id":"generic-observed-v1","adapter_version":"1.0.0","origin":"https://media.example.invalid","manifest_kind":"hls","user_played":true,"hidden_traversal":false,"authorization_context_observed":true,"policy":"allowed","protection":"clear","manifest_identity_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","observed_segments":[{"identity_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ordinal":0,"declared_bytes":1024}],"diagnostics":[]},
+      "proof": {"adapter_id":"generic-observed-v1","adapter_version":"1.0.0","manifest_kind":"hls","manifest_canonicalization_version":"1.0.0","segment_canonicalization_version":"1.0.0","synthetic_fixture_id":"segmented-matrix-v1","firefox_evidence_id":"firefox-play-v1","proves_identity":true,"proves_retry_idempotency":true,"proves_policy_and_drm_blocks":true,"proves_fail_open":true}
+    }
+  ]
+}

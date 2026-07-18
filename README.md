@@ -65,7 +65,7 @@ release remains available from its historical
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
 and dual-architecture upgrade/rollback evidence.
 
-The `1.14.0` development workspace provides shared model and core boundaries, a `clap`
+The `1.15.0` development workspace provides shared model and core boundaries, a `clap`
 CLI, an Axum composition boundary, and a Yew client boundary. It compiles
 without enabling unconfigured source, storage, authentication, or media-payload
 integration. The first local monolith slice can now run a loopback Axum service
@@ -313,11 +313,13 @@ conditional-request behavior. Only explicitly opened, ready normalized
 renditions qualify; any delivery failure restores the origin video once. See
 [normalized MP4 substitution](docs/mp4-substitution.rst).
 
-Segmented HLS/DASH and MSE sources remain origin-served unless an exact site
-adapter supplies versioned manifest/segment canonicalization, synthetic and
-real-Firefox evidence, and a matching Ready normalized rendition. The generic
-adapter reports this as a bounded diagnostic and performs no manifest rewrite
-or segment traversal. See [segmented video gating](docs/segmented-video-gate.rst).
+Segmented HLS/DASH and MSE sources have a site-neutral, metadata-only planning
+contract for resources already observed while the user played media. It accepts
+only a bounded ordered identity set, produces an idempotent plan, and blocks
+DRM, encryption, hidden traversal, authorization context, and incomplete proof.
+Playback remains origin-served until the exact adapter also has real-Firefox
+evidence and a matching Ready normalized rendition. See
+[segmented video gating](docs/segmented-video-gate.rst).
 
 The Firefox toolbar exposes the active site's capture/substitution state,
 pause/resume and explicit run controls, its latest coarse cache result, and the

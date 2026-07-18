@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.14.0
+Version: 1.15.0
 
 Updated: 2026-07-18
 
@@ -1081,6 +1081,22 @@ evidence succeed. The worker retains exact actor, endpoint, ObjectStore,
 container image, resource-limit, checksum, codec, dimension, and duration
 provenance without recording the source site or URL in its gap journal.
 XIMG-111 was completed in ``3ce70cb``.
+
+## 1.15.0 — Bounded segmented-media adapter proof
+
+Goal: permit a site-neutral plan for HLS, DASH, and MSE resources that Firefox
+already observed during an explicit user play, without turning Pinakotheke into
+a crawler or credential-bearing proxy. The plan is capped at 256 ordered
+segment identities, 16 redacted codec/container diagnostics, and 16 GiB of
+declared media; it contains hashes and aggregate metadata rather than URLs or
+authorization material.
+
+Redistributable fixtures prove deterministic retry identity and fail-closed
+policy, DRM, encryption, authorization-context, hidden-traversal, ordering, and
+size behavior. A planning failure leaves the origin player untouched. A plan
+does not make segmented substitution ready: exact adapter and real-Firefox
+evidence, normalization, DASObjectStore verification, and the existing Ready
+playback gate remain required.
 
 ## Post-1.0 candidates
 

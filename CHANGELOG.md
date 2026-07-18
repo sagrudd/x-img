@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.15.0 - 2026-07-18
+
+- Add a site-neutral bounded planning contract for user-played HLS, DASH, and
+  MSE media using only canonical manifest and already-observed segment hashes.
+- Prove deterministic retry identity, ordered segment bounds, aggregate byte
+  limits, policy/DRM/encryption/authorization blocks, redacted codec/container
+  diagnostics, and fail-open origin playback with redistributable fixtures.
+
 ## 1.14.0 - 2026-07-18
 
 - Hand incompatible progressive video from the bounded capture helper directly
