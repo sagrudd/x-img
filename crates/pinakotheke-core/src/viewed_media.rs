@@ -66,6 +66,10 @@ pub struct CapturePlan {
     /// catalogue records, diagnostics, or user-facing logs.
     #[serde(skip_serializing)]
     pub retrieval_media_url: String,
+    /// Immutable write-authority selection captured when this plan was
+    /// admitted. Legacy journal records may be unbound, but workers must not
+    /// execute them until they are replaced by a newly admitted bound plan.
+    pub destination: Option<CaptureDestinationSnapshot>,
     pub canonical_presentation_url: String,
     pub catalogue_id: String,
     pub adapter_kind: AdapterKind,
@@ -74,6 +78,23 @@ pub struct CapturePlan {
     pub width: u32,
     pub height: u32,
     pub state: CapturePlanState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CaptureDestinationSnapshot {
+    pub endpoint_id: String,
+    pub object_store_id: String,
+    pub selection_revision: u64,
+}
+
+impl CaptureDestinationSnapshot {
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        is_identifier(&self.endpoint_id)
+            && is_identifier(&self.object_store_id)
+            && self.selection_revision > 0
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,7 +290,7 @@ impl CapturePlanService {
         self.accepted
             .iter()
             .filter(|pending| {
-                if pending.settled {
+                if pending.settled || pending.plan.destination.is_none() {
                     return false;
                 }
                 let actor_authorized = self.pairings.values().any(|pairing| {
@@ -335,6 +356,31 @@ impl CapturePlanService {
         now: u64,
         request: CapturePlanRequest,
     ) -> Result<CapturePlan, CapturePlanError> {
+        self.plan_internal(actor_id, now, request, None)
+    }
+
+    /// Admit a production capture plan bound to the exact reviewed
+    /// endpoint/ObjectStore selection revision in force at admission time.
+    pub fn plan_with_destination(
+        &mut self,
+        actor_id: &str,
+        now: u64,
+        request: CapturePlanRequest,
+        destination: CaptureDestinationSnapshot,
+    ) -> Result<CapturePlan, CapturePlanError> {
+        if !destination.is_valid() {
+            return Err(CapturePlanError::InvalidRequest);
+        }
+        self.plan_internal(actor_id, now, request, Some(destination))
+    }
+
+    fn plan_internal(
+        &mut self,
+        actor_id: &str,
+        now: u64,
+        request: CapturePlanRequest,
+        destination: Option<CaptureDestinationSnapshot>,
+    ) -> Result<CapturePlan, CapturePlanError> {
         validate_request(&request)?;
         let pairing = self
             .pairings
@@ -389,6 +435,7 @@ impl CapturePlanService {
                 && pending.plan.site_id == site.site_id
                 && pending.plan.canonical_media_url == canonical_media
                 && pending.plan.capture_kind == request.capture_kind
+                && pending.plan.destination == destination
         }) {
             // Signed delivery capabilities can rotate while the stable media
             // identity remains unchanged. Refresh only an unsettled plan so a
@@ -444,6 +491,7 @@ impl CapturePlanService {
             canonical_page_url,
             canonical_media_url: canonical_media,
             retrieval_media_url: retrieval_media,
+            destination,
             catalogue_id,
             canonical_presentation_url,
             adapter_kind: request.adapter_kind,
@@ -668,6 +716,56 @@ mod tests {
             presentation_url: None,
             width: 320,
             height: 240,
+        }
+    }
+
+    fn destination(revision: u64) -> CaptureDestinationSnapshot {
+        CaptureDestinationSnapshot {
+            endpoint_id: "endpoint-1".into(),
+            object_store_id: "store-1".into(),
+            selection_revision: revision,
+        }
+    }
+
+    #[test]
+    fn destination_is_bound_at_admission_and_rotation_does_not_mutate_existing_plan() {
+        let mut planner = service();
+        let first = planner
+            .plan_with_destination("actor", 1, request(), destination(3))
+            .expect("bound plan");
+        let rotated = planner
+            .plan_with_destination("actor", 2, request(), destination(4))
+            .expect("newly bound plan");
+
+        assert_ne!(first.plan_id, rotated.plan_id);
+        assert_eq!(first.destination, Some(destination(3)));
+        assert_eq!(rotated.destination, Some(destination(4)));
+        assert_eq!(
+            planner
+                .pending("actor", &first.plan_id)
+                .unwrap()
+                .destination,
+            Some(destination(3))
+        );
+    }
+
+    #[test]
+    fn destination_rejects_invalid_ids_and_zero_revision() {
+        for invalid in [
+            CaptureDestinationSnapshot {
+                endpoint_id: "endpoint/unsafe".into(),
+                ..destination(1)
+            },
+            CaptureDestinationSnapshot {
+                object_store_id: "".into(),
+                ..destination(1)
+            },
+            destination(0),
+        ] {
+            assert_eq!(
+                service().plan_with_destination("actor", 1, request(), invalid),
+                Err(CapturePlanError::InvalidRequest)
+            );
         }
     }
 
@@ -908,7 +1006,9 @@ mod tests {
         };
         let mut first =
             CapturePlanService::with_journal(pairings(), sites(), &journal).expect("first start");
-        let accepted = first.plan("actor", 1, request()).expect("accepted");
+        let accepted = first
+            .plan_with_destination("actor", 1, request(), destination(5))
+            .expect("accepted");
         drop(first);
         let mut restarted =
             CapturePlanService::with_journal(pairings(), sites(), &journal).expect("restart");
@@ -918,11 +1018,68 @@ mod tests {
         assert!(restarted.pending_for_actor("different-actor").is_empty());
         assert_eq!(
             restarted
-                .plan("actor", 2, request())
+                .plan_with_destination("actor", 2, request(), destination(5))
                 .expect("idempotent retry"),
             accepted
         );
         assert_eq!(restarted.pending_for_actor("actor").len(), 1);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn restart_keeps_legacy_unbound_plan_visible_but_not_worker_recoverable() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-capture-unbound-restart-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let journal = root.join("capture-plans.json");
+        let mut first = CapturePlanService::with_journal(
+            [CapturePairing {
+                pairing_id: "pair-0".into(),
+                actor_id: "actor".into(),
+                expires_at: 100,
+                revoked: false,
+            }],
+            [SiteCapturePolicy {
+                site_id: "site".into(),
+                origin: "https://example.invalid".into(),
+                capture_enabled: true,
+                adapter_kind: AdapterKind::ExperimentalGeneric,
+                adapter_version: "1.0.0".into(),
+                allow_observed_thumbnails: true,
+                allow_explicit_originals: false,
+                max_candidates_per_page: 2,
+            }],
+            &journal,
+        )
+        .expect("first start");
+        let legacy = first.plan("actor", 1, request()).expect("legacy plan");
+        assert!(legacy.destination.is_none());
+        drop(first);
+
+        let restarted = CapturePlanService::with_journal(
+            [CapturePairing {
+                pairing_id: "pair-0".into(),
+                actor_id: "actor".into(),
+                expires_at: 100,
+                revoked: false,
+            }],
+            [SiteCapturePolicy {
+                site_id: "site".into(),
+                origin: "https://example.invalid".into(),
+                capture_enabled: true,
+                adapter_kind: AdapterKind::ExperimentalGeneric,
+                adapter_version: "1.0.0".into(),
+                allow_observed_thumbnails: true,
+                allow_explicit_originals: false,
+                max_candidates_per_page: 2,
+            }],
+            &journal,
+        )
+        .expect("restart");
+        assert_eq!(restarted.pending_for_actor("actor"), vec![legacy]);
+        assert!(restarted.recoverable_pending(2).is_empty());
         let _ = std::fs::remove_dir_all(root);
     }
 }

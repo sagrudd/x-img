@@ -60,6 +60,9 @@ pub(crate) struct ServeArgs {
     /// Reviewed host executable for continuous approved image acquisition.
     #[arg(long)]
     capture_acquire_helper: Option<PathBuf>,
+    /// Reviewed host executable for live destination revalidation before acquisition.
+    #[arg(long)]
+    destination_revalidation_helper: Option<PathBuf>,
 }
 
 const CAPTURE_AUTHORITY_SCHEMA: &str = "pinakotheke.capture-authority.v1";
@@ -471,6 +474,18 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
             )
         })
         .transpose()?;
+    let destination_revalidator = arguments
+        .destination_revalidation_helper
+        .as_deref()
+        .map(crate::destination_revalidation_helper::backend)
+        .transpose()?;
+    if capture_acquire.is_some() && destination_revalidator.is_none() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "continuous capture acquisition requires live destination revalidation",
+        )
+        .into());
+    }
     let extension_onboarding = capture_authority
         .as_ref()
         .map(|authority| {
@@ -545,6 +560,10 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                             x_img_api::CapturePlanComposition::new(plans, capture_completion);
                         let composition = match capture_acquire {
                             Some(backend) => composition.with_acquire(backend),
+                            None => composition,
+                        };
+                        let composition = match destination_revalidator {
+                            Some(backend) => composition.with_destination_revalidator(backend),
                             None => composition,
                         };
                         match extension_onboarding {
@@ -862,6 +881,7 @@ mod tests {
             capture_authority_file: None,
             capture_completion_token_file: None,
             capture_acquire_helper: None,
+            destination_revalidation_helper: None,
         };
         assert_eq!(
             socket_address(&denied).unwrap_err().kind(),
@@ -904,6 +924,7 @@ mod tests {
             capture_authority_file: None,
             capture_completion_token_file: None,
             capture_acquire_helper: None,
+            destination_revalidation_helper: None,
         };
         assert_eq!(
             tls_paths(&arguments).unwrap(),

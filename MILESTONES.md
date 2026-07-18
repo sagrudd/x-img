@@ -1047,17 +1047,20 @@ route serves the checksum-identical XPI. Delivered in ``d0bb6cb``.
 ## 1.13.0 — Persistent reviewed storage destination
 
 Goal: replace session-only ObjectStore selection with a private actor-scoped
-authority record. The first slice persists stable endpoint/ObjectStore IDs
-with optimistic revisions, restores them after restart, rejects corrupt,
-permissive, symlinked, oversized, and future-schema state, and exposes a
-Monas-authenticated GET/PUT task-pane workflow. Browser inventory never grants
-authority: this slice saves only the exact pair already reviewed by the host.
+authority record and carry that exact authority through capture settlement.
+The completed workflow persists stable endpoint/ObjectStore IDs with optimistic
+revisions, restores them after restart, rejects corrupt, permissive, symlinked,
+oversized, and future-schema state, and exposes a Monas-authenticated GET/PUT
+task-pane workflow. Browser inventory never grants authority: only the exact
+pair already reviewed by the host can be saved.
 
-XIMG-098 remains open for the second slice: bind the persisted selection and
-revision into each capture plan, query live DASObjectStore authority for that
-exact pair immediately before helper execution, and reject selection changes,
-unavailable/read-only stores, expired pairing, quota exhaustion, and receipt
-destination mismatch without choosing a fallback.
+Every new capture plan is immutably bound to that saved pair and revision.
+Legacy unbound records cannot enter worker recovery. Immediately before helper
+execution and again before external completion, a strict host callback must
+prove the exact endpoint/store/revision is still present, TLS-trusted, paired,
+unexpired, ready, writable, media-compatible, and within quota. Any changed,
+missing, stale, unavailable, or malformed authority fails closed without a
+fallback; DASObjectStore remains the final atomic write authority.
 
 ## Post-1.0 candidates
 

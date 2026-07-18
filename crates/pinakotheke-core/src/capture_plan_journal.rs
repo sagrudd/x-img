@@ -13,8 +13,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::viewed_media::{
-    AdapterKind, CAPTURE_PLAN_SCHEMA_VERSION, CaptureKind, CapturePlan, CapturePlanState,
-    canonical_media_url, capture_catalogue_id,
+    AdapterKind, CAPTURE_PLAN_SCHEMA_VERSION, CaptureDestinationSnapshot, CaptureKind, CapturePlan,
+    CapturePlanState, canonical_media_url, capture_catalogue_id,
 };
 
 const JOURNAL_SCHEMA: &str = "pinakotheke.capture-plan-journal.v1";
@@ -93,6 +93,8 @@ struct StoredCapturePlan {
     canonical_media_url: String,
     #[serde(default)]
     retrieval_media_url: Option<String>,
+    #[serde(default)]
+    destination: Option<CaptureDestinationSnapshot>,
     #[serde(default)]
     canonical_presentation_url: Option<String>,
     adapter_kind: AdapterKind,
@@ -268,6 +270,10 @@ impl StoredCapturePlan {
                     .canonical_page_url
                     .starts_with(&format!("{}/", self.origin)))
             || !semver(&self.adapter_version)
+            || self
+                .destination
+                .as_ref()
+                .is_some_and(|destination| !destination.is_valid())
         {
             return Err(CapturePlanJournalError::InvalidRecord);
         }
@@ -285,6 +291,7 @@ impl StoredCapturePlan {
             canonical_page_url: self.canonical_page_url,
             canonical_media_url: self.canonical_media_url,
             retrieval_media_url,
+            destination: self.destination,
             canonical_presentation_url,
             catalogue_id,
             adapter_kind: self.adapter_kind,
@@ -313,6 +320,7 @@ impl From<&PendingCapturePlan> for StoredPendingPlan {
                 canonical_page_url: plan.canonical_page_url.clone(),
                 canonical_media_url: plan.canonical_media_url.clone(),
                 retrieval_media_url: Some(plan.retrieval_media_url.clone()),
+                destination: plan.destination.clone(),
                 canonical_presentation_url: Some(plan.canonical_presentation_url.clone()),
                 adapter_kind: plan.adapter_kind,
                 adapter_version: plan.adapter_version.clone(),
@@ -374,6 +382,11 @@ mod tests {
                 canonical_page_url: "https://example.invalid/page".into(),
                 canonical_media_url: "https://media.example.invalid/thumb.jpg".into(),
                 retrieval_media_url: "https://media.example.invalid/thumb.jpg".into(),
+                destination: Some(CaptureDestinationSnapshot {
+                    endpoint_id: "endpoint-1".into(),
+                    object_store_id: "store-1".into(),
+                    selection_revision: 7,
+                }),
                 canonical_presentation_url: "https://media.example.invalid/thumb.jpg".into(),
                 catalogue_id,
                 adapter_kind: AdapterKind::ExperimentalGeneric,
@@ -436,6 +449,61 @@ mod tests {
                 &loaded[0].plan.canonical_media_url,
             )
         );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn legacy_journal_without_destination_is_loaded_explicitly_unbound() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-capture-journal-unbound-{}-{}",
+            std::process::id(),
+            TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        let journal = CapturePlanJournal::new(root.join("journal.json"));
+        journal.replace(&[pending()]).unwrap();
+        let mut document: serde_json::Value =
+            serde_json::from_slice(&fs::read(journal.path()).unwrap()).unwrap();
+        document["plans"][0]["plan"]
+            .as_object_mut()
+            .unwrap()
+            .remove("destination");
+        fs::write(
+            journal.path(),
+            serde_json::to_vec_pretty(&document).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(journal.load().unwrap()[0].plan.destination, None);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn journal_rejects_invalid_destination_identity_or_revision() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-capture-journal-destination-{}-{}",
+            std::process::id(),
+            TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        let journal = CapturePlanJournal::new(root.join("journal.json"));
+        journal.replace(&[pending()]).unwrap();
+        let original = fs::read(journal.path()).unwrap();
+        for (field, value) in [
+            ("endpoint_id", serde_json::json!("unsafe/id")),
+            ("object_store_id", serde_json::json!("")),
+            ("selection_revision", serde_json::json!(0)),
+        ] {
+            let mut document: serde_json::Value = serde_json::from_slice(&original).unwrap();
+            document["plans"][0]["plan"]["destination"][field] = value;
+            fs::write(
+                journal.path(),
+                serde_json::to_vec_pretty(&document).unwrap(),
+            )
+            .unwrap();
+            assert!(matches!(
+                journal.load(),
+                Err(CapturePlanJournalError::InvalidRecord)
+            ));
+        }
         let _ = fs::remove_dir_all(root);
     }
 

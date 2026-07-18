@@ -62,6 +62,9 @@ pub(crate) struct InstallArgs {
     /// Absolute reviewed continuous capture acquisition helper.
     #[arg(long, requires = "capture_completion_token_file")]
     capture_acquire_helper: Option<PathBuf>,
+    /// Absolute reviewed live destination-revalidation helper.
+    #[arg(long, requires = "capture_acquire_helper")]
+    destination_revalidation_helper: Option<PathBuf>,
     /// Replace existing Pinakotheke-managed plist definitions.
     #[arg(long)]
     replace: bool,
@@ -175,6 +178,15 @@ fn install(layout: &ServiceLayout, args: &InstallArgs) -> io::Result<()> {
     if let Some(helper) = &args.capture_acquire_helper {
         validate_binary(helper)?;
     }
+    if let Some(helper) = &args.destination_revalidation_helper {
+        validate_binary(helper)?;
+    }
+    if args.capture_acquire_helper.is_some() != args.destination_revalidation_helper.is_some() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "capture acquisition and live destination revalidation must be configured together",
+        ));
+    }
     if !args.replace && (layout.backend_plist.exists() || layout.monas_plist.exists()) {
         return Err(io::Error::new(
             io::ErrorKind::AlreadyExists,
@@ -195,11 +207,14 @@ fn install(layout: &ServiceLayout, args: &InstallArgs) -> io::Result<()> {
     let backend = backend_plist(
         layout,
         &args.pinakotheke_binary,
-        args.object_read_helper.as_deref(),
-        args.object_read_endpoint_id.as_deref(),
-        args.capture_authority_file.as_deref(),
-        args.capture_completion_token_file.as_deref(),
-        args.capture_acquire_helper.as_deref(),
+        BackendPlistAdapters {
+            object_read_helper: args.object_read_helper.as_deref(),
+            object_read_endpoint_id: args.object_read_endpoint_id.as_deref(),
+            capture_authority_file: args.capture_authority_file.as_deref(),
+            capture_completion_token_file: args.capture_completion_token_file.as_deref(),
+            capture_acquire_helper: args.capture_acquire_helper.as_deref(),
+            destination_revalidation_helper: args.destination_revalidation_helper.as_deref(),
+        },
     );
     let monas = monas_plist(layout, &args.monas_binary);
     let previous_backend = std::fs::read(&layout.backend_plist).ok();
@@ -363,14 +378,19 @@ fn install_plist(path: &Path, contents: &str, replace: bool) -> io::Result<()> {
     std::fs::rename(temporary, path)
 }
 
+struct BackendPlistAdapters<'a> {
+    object_read_helper: Option<&'a Path>,
+    object_read_endpoint_id: Option<&'a str>,
+    capture_authority_file: Option<&'a Path>,
+    capture_completion_token_file: Option<&'a Path>,
+    capture_acquire_helper: Option<&'a Path>,
+    destination_revalidation_helper: Option<&'a Path>,
+}
+
 fn backend_plist(
     layout: &ServiceLayout,
     binary: &Path,
-    helper: Option<&Path>,
-    endpoint_id: Option<&str>,
-    capture_authority_file: Option<&Path>,
-    capture_completion_token_file: Option<&Path>,
-    capture_acquire_helper: Option<&Path>,
+    adapters: BackendPlistAdapters<'_>,
 ) -> String {
     let mut arguments = vec![
         "serve",
@@ -383,19 +403,26 @@ fn backend_plist(
         "--monas-dispatch-token-file",
         path_text_unchecked(&layout.token),
     ];
-    if let Some(helper) = helper {
+    if let Some(helper) = adapters.object_read_helper {
         arguments.extend(["--object-read-helper", path_text_unchecked(helper)]);
     }
-    if let Some(path) = capture_authority_file {
+    if let Some(path) = adapters.capture_authority_file {
         arguments.extend(["--capture-authority-file", path_text_unchecked(path)]);
     }
-    if let Some(path) = capture_completion_token_file {
+    if let Some(path) = adapters.capture_completion_token_file {
         arguments.extend(["--capture-completion-token-file", path_text_unchecked(path)]);
     }
-    if let Some(path) = capture_acquire_helper {
+    if let Some(path) = adapters.capture_acquire_helper {
         arguments.extend(["--capture-acquire-helper", path_text_unchecked(path)]);
     }
-    let environment = endpoint_id
+    if let Some(path) = adapters.destination_revalidation_helper {
+        arguments.extend([
+            "--destination-revalidation-helper",
+            path_text_unchecked(path),
+        ]);
+    }
+    let environment = adapters
+        .object_read_endpoint_id
         .map(|endpoint_id| vec![("PINAKOTHEKE_OBJECT_READ_ENDPOINT_ID", endpoint_id)])
         .unwrap_or_default();
     plist(
@@ -594,15 +621,20 @@ mod tests {
         let backend = backend_plist(
             &layout,
             Path::new("/opt/bin/pinakotheke"),
-            Some(Path::new("/opt/bin/das-reader")),
-            Some("endpoint-local"),
-            Some(Path::new(
-                "/Users/synthetic & user/.x-img/config/capture.json",
-            )),
-            Some(Path::new(
-                "/Users/synthetic & user/.x-img/run/completion.token",
-            )),
-            Some(Path::new("/opt/bin/capture-acquire-helper")),
+            BackendPlistAdapters {
+                object_read_helper: Some(Path::new("/opt/bin/das-reader")),
+                object_read_endpoint_id: Some("endpoint-local"),
+                capture_authority_file: Some(Path::new(
+                    "/Users/synthetic & user/.x-img/config/capture.json",
+                )),
+                capture_completion_token_file: Some(Path::new(
+                    "/Users/synthetic & user/.x-img/run/completion.token",
+                )),
+                capture_acquire_helper: Some(Path::new("/opt/bin/capture-acquire-helper")),
+                destination_revalidation_helper: Some(Path::new(
+                    "/opt/bin/destination-revalidation-helper",
+                )),
+            },
         );
         let monas = monas_plist(&layout, Path::new("/opt/bin/monas-server"));
         assert!(backend.contains("127.0.0.1</string><string>--port</string><string>8732"));
@@ -614,6 +646,7 @@ mod tests {
         assert!(backend.contains("capture.json"));
         assert!(backend.contains("--capture-completion-token-file"));
         assert!(backend.contains("--capture-acquire-helper"));
+        assert!(backend.contains("--destination-revalidation-helper"));
         assert!(monas.contains("127.0.0.1:8731"));
         assert!(monas.contains("PROSOPIKON_ROOT"));
         assert!(monas.contains("synthetic &amp; user"));

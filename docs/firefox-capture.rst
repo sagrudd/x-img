@@ -363,19 +363,27 @@ open hidden media, ingest DRM-protected material, or forward browser cookies.
 Continuous monolith worker
 --------------------------
 
-Supplying the same reviewed executable with ``--capture-acquire-helper`` turns
-the run-one seam into the normal monolith worker. This option is accepted only
-when capture authority, ObjectStore delivery, Monas dispatch, and the private
-completion authority are all configured. Each newly admitted plan is placed on
-a bounded background task, while the Firefox request returns promptly with its
-durable pending identity.
+Supplying the same reviewed executable with ``--capture-acquire-helper`` and a
+reviewed host callback with ``--destination-revalidation-helper`` turns the
+run-one seam into the normal monolith worker. These options must be supplied
+together and are accepted only when capture authority, ObjectStore delivery,
+Monas dispatch, and the private completion authority are all configured. Each
+newly admitted plan is bound to the saved endpoint, ObjectStore, and selection
+revision before it is placed on a bounded background task, while the Firefox
+request returns promptly with its durable pending identity.
 
 The monolith permits only one helper process at a time and coalesces concurrent
 retries of the same actor/plan. A verified receipt passes through the existing
 destination-bound completion gate and refreshes the live gallery. Helper,
 policy, transport, validation, or authority failure leaves the plan visibly
 pending and makes no ``Stored in ObjectStore`` claim; a later explicit retry can
-resume it. No failure triggers origin traversal or a browser credential retry.
+resume it. No failure triggers origin traversal, a browser credential retry, or
+a fallback ObjectStore. Immediately before acquisition starts, the host
+callback must return fresh exact authority for the plan binding, including
+presence, trusted TLS, unexpired pairing, readiness, write and media-type
+capability, and non-zero quota. External completion repeats the check before
+catalogue admission; DASObjectStore remains responsible for the final atomic
+write authorization and reservation.
 
 At startup the monolith loads every durable unsettled plan and revalidates the
 current pairing actor, expiry/revocation, enabled exact-origin policy, pinned

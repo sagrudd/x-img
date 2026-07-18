@@ -10,6 +10,7 @@ mod capture_worker_helper;
 mod das_capture_helper;
 mod das_object_read_helper;
 mod das_stream_ingest_helper;
+mod destination_revalidation_helper;
 mod launchd;
 mod local_objectstore;
 mod monolith;

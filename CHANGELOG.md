@@ -9,6 +9,12 @@
   storage authority.
 - Replace session-only Yew selection with explicit accessible Save, saved,
   unsaved, conflict, permission, invalid-response, and unavailable states.
+- Bind every new capture plan to the actor's saved endpoint, ObjectStore, and
+  selection revision; legacy unbound plans remain visible but cannot execute.
+- Require a strict host destination callback before acquisition and external
+  completion, rejecting changed identity, missing authority, untrusted TLS,
+  expired pairing, unavailable/read-only stores, unsupported media, and empty
+  quota without choosing a fallback.
 
 ## 1.12.0 - 2026-07-17
 

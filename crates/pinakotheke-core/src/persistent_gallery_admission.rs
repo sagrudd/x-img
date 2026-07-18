@@ -316,6 +316,7 @@ mod tests {
             canonical_page_url: "https://example.invalid/gallery".into(),
             canonical_media_url: format!("https://example.invalid/{media}.jpg"),
             retrieval_media_url: format!("https://example.invalid/{media}.jpg"),
+            destination: None,
             canonical_presentation_url: format!("https://example.invalid/{media}.jpg"),
             catalogue_id: "gallery-image-1".into(),
             adapter_kind: AdapterKind::ExperimentalGeneric,

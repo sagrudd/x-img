@@ -11,8 +11,9 @@ The strict public contract is ``x-img.das-destination-inventory.v1``. Its
 synthetic inventory fixtures cover a managed local folder profile, a remote
 appliance with multiple stores, an explicit site override, and fail-closed
 unmanaged-folder, mutable-ID, broad-secret, and arbitrary-first-store cases.
-It was reviewed against DASObjectStore commit
-``76f6411eab1e2c486c0bc1b4695b71f09307d9df``. This is a copied x-img
+It was reviewed against DASObjectStore commits
+``76f6411eab1e2c486c0bc1b4695b71f09307d9df`` and
+``8afcfb487120f5fa9d0431b3ae8ce0fc4a42af37``. This is a copied x-img
 contract, not a sibling path dependency or a live pairing client.
 
 Local and remote setup
@@ -58,9 +59,21 @@ it survives restart and never chooses another actor or the first visible store.
 On migration, the configured capture-authority pair seeds each known active
 actor only when no persisted selection exists.
 
-The first 1.13 slice still treats the host capture authority as the selection
-allowlist: a PUT naming any other pair is rejected even if the browser's DAS
-dashboard displayed it. This deliberately avoids converting presentation data
-into authority. Plan-bound snapshots and live DAS authority revalidation
-immediately before worker execution remain the XIMG-098 completion gate. Until
-then the running helper continues to use the configured reviewed authority pair.
+Each newly admitted capture plan now contains an immutable copy of the actor's
+reviewed endpoint ID, ObjectStore ID, and selection revision. A changed or
+missing selection cannot run, and old journal records without a binding remain
+visible but are not recoverable worker jobs. The host callback configured with
+``--destination-revalidation-helper`` must check the exact binding immediately
+before acquisition. Its strict, bounded
+``pinakotheke.destination-revalidate-helper.v1`` exchange reports endpoint and
+store presence, TLS trust, pairing and expiry, readiness, write capability,
+object-type eligibility, and available quota without exposing credentials or
+storage paths. Stale, malformed, unavailable, read-only, untrusted, expired,
+or identity-changing results fail closed before the acquisition helper starts.
+The same check is repeated before an external completion can enter the
+catalogue. No failure selects another destination.
+
+The DASObjectStore upload boundary still performs final atomic authorization,
+reservation, checksum verification, and completion. This closes the unavoidable
+interval between the host readiness observation and the write; a readiness
+response is never itself treated as a successful commit.

@@ -185,6 +185,7 @@ readable through the same authenticated monolith:
      --capture-authority-file /absolute/path/to/capture-authority.json \
      --capture-completion-token-file /absolute/path/to/completion.token \
      --capture-acquire-helper /absolute/path/to/reviewed-acquire-helper \
+     --destination-revalidation-helper /absolute/path/to/reviewed-destination-helper \
      --monas-dispatch-token-file "$HOME/.x-img/run/monas-dispatch.token"
 
 The helper uses the strict ``pinakotheke.object-read-helper.v1`` protocol
@@ -202,6 +203,14 @@ in :doc:`firefox-capture`, then set ``--capture-acquire-helper`` to the absolute
 Pinakotheke binary path. DAS credentials and provider completion remain owned
 by ``dasobjectstore-remote`` and ``dasobjectstored``; Pinakotheke retains only
 the verified object reference and gallery metadata.
+
+Continuous acquisition also requires a reviewed host destination helper. It
+receives only actor, plan, media type, and the exact saved endpoint/store/revision
+binding. It must combine current Monas pairing/TLS authority with current
+DASObjectStore existence, readiness, write, type, and quota authority. The
+strict response contains no credential, URL, bucket, or filesystem path. If it
+is absent or returns anything except a fresh exact ``ready`` result, the media
+helper is not started.
 
 ``make firefox-gallery-check`` independently exercises the compiled bundle in
 installed Firefox. It uses an ephemeral loopback catalogue and private Firefox
@@ -226,18 +235,23 @@ Review and install the two coordinated user agents:
      --object-read-endpoint-id endpoint-local \
      --capture-authority-file /absolute/path/to/capture-authority.json \
      --capture-completion-token-file /absolute/path/to/completion.token \
-     --capture-acquire-helper /absolute/path/to/reviewed-acquire-helper
+     --capture-acquire-helper /absolute/path/to/reviewed-acquire-helper \
+     --destination-revalidation-helper /absolute/path/to/reviewed-destination-helper
 
 Installation requires absolute executable regular files, generates a private
 dispatch credential, keeps the backend on port 8732, and exposes Monas on port
-8731. The helper is optional until a reviewed DASObjectStore implementation is
-installed. Its path and stable reviewed endpoint identity must be supplied
+8731. The read helper is optional until a reviewed DASObjectStore implementation
+is installed. Its path and stable reviewed endpoint identity must be supplied
 together; the backend agent retains both and exposes the identity to the helper
 as ``PINAKOTHEKE_OBJECT_READ_ENDPOINT_ID``. The identity is scope, not a
 credential, and the helper must authenticate independently. Prosopikon remains
 under ``~/.config/monas/prosopikon``; Pinakotheke
 metadata and logs remain under ``~/.x-img``; DASObjectStore retains its own
 authority roots.
+
+The capture-acquisition and destination-revalidation helpers are a required
+pair. Service installation and foreground startup reject configurations that
+enable only one, so a restart cannot silently weaken the live destination gate.
 
 When capture planning is configured, accepted metadata is journalled at
 ``~/.x-img/state/capture-plans.v1.json`` before success is returned. Restarting

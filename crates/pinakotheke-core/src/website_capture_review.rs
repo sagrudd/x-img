@@ -144,6 +144,7 @@ mod tests {
             canonical_page_url: "https://example.invalid/gallery".into(),
             canonical_media_url: "https://example.invalid/media/thumbnail.webp".into(),
             retrieval_media_url: "https://example.invalid/media/thumbnail.webp".into(),
+            destination: None,
             canonical_presentation_url: "https://example.invalid/media/thumbnail.webp".into(),
             catalogue_id: "website-card-1".into(),
             adapter_kind: AdapterKind::ExperimentalGeneric,

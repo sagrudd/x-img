@@ -56,7 +56,10 @@ use x_img_core::{
     synoptikon_catalogue::{
         SynoptikonCatalogueError, SynoptikonCataloguePage, SynoptikonCatalogueProjection,
     },
-    viewed_media::{CapturePlan, CapturePlanError, CapturePlanRequest, CapturePlanService},
+    viewed_media::{
+        CaptureDestinationSnapshot, CaptureKind, CapturePlan, CapturePlanError, CapturePlanRequest,
+        CapturePlanService,
+    },
 };
 
 type CapturePlans = Arc<Mutex<CapturePlanService>>;
@@ -75,8 +78,6 @@ type ReviewedDestinations = Arc<Mutex<ReviewedDestinationStore>>;
 pub struct CaptureCompletionAuthority {
     token: String,
     gallery_store: GalleryCatalogueStore,
-    endpoint_id: String,
-    object_store_id: String,
 }
 
 /// Capture planning plus its optional separately credentialled completion port.
@@ -87,6 +88,7 @@ pub struct CapturePlanComposition {
     onboarding: Option<ExtensionOnboardingAuthority>,
     site_corpus: Option<SiteCorpusStore>,
     reviewed_destinations: Option<ReviewedDestinationStore>,
+    destination_revalidator: Option<HostCaptureDestinationRevalidateBackend>,
 }
 
 /// Reviewed server identity and DASObjectStore destination exposed only to an
@@ -103,6 +105,48 @@ pub struct ExtensionOnboardingAuthority {
 pub type HostCaptureAcquire =
     Box<dyn FnMut(&CapturePlan) -> Result<VerifiedCaptureCompletion, String> + Send>;
 
+/// Current host-authority facts for the exact destination named by a capture
+/// plan. The browser inventory is never accepted as authority.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CaptureDestinationAuthorityState {
+    /// Stable endpoint identity returned by the host authority.
+    pub endpoint_id: String,
+    /// Stable logical ObjectStore identity returned by the host authority.
+    pub object_store_id: String,
+    /// Whether the selected endpoint still exists.
+    pub endpoint_present: bool,
+    /// Whether the selected ObjectStore still exists on that endpoint.
+    pub object_store_present: bool,
+    /// Whether the endpoint's TLS identity is currently trusted.
+    pub tls_trusted: bool,
+    /// Whether the actor still has a valid scoped pairing.
+    pub paired: bool,
+    /// Absolute expiry of that pairing.
+    pub pairing_expires_at_epoch_seconds: u64,
+    /// Whether the endpoint and store are operationally ready.
+    pub ready: bool,
+    /// Whether the selected store currently accepts this object type.
+    pub writable: bool,
+    /// Remaining authority-reported quota; zero is rejected.
+    pub quota_available_bytes: u64,
+}
+
+/// Host callback which queries live authority for one actor and one exact
+/// plan-bound destination. It must not choose or return a fallback store.
+pub type HostCaptureDestinationRevalidate = Box<
+    dyn FnMut(
+            &str,
+            &CaptureDestinationSnapshot,
+            CaptureKind,
+        ) -> Result<CaptureDestinationAuthorityState, String>
+        + Send,
+>;
+
+/// Process-isolated live destination-authority adapter.
+pub struct HostCaptureDestinationRevalidateBackend {
+    revalidate: HostCaptureDestinationRevalidate,
+}
+
 /// Host adapter wrapping one process-isolated acquisition callback.
 pub struct HostCaptureAcquireBackend {
     acquire: HostCaptureAcquire,
@@ -113,6 +157,8 @@ struct CaptureCompletionRuntime {
     plans: CapturePlans,
     gallery: MonasGalleryCatalogue,
     acquire: Option<Mutex<HostCaptureAcquireBackend>>,
+    reviewed_destinations: Option<ReviewedDestinations>,
+    destination_revalidator: Option<Mutex<HostCaptureDestinationRevalidateBackend>>,
     in_flight: Mutex<BTreeSet<String>>,
 }
 
@@ -223,8 +269,6 @@ impl CaptureCompletionAuthority {
         Ok(Self {
             token,
             gallery_store,
-            endpoint_id,
-            object_store_id,
         })
     }
 }
@@ -248,6 +292,7 @@ impl CapturePlanComposition {
             onboarding: None,
             site_corpus: None,
             reviewed_destinations: None,
+            destination_revalidator: None,
         }
     }
 
@@ -276,6 +321,17 @@ impl CapturePlanComposition {
     #[must_use]
     pub fn with_reviewed_destinations(mut self, store: ReviewedDestinationStore) -> Self {
         self.reviewed_destinations = Some(store);
+        self
+    }
+
+    /// Adds the host adapter which revalidates live destination authority
+    /// immediately before a capture helper may run.
+    #[must_use]
+    pub fn with_destination_revalidator(
+        mut self,
+        backend: HostCaptureDestinationRevalidateBackend,
+    ) -> Self {
+        self.destination_revalidator = Some(backend);
         self
     }
 }
@@ -317,6 +373,22 @@ impl HostCaptureAcquireBackend {
 
     fn acquire(&mut self, plan: &CapturePlan) -> Result<VerifiedCaptureCompletion, String> {
         (self.acquire)(plan)
+    }
+}
+
+impl HostCaptureDestinationRevalidateBackend {
+    /// Creates an adapter from a host-owned live authority callback.
+    pub fn new(revalidate: HostCaptureDestinationRevalidate) -> Self {
+        Self { revalidate }
+    }
+
+    fn revalidate(
+        &mut self,
+        actor_id: &str,
+        destination: &CaptureDestinationSnapshot,
+        capture_kind: CaptureKind,
+    ) -> Result<CaptureDestinationAuthorityState, String> {
+        (self.revalidate)(actor_id, destination, capture_kind)
     }
 }
 
@@ -832,8 +904,10 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             onboarding,
             site_corpus,
             reviewed_destinations,
+            destination_revalidator,
         } = capture;
         let capture_plans = Arc::new(Mutex::new(capture_plans));
+        let reviewed_destinations = reviewed_destinations.map(|store| Arc::new(Mutex::new(store)));
         protected = protected.route(
             "/products/pinakotheke/api/extension/v1/capture-plans",
             get(capture_plans_pending).post(capture_plan),
@@ -846,14 +920,20 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                 )
                 .layer(Extension(onboarding));
         }
-        if let (Some(store), Some(authority)) = (reviewed_destinations, onboarding) {
+        if let (Some(store), Some(authority)) = (reviewed_destinations.as_ref(), onboarding) {
             protected = protected
                 .route(
                     "/products/pinakotheke/api/destinations/v1/reviewed",
                     get(get_reviewed_destination).put(put_reviewed_destination),
                 )
                 .layer(Extension(authority))
-                .layer(Extension(Arc::new(Mutex::new(store))));
+                .layer(Extension(Arc::clone(store)));
+        }
+        if let Some(store) = reviewed_destinations.as_ref() {
+            // Capture admission consumes this same actor-scoped authority;
+            // adding it independently of the settings route avoids any route
+            // ordering or onboarding presentation becoming a fallback.
+            protected = protected.layer(Extension(Arc::clone(store)));
         }
         if let Some(site_corpus) = site_corpus {
             protected = protected
@@ -877,6 +957,8 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                 plans: capture_plans,
                 gallery,
                 acquire: acquire.map(Mutex::new),
+                reviewed_destinations,
+                destination_revalidator: destination_revalidator.map(Mutex::new),
                 in_flight: Mutex::new(BTreeSet::new()),
             });
             for (actor_id, plan) in recoverable {
@@ -1618,6 +1700,7 @@ async fn context(
 async fn capture_plan(
     capture_plans: Option<Extension<CapturePlans>>,
     runtime: Option<Extension<Arc<CaptureCompletionRuntime>>>,
+    reviewed_destinations: Option<Extension<ReviewedDestinations>>,
     context: Option<Extension<AuthenticatedHostContext>>,
     Json(request): Json<CapturePlanRequest>,
 ) -> Result<Json<CapturePlan>, StatusCode> {
@@ -1630,12 +1713,44 @@ async fn capture_plan(
         .duration_since(UNIX_EPOCH)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .as_secs();
+    let destination = if let Some(store) = reviewed_destinations {
+        let selection = store
+            .0
+            .lock()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .get(context.actor_id())
+            .map_err(|error| match error {
+                ReviewedDestinationError::NotSelected => StatusCode::CONFLICT,
+                ReviewedDestinationError::Invalid
+                | ReviewedDestinationError::UnsupportedSchema
+                | ReviewedDestinationError::TooLarge
+                | ReviewedDestinationError::Io(_)
+                | ReviewedDestinationError::Json(_) => StatusCode::SERVICE_UNAVAILABLE,
+                ReviewedDestinationError::Conflict(_) => StatusCode::CONFLICT,
+            })?;
+        Some(CaptureDestinationSnapshot {
+            endpoint_id: selection.endpoint_id,
+            object_store_id: selection.object_store_id,
+            selection_revision: selection.revision,
+        })
+    } else if runtime.is_some() {
+        // A production capture worker without the actor-scoped destination
+        // authority must fail closed. The planning-only contract router may
+        // remain unbound and can never execute a helper.
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    } else {
+        None
+    };
     let mut capture_plans = capture_plans
         .lock()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let plan = capture_plans
-        .plan(context.actor_id(), now, request)
-        .map_err(capture_plan_status)?;
+    let plan = match destination {
+        Some(destination) => {
+            capture_plans.plan_with_destination(context.actor_id(), now, request, destination)
+        }
+        None => capture_plans.plan(context.actor_id(), now, request),
+    }
+    .map_err(capture_plan_status)?;
     eprintln!(
         "pinakotheke_ingress event=plan_admitted plan_id={} kind={:?} origin={} site_id={}",
         plan.plan_id, plan.capture_kind, plan.origin, plan.site_id
@@ -1737,7 +1852,7 @@ fn schedule_capture_runtime(
     };
     let runtime = Arc::clone(runtime);
     handle.spawn_blocking(move || {
-        let acquired = runtime.acquire.as_ref().ok_or_else(|| String::from("acquire backend unavailable")).and_then(|backend| {
+        let acquired = revalidate_capture_destination(&runtime, &actor_id, &plan).and_then(|_| runtime.acquire.as_ref().ok_or_else(|| String::from("acquire backend unavailable"))).and_then(|backend| {
             backend
                 .lock()
                 .map_err(|_| String::from("acquire backend lock poisoned"))?
@@ -1764,6 +1879,64 @@ fn schedule_capture_runtime(
         }
     });
     Ok(true)
+}
+
+fn revalidate_capture_destination(
+    runtime: &CaptureCompletionRuntime,
+    actor_id: &str,
+    plan: &CapturePlan,
+) -> Result<(), String> {
+    let snapshot = plan
+        .destination
+        .as_ref()
+        .ok_or_else(|| String::from("capture plan has no reviewed destination"))?;
+    let current = runtime
+        .reviewed_destinations
+        .as_ref()
+        .ok_or_else(|| String::from("reviewed destination authority unavailable"))?
+        .lock()
+        .map_err(|_| String::from("reviewed destination authority unavailable"))?
+        .get(actor_id)
+        .map_err(|_| String::from("reviewed destination is unavailable"))?;
+    if current.revision != snapshot.selection_revision
+        || current.endpoint_id != snapshot.endpoint_id
+        || current.object_store_id != snapshot.object_store_id
+    {
+        return Err(String::from("reviewed destination changed after admission"));
+    }
+    let state = runtime
+        .destination_revalidator
+        .as_ref()
+        .ok_or_else(|| String::from("live destination revalidator unavailable"))?
+        .lock()
+        .map_err(|_| String::from("live destination revalidator unavailable"))?
+        .revalidate(actor_id, snapshot, plan.capture_kind)?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| String::from("system time unavailable"))?
+        .as_secs();
+    validate_capture_destination_authority(snapshot, &state, now)
+}
+
+fn validate_capture_destination_authority(
+    snapshot: &CaptureDestinationSnapshot,
+    state: &CaptureDestinationAuthorityState,
+    now_epoch_seconds: u64,
+) -> Result<(), String> {
+    if !state.endpoint_present
+        || !state.object_store_present
+        || state.endpoint_id != snapshot.endpoint_id
+        || state.object_store_id != snapshot.object_store_id
+        || !state.tls_trusted
+        || !state.paired
+        || now_epoch_seconds >= state.pairing_expires_at_epoch_seconds
+        || !state.ready
+        || !state.writable
+        || state.quota_available_bytes == 0
+    {
+        return Err(String::from("live destination authority rejected capture"));
+    }
+    Ok(())
 }
 
 async fn capture_plans_pending(
@@ -1807,11 +1980,20 @@ async fn complete_capture_plan(
     if request.schema_version != "pinakotheke.capture-completion.v1" {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);
     }
-    if request.endpoint_id != runtime.authority.endpoint_id
-        || request.object_store_id != runtime.authority.object_store_id
+    let pending = runtime
+        .plans
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .pending(context.actor_id(), &plan_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let destination = pending.destination.as_ref().ok_or(StatusCode::CONFLICT)?;
+    if request.endpoint_id != destination.endpoint_id
+        || request.object_store_id != destination.object_store_id
     {
         return Err(StatusCode::CONFLICT);
     }
+    revalidate_capture_destination(&runtime, context.actor_id(), &pending)
+        .map_err(|_| StatusCode::CONFLICT)?;
     let outcome = settle_capture_runtime(
         &runtime,
         context.actor_id(),
@@ -1854,15 +2036,22 @@ fn settle_capture_runtime(
     actor_id: &str,
     evidence: VerifiedCaptureCompletion,
 ) -> Result<CaptureCompletionOutcome, CaptureCompletionError> {
-    if evidence.endpoint_id != runtime.authority.endpoint_id
-        || evidence.object_store_id != runtime.authority.object_store_id
-    {
-        return Err(CaptureCompletionError::InvalidEvidence);
-    }
     let mut plans = runtime
         .plans
         .lock()
         .map_err(|_| CaptureCompletionError::InvalidEvidence)?;
+    let plan = plans
+        .pending(actor_id, &evidence.plan_id)
+        .ok_or(CaptureCompletionError::UnknownPlan)?;
+    let destination = plan
+        .destination
+        .as_ref()
+        .ok_or(CaptureCompletionError::InvalidEvidence)?;
+    if evidence.endpoint_id != destination.endpoint_id
+        || evidence.object_store_id != destination.object_store_id
+    {
+        return Err(CaptureCompletionError::InvalidEvidence);
+    }
     let outcome = complete_verified_image(
         &mut plans,
         runtime.authority.gallery_store.clone(),
@@ -2350,30 +2539,35 @@ mod tests {
         },
         operations::{Component, EventCode, EventOutcome, HealthState, OperationalTelemetry},
         playback_delivery::{DirectPlaybackGrant, DirectPlaybackService},
-        reviewed_destination::ReviewedDestinationStore,
+        reviewed_destination::{
+            AuthoritySelectionSeed, ReplaceReviewedDestination, ReviewedDestinationStore,
+        },
         synoptikon_catalogue::{
             CatalogueMediaKind, CatalogueReviewState, SynoptikonCatalogueItem,
             SynoptikonCatalogueProjection,
         },
         video_profile::NormalizedVideoState,
         viewed_media::{
-            AdapterKind, CAPTURE_REQUEST_SCHEMA_VERSION, CaptureKind, CapturePairing,
-            CapturePlanRequest, CapturePlanService, SiteCapturePolicy,
+            AdapterKind, CAPTURE_REQUEST_SCHEMA_VERSION, CaptureDestinationSnapshot, CaptureKind,
+            CapturePairing, CapturePlanRequest, CapturePlanService, SiteCapturePolicy,
         },
     };
 
     use super::{
-        CaptureCompletionAuthority, CapturePlanComposition, ExtensionOnboardingAuthority,
-        HostCaptureAcquireBackend, HostObjectReadBackend, MonasDispatchVerifier,
+        CaptureCompletionAuthority, CaptureCompletionRuntime, CaptureDestinationAuthorityState,
+        CapturePlanComposition, ExtensionOnboardingAuthority, HostCaptureAcquireBackend,
+        HostCaptureDestinationRevalidateBackend, HostObjectReadBackend, MonasDispatchVerifier,
         ObjectDeliveryPool, VerifiedCaptureCompletion, monolith_router,
         monolith_router_with_authorities, monolith_router_with_gallery_authority,
         monolith_router_with_gallery_delivery_authority,
         monolith_router_with_gallery_web_and_capture_authority,
         monolith_router_with_gallery_web_delivery_and_capture_authority,
-        monolith_router_with_gallery_web_delivery_authority, monolith_router_with_storage, router,
-        router_with_cache_aliases, router_with_cache_substitution, router_with_capture_plans,
-        router_with_direct_playback, router_with_gallery_catalogue, router_with_gallery_delivery,
+        monolith_router_with_gallery_web_delivery_authority, monolith_router_with_storage,
+        revalidate_capture_destination, router, router_with_cache_aliases,
+        router_with_cache_substitution, router_with_capture_plans, router_with_direct_playback,
+        router_with_gallery_catalogue, router_with_gallery_delivery,
         router_with_image_substitution, router_with_operations, router_with_synoptikon_catalogue,
+        validate_capture_destination_authority,
     };
 
     const CHECKSUM: &str =
@@ -2666,6 +2860,202 @@ mod tests {
                 max_candidates_per_page: 2,
             }],
         )
+    }
+
+    fn with_ready_capture_destination(
+        composition: CapturePlanComposition,
+        path: impl Into<std::path::PathBuf>,
+    ) -> CapturePlanComposition {
+        let store = ReviewedDestinationStore::new(path);
+        store
+            .seed_from_authority_if_absent(
+                "synthetic-monas-user",
+                &AuthoritySelectionSeed {
+                    endpoint_id: "synthetic-endpoint".into(),
+                    object_store_id: "synthetic-store".into(),
+                },
+            )
+            .unwrap();
+        composition
+            .with_reviewed_destinations(store)
+            .with_destination_revalidator(HostCaptureDestinationRevalidateBackend::new(Box::new(
+                |_, snapshot, _| {
+                    Ok(CaptureDestinationAuthorityState {
+                        endpoint_id: snapshot.endpoint_id.clone(),
+                        object_store_id: snapshot.object_store_id.clone(),
+                        endpoint_present: true,
+                        object_store_present: true,
+                        tls_trusted: true,
+                        paired: true,
+                        pairing_expires_at_epoch_seconds: u64::MAX,
+                        ready: true,
+                        writable: true,
+                        quota_available_bytes: 1024,
+                    })
+                },
+            )))
+    }
+
+    fn ready_destination_state() -> CaptureDestinationAuthorityState {
+        CaptureDestinationAuthorityState {
+            endpoint_id: "synthetic-endpoint".into(),
+            object_store_id: "synthetic-store".into(),
+            endpoint_present: true,
+            object_store_present: true,
+            tls_trusted: true,
+            paired: true,
+            pairing_expires_at_epoch_seconds: u64::MAX,
+            ready: true,
+            writable: true,
+            quota_available_bytes: 1024,
+        }
+    }
+
+    #[test]
+    fn live_destination_authority_rejects_every_write_gate_without_fallback() {
+        let snapshot = CaptureDestinationSnapshot {
+            endpoint_id: "synthetic-endpoint".into(),
+            object_store_id: "synthetic-store".into(),
+            selection_revision: 1,
+        };
+        assert!(
+            validate_capture_destination_authority(&snapshot, &ready_destination_state(), 1)
+                .is_ok()
+        );
+        let rejected = [
+            CaptureDestinationAuthorityState {
+                endpoint_present: false,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                object_store_present: false,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                endpoint_id: "fallback-endpoint".into(),
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                object_store_id: "fallback-store".into(),
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                tls_trusted: false,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                paired: false,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                pairing_expires_at_epoch_seconds: 1,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                ready: false,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                writable: false,
+                ..ready_destination_state()
+            },
+            CaptureDestinationAuthorityState {
+                quota_available_bytes: 0,
+                ..ready_destination_state()
+            },
+        ];
+        for state in rejected {
+            assert!(validate_capture_destination_authority(&snapshot, &state, 1).is_err());
+        }
+    }
+
+    #[test]
+    fn worker_revalidation_rejects_selection_revision_change_and_missing_adapter() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-api-destination-revalidation-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let store = ReviewedDestinationStore::new(root.join("destinations.json"));
+        let selected = store
+            .seed_from_authority_if_absent(
+                "synthetic-monas-user",
+                &AuthoritySelectionSeed {
+                    endpoint_id: "synthetic-endpoint".into(),
+                    object_store_id: "synthetic-store".into(),
+                },
+            )
+            .unwrap();
+        let snapshot = CaptureDestinationSnapshot {
+            endpoint_id: selected.endpoint_id,
+            object_store_id: selected.object_store_id,
+            selection_revision: selected.revision,
+        };
+        let mut plans = capture_plans();
+        let request = CapturePlanRequest {
+            schema_version: CAPTURE_REQUEST_SCHEMA_VERSION.into(),
+            pairing_id: "pair-0".into(),
+            origin: "https://example.invalid".into(),
+            page_url: "https://example.invalid/gallery".into(),
+            adapter_kind: AdapterKind::ExperimentalGeneric,
+            adapter_version: "1.0.0".into(),
+            capture_kind: CaptureKind::ObservedThumbnail,
+            media_url: "https://example.invalid/thumbnail.webp".into(),
+            presentation_url: None,
+            width: 320,
+            height: 200,
+        };
+        let plan = plans
+            .plan_with_destination("synthetic-monas-user", 1, request, snapshot)
+            .unwrap();
+        let stores = Arc::new(Mutex::new(store.clone()));
+        let runtime = CaptureCompletionRuntime {
+            authority: CaptureCompletionAuthority::new(
+                "synthetic-capture-worker-token-0001".into(),
+                GalleryCatalogueStore::new(root.join("gallery.json")),
+                "synthetic-endpoint".into(),
+                "synthetic-store".into(),
+            )
+            .unwrap(),
+            plans: Arc::new(Mutex::new(plans)),
+            gallery: Arc::new(Mutex::new(GalleryCatalogue::default())),
+            acquire: None,
+            reviewed_destinations: Some(Arc::clone(&stores)),
+            destination_revalidator: None,
+            in_flight: Mutex::new(std::collections::BTreeSet::new()),
+        };
+        assert!(revalidate_capture_destination(&runtime, "synthetic-monas-user", &plan).is_err());
+        store
+            .replace(
+                "synthetic-monas-user",
+                ReplaceReviewedDestination {
+                    schema_version: x_img_core::reviewed_destination::REVIEWED_DESTINATION_SCHEMA
+                        .into(),
+                    expected_revision: 1,
+                    endpoint_id: "synthetic-endpoint".into(),
+                    object_store_id: "synthetic-store".into(),
+                },
+            )
+            .unwrap();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let calls_for_callback = Arc::clone(&calls);
+        let runtime = CaptureCompletionRuntime {
+            destination_revalidator: Some(Mutex::new(
+                HostCaptureDestinationRevalidateBackend::new(Box::new(move |_, _, _| {
+                    calls_for_callback.fetch_add(1, Ordering::SeqCst);
+                    Ok(ready_destination_state())
+                })),
+            )),
+            ..runtime
+        };
+        assert!(revalidate_capture_destination(&runtime, "synthetic-monas-user", &plan).is_err());
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            0,
+            "changed selection must fail before host/helper work"
+        );
+        assert!(revalidate_capture_destination(&runtime, "another-actor", &plan).is_err());
+        let _ = std::fs::remove_dir_all(root);
     }
 
     fn request_body() -> Body {
@@ -3586,17 +3976,20 @@ mod tests {
             GalleryCatalogue::default(),
             None,
             gallery_image_backend(),
-            Some(CapturePlanComposition::new(
-                capture_plans(),
-                Some(
-                    CaptureCompletionAuthority::new(
-                        worker.into(),
-                        store,
-                        "synthetic-endpoint".into(),
-                        "synthetic-store".into(),
-                    )
-                    .unwrap(),
+            Some(with_ready_capture_destination(
+                CapturePlanComposition::new(
+                    capture_plans(),
+                    Some(
+                        CaptureCompletionAuthority::new(
+                            worker.into(),
+                            store,
+                            "synthetic-endpoint".into(),
+                            "synthetic-store".into(),
+                        )
+                        .unwrap(),
+                    ),
                 ),
+                root.join("destinations.json"),
             )),
         );
         let planned = app
@@ -3790,7 +4183,7 @@ mod tests {
             GalleryCatalogue::default(),
             None,
             gallery_image_backend(),
-            Some(
+            Some(with_ready_capture_destination(
                 CapturePlanComposition::new(
                     capture_plans(),
                     Some(
@@ -3804,7 +4197,8 @@ mod tests {
                     ),
                 )
                 .with_acquire(acquire),
-            ),
+                root.join("destinations.json"),
+            )),
         );
         let planned = app
             .clone()
@@ -3865,7 +4259,7 @@ mod tests {
             GalleryCatalogue::default(),
             None,
             gallery_image_backend(),
-            Some(
+            Some(with_ready_capture_destination(
                 CapturePlanComposition::new(
                     capture_plans(),
                     Some(
@@ -3881,7 +4275,8 @@ mod tests {
                 .with_acquire(HostCaptureAcquireBackend::new(Box::new(|_| {
                     Err("synthetic helper failure".into())
                 }))),
-            ),
+                root.join("destinations.json"),
+            )),
         );
         let planned = app
             .clone()
@@ -3948,7 +4343,7 @@ mod tests {
         let mut before_restart =
             CapturePlanService::with_journal(pairings(), sites(), &journal).unwrap();
         before_restart
-            .plan(
+            .plan_with_destination(
                 "synthetic-monas-user",
                 1,
                 CapturePlanRequest {
@@ -3963,6 +4358,11 @@ mod tests {
                     presentation_url: None,
                     width: 320,
                     height: 200,
+                },
+                x_img_core::viewed_media::CaptureDestinationSnapshot {
+                    endpoint_id: "synthetic-endpoint".into(),
+                    object_store_id: "synthetic-store".into(),
+                    selection_revision: 1,
                 },
             )
             .unwrap();
@@ -3991,7 +4391,7 @@ mod tests {
             GalleryCatalogue::default(),
             None,
             gallery_image_backend(),
-            Some(
+            Some(with_ready_capture_destination(
                 CapturePlanComposition::new(
                     restarted,
                     Some(
@@ -4005,7 +4405,8 @@ mod tests {
                     ),
                 )
                 .with_acquire(acquire),
-            ),
+                root.join("destinations.json"),
+            )),
         );
         let mut visible = false;
         for _ in 0..50 {
