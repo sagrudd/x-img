@@ -185,22 +185,23 @@ openedImage.currentSrc = "https://media.example.invalid/thumb.jpg";
 openedImage.naturalWidth = 2048;
 openedImage.naturalHeight = 1365;
 const contentSource = fs.readFileSync("firefox-extension/content-explicit-open.js", "utf8");
+const contentDocument = {
+  contentType: "text/html",
+  documentElement: {},
+  head: { append() {} },
+  createElement() { return { textContent: "" }; },
+  querySelectorAll() { return []; },
+  addEventListener(kind, callback, capture) {
+    contentListeners.set(kind, callback);
+    if (["click", "pointerdown", "play"].includes(kind)) assert.equal(capture, true);
+  },
+};
 vm.runInNewContext(contentSource, {
   browser: { runtime: {
     sendMessage(message) { contentMessages.push(message); },
     onMessage: { addListener() {} },
   } },
-  document: {
-    contentType: "text/html",
-    documentElement: {},
-    head: { append() {} },
-    createElement() { return { textContent: "" }; },
-    querySelectorAll() { return []; },
-    addEventListener(kind, callback, capture) {
-      contentListeners.set(kind, callback);
-      if (["click", "pointerdown", "play"].includes(kind)) assert.equal(capture, true);
-    },
-  },
+  document: contentDocument,
   Element: FixtureElement,
   HTMLVideoElement: FixtureVideo,
   MutationObserver: class { observe() {} },
@@ -243,6 +244,21 @@ assert.equal(contentMessages.length, 2);
 assert.equal(contentMessages[1].command, "explicit-video-opened");
 assert.equal(contentMessages[1].mediaUrl, "https://video.twimg.com/amplify_video/fixture/vid/avc1/1280x720/asset.mp4?token=ephemeral");
 assert.equal(contentMessages[1].width, 1280);
+
+const overlayPlayedVideo = new FixtureVideo();
+overlayPlayedVideo.currentSrc = "blob:https://art.example.invalid/overlay";
+overlayPlayedVideo.videoWidth = 854;
+overlayPlayedVideo.videoHeight = 480;
+overlayPlayedVideo.clientWidth = 427;
+overlayPlayedVideo.clientHeight = 240;
+overlayPlayedVideo.getBoundingClientRect = () => ({ left: 100, top: 100, right: 527, bottom: 340, width: 427, height: 240 });
+const overlayControl = new FixtureElement();
+contentDocument.querySelectorAll = selector => selector === "video" ? [overlayPlayedVideo] : [];
+contentListeners.get("pointerdown")({ isTrusted: true, type: "pointerdown", target: overlayControl, clientX: 320, clientY: 220 });
+contentListeners.get("play")({ isTrusted: true, target: overlayPlayedVideo });
+assert.equal(contentMessages.length, 3);
+assert.equal(contentMessages[2].command, "explicit-video-opened");
+assert.equal(contentMessages[2].width, 854);
 
 const sender = { tab: { id: 7, url: "https://art.example.invalid:8443/gallery?private=drop" } };
 const result = await messageListener({

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.17.2 - 2026-07-18
+
+- Associate a trusted click on an overlaid video control with the visible video
+  beneath its pointer coordinates, then require that exact video to emit a real
+  play event within two seconds before capture.
+- Record bounded observer diagnostics when a play event lacks a usable source
+  or recent trusted activation.
+
 ## 1.17.1 - 2026-07-18
 
 - Inject the persistent capture observer into eligible tabs that are already

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.17.1
+Version: 1.17.2
 
 Updated: 2026-07-18
 
@@ -1406,7 +1406,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   a playable gallery item. Do not mark complete from an admitted or pending
   plan. Mozilla signing, permanent-install verification, and checksum-identical
   DASServer deployment of the ``1.17.1`` backend and XPI are complete in
-  ``c010870``; live capture proof remains.
+  ``c010870``. A subsequent live play produced no server plan: X's overlaid
+  control was not related to its sibling video by the prior ancestor walk.
+  ``1.17.2`` maps a trusted pointer inside a visible video rectangle to that
+  exact video and still requires its genuine play event within two seconds;
+  synthetic coverage includes a separate overlay control. Live capture proof
+  remains.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

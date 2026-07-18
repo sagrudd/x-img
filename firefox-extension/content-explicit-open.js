@@ -47,6 +47,14 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
   });
 
   const videoActivations = new WeakMap();
+  let recentVisibleVideoActivation = null;
+  const visibleVideoAtPoint = event => [...document.querySelectorAll("video")].find(video => {
+    const rect = video.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0
+      && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)
+      && event.clientX >= rect.left && event.clientX <= rect.right
+      && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  }) || null;
   const rememberVideoActivation = event => {
     if (!event.isTrusted) return;
     let element = event.target instanceof Element ? event.target : null;
@@ -54,10 +62,15 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
     for (let depth = 0; !video && element && depth < 5; depth += 1, element = element.parentElement) {
       video = element.querySelector?.("video") || null;
     }
-    if (video) videoActivations.set(video, {
+    if (!video && event.type === "pointerdown") video = visibleVideoAtPoint(event);
+    if (video) {
+      const activation = {
       epochMilliseconds: Date.now(),
       performanceMilliseconds: performance.now(),
-    });
+      };
+      videoActivations.set(video, activation);
+      recentVisibleVideoActivation = { video, activation };
+    }
   };
   document.addEventListener("pointerdown", rememberVideoActivation, true);
   document.addEventListener("keydown", event => {
@@ -122,10 +135,19 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
     void browser.runtime.sendMessage({ command: "explicit-video-unresolved" });
   };
   document.addEventListener("play", event => {
-    if (!event.isTrusted || !(event.target instanceof HTMLVideoElement) || !event.target.currentSrc) return;
+    if (!event.isTrusted || !(event.target instanceof HTMLVideoElement)) return;
+    if (!event.target.currentSrc) {
+      void browser.runtime.sendMessage({ command: "explicit-video-observer", outcome: "missing_current_src" });
+      return;
+    }
     const video = event.target;
-    const activation = videoActivations.get(video);
-    if (!activation || Date.now() - activation.epochMilliseconds > 2000) return;
+    const activation = videoActivations.get(video)
+      || (recentVisibleVideoActivation?.video === video
+        ? recentVisibleVideoActivation.activation : null);
+    if (!activation || Date.now() - activation.epochMilliseconds > 2000) {
+      void browser.runtime.sendMessage({ command: "explicit-video-observer", outcome: "missing_trusted_activation" });
+      return;
+    }
     void resolvePlayedVideo(video, activation);
   }, true);
   document.addEventListener("click", event => {

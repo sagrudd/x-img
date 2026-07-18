@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.17.1
+Version: 1.17.2
 
 Updated: 2026-07-18
 
@@ -1172,6 +1172,17 @@ its stable identity, and DASServer now runs the ``1.17.1`` backend and serves
 the checksum-identical XPI as ``application/x-xpinstall`` over trusted HTTPS.
 The remaining release gate is one real user-played X video reaching verified
 DASObjectStore settlement and the playable gallery.
+
+## 1.17.2 — Associate overlaid controls with visible video
+
+Live ``1.17.1`` evidence proved the observer was injected but no capture plan
+reached Pinakotheke after playback. X presents its play control as an overlay
+or DOM cousin that the prior five-ancestor walk could not associate with the
+video element. ``1.17.2`` additionally maps a trusted pointer to the visible
+video rectangle beneath it and still requires that exact video to emit a real
+play event within two seconds. Unrelated clicks, autoplay, hidden video, and
+synthetic events remain ineligible. Bounded observer outcome diagnostics make
+missing source and missing activation distinguishable without retaining URLs.
 
 ## Post-1.0 candidates
 

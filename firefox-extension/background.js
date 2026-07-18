@@ -690,6 +690,12 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     await traceEvent("video_candidate", "segmented_or_unresolved", "no progressive HTTPS MP4 resource", origin);
     return { completed: false };
   }
+  if (message?.command === "explicit-video-observer" && sender?.tab?.url
+    && ["missing_current_src", "missing_trusted_activation"].includes(message.outcome)) {
+    const origin = new URL(sender.tab.url).origin;
+    await traceEvent("video_observer", message.outcome, "trusted play was not capture-eligible", origin);
+    return { completed: false };
+  }
   if (!["explicit-original-opened", "explicit-video-opened"].includes(message?.command) || !sender?.tab?.id || !sender.tab.url) {
     return undefined;
   }
