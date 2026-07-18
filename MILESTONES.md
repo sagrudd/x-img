@@ -1061,6 +1061,7 @@ prove the exact endpoint/store/revision is still present, TLS-trusted, paired,
 unexpired, ready, writable, media-compatible, and within quota. Any changed,
 missing, stale, unavailable, or malformed authority fails closed without a
 fallback; DASObjectStore remains the final atomic write authority.
+XIMG-098 was completed in ``fb2e467``.
 
 ## Post-1.0 candidates
 

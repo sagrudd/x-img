@@ -979,7 +979,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``c32241a``; real x86_64 DEB/RPM metadata and an arm64 macOS PKG prerequisite
   were inspected, with no DASObjectStore payload found.
 
-- [ ] **XIMG-098 P0 — Complete the live storage-destination workflow.** The
+- [x] **XIMG-098 P0 — Complete the live storage-destination workflow.** The
   first deployed slice renders the real Yew application through Monas and
   discovers the signed-in actor's DASObjectStore inventory in a visible,
   keyboard-accessible selector. Ready stores are selectable and unhealthy,
@@ -996,8 +996,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   states, and explicitly save only a Ready writable row whose endpoint matches
   authenticated onboarding. The server accepts only the exact endpoint/store
   pair already authorized by the host; browser inventory is not authority.
-  Keep this item open for plan-bound destination snapshots and live authority
-  revalidation immediately before helper execution.
+  Completed in ``fb2e467``. Every new capture plan now persists the actor's
+  exact endpoint, ObjectStore, and selection revision; legacy unbound plans do
+  not enter worker recovery. A strict bounded host callback revalidates the
+  same IDs and revision plus presence, TLS trust, pairing expiry, readiness,
+  write/type capability, and quota immediately before acquisition and again
+  before external completion. Changed or unavailable authority fails closed,
+  receipts must match the plan binding, and no path chooses a fallback store.
 
 - [x] **XIMG-099 P0 — Establish trusted local HTTPS for Firefox.** Completed
   in ``61d91d7`` on 2026-07-17. The DASServer deployment now terminates TLS
