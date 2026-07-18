@@ -329,6 +329,18 @@ fn captured_at_label(epoch_seconds: u64) -> String {
     format!("{year:04}-{month:02}-{day:02} · {hour:02}:{minute:02} UTC")
 }
 
+fn duration_label(duration_millis: u64) -> String {
+    let total_seconds = duration_millis / 1_000;
+    let hours = total_seconds / 3_600;
+    let minutes = total_seconds % 3_600 / 60;
+    let seconds = total_seconds % 60;
+    if hours > 0 {
+        format!("{hours}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes}:{seconds:02}")
+    }
+}
+
 fn civil_date_from_days(days_since_epoch: i64) -> (i64, i64, i64) {
     let z = days_since_epoch + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -1186,6 +1198,7 @@ pub fn app() -> Html {
                                             }}
                                             <strong>{ source_display_label(item) }</strong>
                                             <small>{ format!("Captured {}", captured_at_label(item.discovered_at_epoch_seconds)) }</small>
+                                            { item.video.as_ref().map(|video| html! { <small>{ format!("{} · {} / {}", duration_label(video.duration_millis), video.video_codec, video.audio_codec) }</small> }).unwrap_or_default() }
                                             <small>{ format!("{} · {} · {}", media_label(item), object_label(item), review_label(item)) }</small>
                                         </button>
                                     }
@@ -1313,6 +1326,14 @@ pub fn app() -> Html {
                                             <div><dt>{ "Media type" }</dt><dd>{ media_label(&selected_card) }</dd></div>
                                             <div><dt>{ "Object state" }</dt><dd>{ object_label(&selected_card) }</dd></div>
                                             <div><dt>{ "Dimensions" }</dt><dd>{ format!("{} × {}", selected_card.width, selected_card.height) }</dd></div>
+                                            { selected_card.video.as_ref().map(|video| html! {
+                                                <>
+                                                    <div><dt>{ "Duration" }</dt><dd>{ duration_label(video.duration_millis) }</dd></div>
+                                                    <div><dt>{ "Codecs" }</dt><dd>{ format!("{} / {}", video.video_codec, video.audio_codec) }</dd></div>
+                                                    <div><dt>{ "Playback profile" }</dt><dd>{ video.profile_id.clone() }</dd></div>
+                                                    <div><dt>{ "Normalization" }</dt><dd>{ "Ready · Firefox verified" }</dd></div>
+                                                </>
+                                            }).unwrap_or_default() }
                                             <div><dt>{ "Endpoint / ObjectStore" }</dt><dd>{ format!("{} / {}", selected_card.thumbnail.endpoint_id, selected_card.thumbnail.object_store_id) }</dd></div>
                                             <div><dt>{ "Object version" }</dt><dd>{ selected_card.thumbnail.object_version }</dd></div>
                                         </dl>
@@ -1384,6 +1405,7 @@ mod tests {
             discovered_at_epoch_seconds: 1,
             width: 320,
             height: 200,
+            video: None,
             thumbnail: representation(
                 GalleryObjectAvailability::Ready,
                 Some("/products/pinakotheke/api/gallery/v1/objects/thumbnail-1"),
@@ -1456,6 +1478,8 @@ mod tests {
         assert_eq!(source_display_label(&media), "@fixture_artist");
         assert_eq!(captured_at_label(0), "1970-01-01 · 00:00 UTC");
         assert_eq!(captured_at_label(1_784_310_000), "2026-07-17 · 17:40 UTC");
+        assert_eq!(duration_label(12_345), "0:12");
+        assert_eq!(duration_label(3_723_000), "1:02:03");
         assert_eq!(
             ready_url(&media.thumbnail).as_deref(),
             Some(

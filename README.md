@@ -65,7 +65,7 @@ release remains available from its historical
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
 and dual-architecture upgrade/rollback evidence.
 
-The `1.15.0` development workspace provides shared model and core boundaries, a `clap`
+The `1.16.0` development workspace provides shared model and core boundaries, a `clap`
 CLI, an Axum composition boundary, and a Yew client boundary. It compiles
 without enabling unconfigured source, storage, authentication, or media-payload
 integration. The first local monolith slice can now run a loopback Axum service
@@ -320,6 +320,14 @@ DRM, encryption, hidden traversal, authorization context, and incomplete proof.
 Playback remains origin-served until the exact adapter also has real-Firefox
 evidence and a matching Ready normalized rendition. See
 [segmented video gating](docs/segmented-video-gate.rst).
+
+The authenticated library has a dedicated **Playable videos** context. New
+normalized cards retain their committed poster, duration, dimensions, codecs,
+playback profile, capture time, source label, and Firefox verification state.
+The keyboard-accessible quick viewer uses only the authorized host-local
+DASObjectStore range route; installed Firefox evidence covers metadata loading,
+seeking, concurrent ranges, pause/resume, missing-object handling, and absence
+of source-site fallback. See [quick preview](docs/quick-preview.rst).
 
 The Firefox toolbar exposes the active site's capture/substitution state,
 pause/resume and explicit run controls, its latest coarse cache result, and the

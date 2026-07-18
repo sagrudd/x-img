@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use x_img_api::HostCaptureAcquireBackend;
 use x_img_core::{
     capture_completion::VerifiedCaptureCompletion,
+    persistent_gallery_admission::GalleryVideoCompletion,
     viewed_media::{CaptureKind, CapturePlan},
 };
 
@@ -68,6 +69,8 @@ enum AcquireResponse {
         object_version: u64,
         checksum_sha256: String,
         verified_at_epoch_seconds: u64,
+        #[serde(default)]
+        video: Option<Box<GalleryVideoCompletion>>,
     },
     PolicyBlocked {
         schema_version: String,
@@ -177,6 +180,7 @@ pub(crate) fn acquire(
             object_version,
             checksum_sha256,
             verified_at_epoch_seconds,
+            video,
             ..
         } if actual_endpoint == endpoint_id && actual_store == object_store_id => {
             Ok(VerifiedCaptureCompletion {
@@ -191,6 +195,7 @@ pub(crate) fn acquire(
                 object_version,
                 checksum_sha256,
                 verified_at_epoch_seconds,
+                video: video.map(|video| *video),
             })
         }
         AcquireResponse::Committed { .. } => Err(io::Error::new(

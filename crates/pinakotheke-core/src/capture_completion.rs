@@ -7,7 +7,7 @@ use crate::{
     acquisition::{Acquisition, AcquisitionError, VerifiedObject},
     gallery_catalogue::GalleryCatalogueStore,
     persistent_gallery_admission::{
-        GalleryImagePresentation, PersistentGalleryAdmissionError,
+        GalleryImagePresentation, GalleryVideoCompletion, PersistentGalleryAdmissionError,
         PersistentGalleryAdmissionOutcome, PersistentWebsiteGalleryAdmission,
     },
     reconciliation::{
@@ -31,6 +31,7 @@ pub struct VerifiedCaptureCompletion {
     pub object_version: u64,
     pub checksum_sha256: String,
     pub verified_at_epoch_seconds: u64,
+    pub video: Option<GalleryVideoCompletion>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,6 +117,7 @@ pub fn complete_verified_image(
                 title: evidence.title,
                 content_type: evidence.content_type,
                 content_length: evidence.content_length,
+                video: evidence.video,
             },
             evidence.verified_at_epoch_seconds,
         )
@@ -208,6 +210,7 @@ mod tests {
             object_version: 3,
             checksum_sha256: CHECKSUM.into(),
             verified_at_epoch_seconds: 2,
+            video: None,
         };
         assert_eq!(
             complete_verified_image(&mut plans, gallery.clone(), "actor", evidence()).unwrap(),

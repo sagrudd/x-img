@@ -443,6 +443,8 @@ struct CaptureCompletionRequest {
     object_version: u64,
     checksum_sha256: String,
     verified_at_epoch_seconds: u64,
+    #[serde(default)]
+    video: Option<x_img_core::persistent_gallery_admission::GalleryVideoCompletion>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2013,6 +2015,7 @@ async fn complete_capture_plan(
             object_version: request.object_version,
             checksum_sha256: request.checksum_sha256,
             verified_at_epoch_seconds: request.verified_at_epoch_seconds,
+            video: request.video,
         },
     )
     .map_err(|error| match error {
@@ -2604,6 +2607,7 @@ mod tests {
             discovered_at_epoch_seconds: 1,
             width: 320,
             height: 200,
+            video: None,
             thumbnail: object(
                 GalleryRepresentationKind::Thumbnail,
                 Some("/api/gallery/v1/objects/thumbnail-1"),
@@ -2667,6 +2671,14 @@ mod tests {
             discovered_at_epoch_seconds: 1,
             width: 1920,
             height: 1080,
+            video: Some(x_img_core::gallery_catalogue::GalleryVideoMetadata {
+                duration_millis: 12_345,
+                video_codec: "h264".into(),
+                audio_codec: "aac".into(),
+                profile_id: "pinakotheke-video-mp4-v1".into(),
+                normalization_state: "ready".into(),
+                firefox_playback_evidence_id: "firefox-140".into(),
+            }),
             thumbnail: representation(
                 GalleryRepresentationKind::VideoPoster,
                 "video/poster.webp",
@@ -4179,6 +4191,7 @@ mod tests {
                 object_version: 1,
                 checksum_sha256: CHECKSUM.strip_prefix("sha256:").unwrap().into(),
                 verified_at_epoch_seconds: 42,
+                video: None,
             })
         }));
         let app = monolith_router_with_gallery_web_delivery_and_capture_authority(
@@ -4387,6 +4400,7 @@ mod tests {
                 object_version: 1,
                 checksum_sha256: CHECKSUM.strip_prefix("sha256:").unwrap().into(),
                 verified_at_epoch_seconds: 42,
+                video: None,
             })
         }));
         let app = monolith_router_with_gallery_web_delivery_and_capture_authority(

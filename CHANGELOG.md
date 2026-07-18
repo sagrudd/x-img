@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.16.0 - 2026-07-18
+
+- Carry normalization probe metadata and the committed poster receipt through
+  the isolated capture worker into persistent video catalogue records.
+- Show duration, dimensions, codecs, playback profile, capture/source context,
+  and worded Firefox-ready state in the dedicated video cards and quick viewer.
+- Extend installed-Firefox assurance across the Videos filter, metadata UI,
+  responsive/keyboard behavior, range seeking, concurrent reads, conditional
+  delivery, cancellation, pause/resume, and missing-object handling without a
+  source-site request.
+
 ## 1.15.0 - 2026-07-18
 
 - Add a site-neutral bounded planning contract for user-played HLS, DASH, and

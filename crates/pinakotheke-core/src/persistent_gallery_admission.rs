@@ -8,7 +8,7 @@ use crate::{
     gallery_catalogue::{
         GalleryCatalogueStore, GalleryItem, GalleryMediaKind, GalleryObjectAvailability,
         GalleryRepresentation, GalleryRepresentationKind, GalleryReviewState, GallerySourceKind,
-        GalleryStoreError,
+        GalleryStoreError, GalleryVideoMetadata,
     },
     reconciliation::ReconciliationCatalogue,
     review_admission::ReviewQueue,
@@ -22,6 +22,23 @@ pub struct GalleryImagePresentation {
     pub title: String,
     pub content_type: String,
     pub content_length: u64,
+    pub video: Option<GalleryVideoCompletion>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GalleryVideoCompletion {
+    pub duration_millis: u64,
+    pub width: u32,
+    pub height: u32,
+    pub video_codec: String,
+    pub audio_codec: String,
+    pub profile_id: String,
+    pub firefox_playback_evidence_id: String,
+    pub poster_object_key: String,
+    pub poster_object_version: u64,
+    pub poster_checksum_sha256: String,
+    pub poster_content_length: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +138,14 @@ impl PersistentWebsiteGalleryAdmission {
             .iter_mut()
             .find(|item| item.catalogue_id == presentation.catalogue_id);
         let (source_label, source_kind) = gallery_source(plan);
+        let presentation_width = presentation
+            .video
+            .as_ref()
+            .map_or(plan.width, |video| video.width);
+        let presentation_height = presentation
+            .video
+            .as_ref()
+            .map_or(plan.height, |video| video.height);
         let outcome = match (plan.capture_kind, existing) {
             (CaptureKind::ObservedThumbnail, None) => {
                 items.push(GalleryItem {
@@ -131,8 +156,9 @@ impl PersistentWebsiteGalleryAdmission {
                     media_kind: GalleryMediaKind::Image,
                     review_state: GalleryReviewState::New,
                     discovered_at_epoch_seconds,
-                    width: plan.width,
-                    height: plan.height,
+                    width: presentation_width,
+                    height: presentation_height,
+                    video: None,
                     thumbnail: representation,
                     preview: None,
                 });
@@ -173,8 +199,9 @@ impl PersistentWebsiteGalleryAdmission {
                     media_kind: GalleryMediaKind::Image,
                     review_state: GalleryReviewState::New,
                     discovered_at_epoch_seconds,
-                    width: plan.width,
-                    height: plan.height,
+                    width: presentation_width,
+                    height: presentation_height,
+                    video: None,
                     thumbnail,
                     preview: Some(representation),
                 });
@@ -198,10 +225,38 @@ impl PersistentWebsiteGalleryAdmission {
                 PersistentGalleryAdmissionOutcome::OriginalAttached
             }
             (CaptureKind::ExplicitVideo, None) => {
-                let mut placeholder = representation.clone();
-                placeholder.kind = GalleryRepresentationKind::VideoPoster;
-                placeholder.availability = GalleryObjectAvailability::Unavailable;
-                placeholder.delivery_path = None;
+                let (poster, video) = if let Some(video) = presentation.video {
+                    let poster = GalleryRepresentation {
+                        kind: GalleryRepresentationKind::VideoPoster,
+                        availability: GalleryObjectAvailability::Ready,
+                        endpoint_id: representation.endpoint_id.clone(),
+                        object_store_id: representation.object_store_id.clone(),
+                        object_key: video.poster_object_key.clone(),
+                        object_version: video.poster_object_version,
+                        checksum: format!("sha256:{}", video.poster_checksum_sha256),
+                        content_type: "image/webp".into(),
+                        content_length: video.poster_content_length,
+                        delivery_path: Some(format!(
+                            "/products/pinakotheke/api/gallery/v1/objects/{}/thumbnail",
+                            presentation.catalogue_id
+                        )),
+                    };
+                    let metadata = GalleryVideoMetadata {
+                        duration_millis: video.duration_millis,
+                        video_codec: video.video_codec,
+                        audio_codec: video.audio_codec,
+                        profile_id: video.profile_id,
+                        normalization_state: "ready".into(),
+                        firefox_playback_evidence_id: video.firefox_playback_evidence_id,
+                    };
+                    (poster, Some(metadata))
+                } else {
+                    let mut placeholder = representation.clone();
+                    placeholder.kind = GalleryRepresentationKind::VideoPoster;
+                    placeholder.availability = GalleryObjectAvailability::Unavailable;
+                    placeholder.delivery_path = None;
+                    (placeholder, None)
+                };
                 items.push(GalleryItem {
                     catalogue_id: presentation.catalogue_id,
                     title: presentation.title,
@@ -210,9 +265,10 @@ impl PersistentWebsiteGalleryAdmission {
                     media_kind: GalleryMediaKind::NormalizedVideo,
                     review_state: GalleryReviewState::New,
                     discovered_at_epoch_seconds,
-                    width: plan.width,
-                    height: plan.height,
-                    thumbnail: placeholder,
+                    width: presentation_width,
+                    height: presentation_height,
+                    video,
+                    thumbnail: poster,
                     preview: Some(representation),
                 });
                 PersistentGalleryAdmissionOutcome::VideoInserted
@@ -362,6 +418,7 @@ mod tests {
             title: "Redistributable test image".into(),
             content_type: "image/jpeg".into(),
             content_length: 12,
+            video: None,
         }
     }
 
@@ -427,6 +484,19 @@ mod tests {
             title: "Captured video from x-web".into(),
             content_type: "video/mp4".into(),
             content_length: 42,
+            video: Some(GalleryVideoCompletion {
+                duration_millis: 12_345,
+                width: 1920,
+                height: 1080,
+                video_codec: "h264".into(),
+                audio_codec: "aac".into(),
+                profile_id: "pinakotheke-video-mp4-v1".into(),
+                firefox_playback_evidence_id: "firefox-140-linux".into(),
+                poster_object_key: "x.com/artist/status/poster.webp".into(),
+                poster_object_version: 8,
+                poster_checksum_sha256: "b".repeat(64),
+                poster_content_length: 24,
+            }),
         };
         let mut admission = PersistentWebsiteGalleryAdmission::new(store.clone());
         assert_eq!(
@@ -446,9 +516,13 @@ mod tests {
         assert_eq!(item.media_kind, GalleryMediaKind::NormalizedVideo);
         assert_eq!(
             item.thumbnail.availability,
-            GalleryObjectAvailability::Unavailable
+            GalleryObjectAvailability::Ready
         );
+        assert_eq!(item.thumbnail.content_type, "image/webp");
         assert_eq!(item.preview.as_ref().unwrap().content_type, "video/mp4");
+        assert_eq!((item.width, item.height), (1920, 1080));
+        assert_eq!(item.video.as_ref().unwrap().duration_millis, 12_345);
+        assert_eq!(item.video.as_ref().unwrap().normalization_state, "ready");
         fs::remove_dir_all(root).unwrap();
     }
 

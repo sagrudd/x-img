@@ -97,8 +97,22 @@ pub struct GalleryItem {
     pub discovered_at_epoch_seconds: u64,
     pub width: u32,
     pub height: u32,
+    /// Present on newly admitted normalized videos. Absent only on legacy records.
+    #[serde(default)]
+    pub video: Option<GalleryVideoMetadata>,
     pub thumbnail: GalleryRepresentation,
     pub preview: Option<GalleryRepresentation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GalleryVideoMetadata {
+    pub duration_millis: u64,
+    pub video_codec: String,
+    pub audio_codec: String,
+    pub profile_id: String,
+    pub normalization_state: String,
+    pub firefox_playback_evidence_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -680,7 +694,35 @@ fn validate_item(item: &GalleryItem) -> Result<(), GalleryCatalogueError> {
             ));
         }
     }
+    match (item.media_kind, &item.video) {
+        (GalleryMediaKind::Image, Some(_)) => {
+            return Err(GalleryCatalogueError::InvalidItem(
+                "image records cannot carry video metadata".into(),
+            ));
+        }
+        (GalleryMediaKind::NormalizedVideo, Some(video))
+            if video.duration_millis == 0
+                || !short_token(&video.video_codec)
+                || !short_token(&video.audio_codec)
+                || !short_token(&video.profile_id)
+                || video.normalization_state != "ready"
+                || !short_token(&video.firefox_playback_evidence_id) =>
+        {
+            return Err(GalleryCatalogueError::InvalidItem(
+                "video metadata is incomplete or not ready".into(),
+            ));
+        }
+        _ => {}
+    }
     Ok(())
+}
+
+fn short_token(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-'))
 }
 
 fn validate_representation(
@@ -754,6 +796,7 @@ mod tests {
             discovered_at_epoch_seconds: discovered,
             width: 320,
             height: 200,
+            video: None,
             thumbnail: representation(GalleryObjectAvailability::Ready),
             preview: None,
         }

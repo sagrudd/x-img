@@ -13,6 +13,7 @@ use std::{
 };
 use x_img_core::{
     destination::ReviewedDestination,
+    persistent_gallery_admission::GalleryVideoCompletion,
     video_normalization::{NORMALIZATION_SCHEMA, PairedDeviceNormalizationPlan},
     video_profile::{
         AudioCodec, CodecVariant, DockerExecutionPlan, ExecutionPlacement,
@@ -150,6 +151,8 @@ struct Committed {
     object_version: u64,
     checksum_sha256: String,
     verified_at_epoch_seconds: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    video: Option<GalleryVideoCompletion>,
 }
 
 #[derive(Debug, Serialize)]
@@ -512,6 +515,7 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         object_version: version,
         checksum_sha256: checksum,
         verified_at_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
+        video: None,
     })
 }
 
@@ -909,6 +913,28 @@ fn normalize_incompatible_video(
         .ok_or("normalizer returned an invalid checksum")?
         .to_owned();
     let version = u64::from_str_radix(&checksum[..16], 16).unwrap_or(1).max(1);
+    let poster_checksum = result
+        .poster
+        .checksum
+        .strip_prefix("sha256:")
+        .ok_or("normalizer returned an invalid poster checksum")?
+        .to_owned();
+    let poster_version = u64::from_str_radix(&poster_checksum[..16], 16)
+        .unwrap_or(1)
+        .max(1);
+    let video = GalleryVideoCompletion {
+        duration_millis: result.probe.duration_millis,
+        width: result.probe.width,
+        height: result.probe.height,
+        video_codec: result.probe.video_codec,
+        audio_codec: result.probe.audio_codec,
+        profile_id: result.probe.profile_id,
+        firefox_playback_evidence_id: handoff.firefox_playback_evidence_id.clone(),
+        poster_object_key: result.poster.object_key,
+        poster_object_version: poster_version,
+        poster_checksum_sha256: poster_checksum,
+        poster_content_length: result.poster.size_bytes,
+    };
     Ok(Committed {
         schema_version: REQUEST_SCHEMA,
         catalogue_id: catalogue_id(request),
@@ -921,6 +947,7 @@ fn normalize_incompatible_video(
         object_version: version,
         checksum_sha256: checksum,
         verified_at_epoch_seconds: now,
+        video: Some(video),
     })
 }
 
@@ -1248,6 +1275,18 @@ print(json.dumps({'schema_version':h['schema_version'],'endpoint_id':h['endpoint
         assert_eq!(receipt.content_type, "video/mp4");
         assert_eq!(receipt.content_length, 16);
         assert!(receipt.object_key.ends_with("/normalized/video.mp4"));
+        let metadata = receipt.video.as_ref().expect("normalization metadata");
+        assert_eq!(metadata.duration_millis, 1_000);
+        assert_eq!((metadata.width, metadata.height), (64, 48));
+        assert_eq!(
+            (metadata.video_codec.as_str(), metadata.audio_codec.as_str()),
+            ("h264", "aac")
+        );
+        assert!(
+            metadata
+                .poster_object_key
+                .ends_with("/normalized/poster.webp")
+        );
         let journal = fs::read_to_string(gap_journal).unwrap();
         assert!(journal.contains("vp9"));
         assert!(journal.contains("opus"));
@@ -1454,6 +1493,7 @@ print(json.dumps({'schema_version':h['schema_version'],'endpoint_id':h['endpoint
             object_version: 1,
             checksum_sha256: "a".repeat(64),
             verified_at_epoch_seconds: 1,
+            video: None,
         };
         let encoded = serde_json::to_value(receipt).unwrap();
         assert_eq!(encoded["outcome"], "committed");

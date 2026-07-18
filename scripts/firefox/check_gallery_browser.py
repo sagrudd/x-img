@@ -47,10 +47,22 @@ addEventListener('TrunkApplicationStarted', async () => {
   const columns = Number(getComputedStyle(document.querySelector('.ximg-gallery__grid')).getPropertyValue('--gallery-columns'));
   if (columns < 3) throw new Error('desktop-columns');
   await event('desktop-responsive');
-  for (let i=0; i<4; i++) {
+  const videos = [...document.querySelectorAll('.ximg-source-nav__item')].find(button => button.textContent.includes('Playable videos'));
+  videos.click();
+  await waitFor(() => document.querySelector('[role=status]')?.textContent.includes('of 200 catalogue'), 'videos-filter');
+  const videoCard = await waitFor(() => [...document.querySelectorAll('.ximg-gallery__card')].find(node => node.textContent.includes('0:12 · h264 / aac')), 'video-metadata-card');
+  videoCard.click();
+  const details = await waitFor(() => document.querySelector('.ximg-preview__details'), 'video-details');
+  if (!details.textContent.includes('pinakotheke-video-mp4-v1') || !details.textContent.includes('Ready · Firefox verified')) throw new Error('video-details');
+  await event('video-filter-metadata');
+  document.getElementById('preview-close').click();
+  const allMedia = [...document.querySelectorAll('.ximg-source-nav__item')].find(button => button.textContent.includes('All sources'));
+  allMedia.click();
+  await waitFor(() => document.querySelector('[role=status]')?.textContent.includes('of 1000 catalogue'), 'all-media');
+  for (let i=0; i<24; i++) {
     const more = await waitFor(() => document.querySelector('.ximg-gallery__more'), 'load-more');
     more.click();
-    await waitFor(() => document.querySelector('[role=status]')?.textContent.includes(`Loaded ${(i+2)*100} `), 'page');
+    await waitFor(() => document.querySelector('[role=status]')?.textContent.includes(`Loaded ${(i+2)*20} `), 'page');
   }
   const viewport = document.getElementById('gallery-scroll');
   if (document.querySelectorAll('.ximg-gallery__card').length > 120) throw new Error('unbounded-dom');
@@ -110,7 +122,9 @@ def item(index: int) -> dict[str, object]:
         "source_kind": source, "media_kind": "normalized_video" if video else "image",
         "review_state": ["new", "reviewed", "hidden"][index % 3],
         "discovered_at_epoch_seconds": 2_000_000_000 - index,
-        "width": 640, "height": 480, "thumbnail": thumbnail, "preview": None,
+        "width": 640, "height": 480,
+        "video": ({"duration_millis":12345,"video_codec":"h264","audio_codec":"aac","profile_id":"pinakotheke-video-mp4-v1","normalization_state":"ready","firefox_playback_evidence_id":"firefox-fixture-v1"} if video else None),
+        "thumbnail": thumbnail, "preview": None,
     }
 
 
@@ -144,8 +158,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         values = urllib.parse.parse_qs(query)
         selected = ITEMS
         source = values.get("source_kind", [None])[0]
+        media = values.get("media_kind", [None])[0]
         text = values.get("text", [""])[0].lower()
         if source: selected = [entry for entry in selected if entry["source_kind"] == source]
+        if media: selected = [entry for entry in selected if entry["media_kind"] == media]
         if text: selected = [entry for entry in selected if text in str(entry["title"]).lower() or text in str(entry["source_label"]).lower()]
         offset = int(values.get("offset", [0])[0]); limit = min(int(values.get("limit", [100])[0]), 200)
         page = selected[offset:offset+limit]
@@ -201,9 +217,9 @@ def main() -> int:
     Handler.root = args.dist.resolve(); server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler); thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
     try:
         url = f"http://127.0.0.1:{server.server_port}/products/pinakotheke/app/"
-        run_browser(firefox_binary(args.firefox), url, 1280, {"desktop-responsive", "bounded-window-keyboard", "server-filter", "unavailable-no-origin"}, args.timeout)
+        run_browser(firefox_binary(args.firefox), url, 1280, {"desktop-responsive", "video-filter-metadata", "bounded-window-keyboard", "server-filter", "unavailable-no-origin"}, args.timeout)
         run_browser(firefox_binary(args.firefox), url + "?mode=mobile", 390, {"mobile-responsive"}, args.timeout)
-        print("Firefox Yew gallery passed: 1000 records, bounded window, keyboard, filters, unavailable, desktop/mobile")
+        print("Firefox Yew gallery passed: video filter/metadata, 1000 records, bounded window, keyboard, unavailable, desktop/mobile")
         return 0
     finally: server.shutdown(); server.server_close()
 

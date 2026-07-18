@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.15.0
+Version: 1.16.0
 
 Updated: 2026-07-18
 
@@ -1098,6 +1098,20 @@ does not make segmented substitution ready: exact adapter and real-Firefox
 evidence, normalization, DASObjectStore verification, and the existing Ready
 playback gate remain required.
 XIMG-112 was completed in ``1c26c20``.
+
+## 1.16.0 — Complete normalized-video library and Firefox assurance
+
+Goal: make every newly normalized video immediately useful in the authenticated
+library. The capture completion carries the verified probe and separately
+committed poster into the catalogue, and the dedicated Playable videos context
+shows duration, dimensions, codec/profile, capture time, source label, and a
+worded Firefox-ready normalization state.
+
+The quick viewer remains keyboard accessible and uses native controls over the
+host-authorized DASObjectStore single-range route. Installed Firefox assurance
+covers the real Yew video filter/metadata UI plus metadata loading, seeking,
+parallel ranges, conditional reads, cancellation, pause/resume, missing-object
+handling, responsive behavior, and absence of source-site fallback.
 
 ## Post-1.0 candidates
 

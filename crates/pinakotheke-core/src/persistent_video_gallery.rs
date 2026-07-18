@@ -7,7 +7,7 @@ use crate::{
     gallery_catalogue::{
         GalleryCatalogueStore, GalleryItem, GalleryMediaKind, GalleryObjectAvailability,
         GalleryRepresentation, GalleryRepresentationKind, GalleryReviewState, GallerySourceKind,
-        GalleryStoreError,
+        GalleryStoreError, GalleryVideoMetadata,
     },
     video_profile::{
         ManagedVideoObject, NormalizedVideoRecord, NormalizedVideoState, ProfileEvidence,
@@ -25,6 +25,9 @@ pub struct GalleryVideoPresentation {
     pub poster_content_length: u64,
     pub video_content_length: u64,
     pub discovered_at_epoch_seconds: u64,
+    pub duration_millis: u64,
+    pub video_codec: String,
+    pub audio_codec: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +85,14 @@ pub fn admit_ready_normalized_video(
         discovered_at_epoch_seconds: presentation.discovered_at_epoch_seconds,
         width: presentation.width,
         height: presentation.height,
+        video: Some(GalleryVideoMetadata {
+            duration_millis: presentation.duration_millis,
+            video_codec: presentation.video_codec,
+            audio_codec: presentation.audio_codec,
+            profile_id: record.profile_id.clone(),
+            normalization_state: "ready".into(),
+            firefox_playback_evidence_id: evidence.evidence_id.clone(),
+        }),
         thumbnail: representation(
             poster,
             GalleryRepresentationKind::VideoPoster,
@@ -159,6 +170,9 @@ fn validate_presentation(
         || presentation.height == 0
         || presentation.poster_content_length == 0
         || presentation.video_content_length == 0
+        || presentation.duration_millis == 0
+        || presentation.video_codec.is_empty()
+        || presentation.audio_codec.is_empty()
     {
         return Err(PersistentVideoGalleryError::InvalidPresentation);
     }
@@ -267,6 +281,9 @@ mod tests {
             poster_content_length: 12,
             video_content_length: 26,
             discovered_at_epoch_seconds: 42,
+            duration_millis: 12_345,
+            video_codec: "h264".into(),
+            audio_codec: "aac".into(),
         }
     }
 

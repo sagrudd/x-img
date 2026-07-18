@@ -8,7 +8,7 @@ BASELINE_DIST ?=
 BASELINE_VERSION ?=
 PRODUCT ?= pinakotheke
 
-.PHONY: help all packages web firefox-gallery-check firefox-capture-check firefox-lint firefox-sign firefox-signed-install-check linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
+.PHONY: help all packages web firefox-gallery-check firefox-playback-check firefox-capture-check firefox-lint firefox-sign firefox-signed-install-check linux linux-x86_64 linux-arm64 linux-deb linux-rpm \
 	linux-deb-x86_64 linux-deb-arm64 linux-rpm-x86_64 linux-rpm-arm64 \
 	macos-pkg macos-pkg-x86_64 macos-pkg-arm64 firefox firefox-macos-x86_64 \
 	firefox-macos-arm64 firefox-windows-x86_64 firefox-windows-arm64 \
@@ -19,6 +19,7 @@ help:
 	@echo "  make packages              Build every native package and Firefox XPI"
 	@echo "  make web                   Build the Monas-mounted Yew application"
 	@echo "  make firefox-gallery-check Exercise the Yew gallery in installed Firefox"
+	@echo "  make firefox-playback-check VIDEO=/path/to/normalized.mp4"
 	@echo "  make firefox-capture-check Exercise observed/opened capture in installed Firefox"
 	@echo "  make linux                 Build DEB and RPM for Linux x86_64 and arm64"
 	@echo "  make macos-pkg             Build macOS PKG for x86_64 and arm64 (macOS only)"
@@ -46,6 +47,10 @@ web:
 
 firefox-gallery-check: web
 	python3 scripts/firefox/check_gallery_browser.py --dist "$(DIST)/web"
+
+firefox-playback-check:
+	@test -n "$(VIDEO)" || { echo "VIDEO must name an ephemeral normalized MP4" >&2; exit 2; }
+	python3 scripts/firefox/check_normalized_playback.py --video "$(VIDEO)"
 
 firefox-capture-check:
 	node scripts/firefox/check_installed_capture.mjs
