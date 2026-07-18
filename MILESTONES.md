@@ -1129,7 +1129,7 @@ remote/server DASObjectStore read authority. Readiness is ``ready`` only when
 both Monas dispatch and a local managed profile or composed host reader are
 present; partial configurations remain explicitly ``not_ready``.
 
-The deployed host also requires Monas ``0.8.2`` at commit ``c91c544``. Monas
+The deployed host also requires Monas ``0.8.4`` at commit ``90ed54a``. Monas
 first migrates legacy account and session records to immutable Prosopikon IDs
 through a digest-guarded, privately backed-up, deterministic replacement. It
 revokes every pre-start Prosopikon browser session, so restart forces a fresh
@@ -1137,6 +1137,10 @@ login, and its Pinakotheke proxy strips hop-by-hop framing while forwarding GET
 and HEAD requests without a synthetic streaming body. Secret-safe error
 categories distinguish connection, timeout, request, and body failures without
 logging cookies, tokens, credentials, or browsing URLs.
+The authenticated Firefox request exposed an absolute HTTP/2 URI that the old
+proxy concatenated onto its loopback origin. The corrected proxy retains only
+path and query, and live DASServer evidence shows a valid post-login session
+with no upstream failure after the authenticated application request.
 
 ## Post-1.0 candidates
 

@@ -143,8 +143,8 @@ mirror records ``mnemosyne_design_language`` commit
 ``5539df8f662a78ebdf7cf4c868d71831380c8cfd``; Monas remains responsible for
 the approved host branding and login assets.
 
-The current compatibility baseline is Monas ``0.8.2`` at sibling commit
-``c91c544a890769f670a4b398dfcfe8a8cf8185b1``. Its validated Pinakotheke return
+The current compatibility baseline is Monas ``0.8.4`` at sibling commit
+``90ed54af248eb0cd5b95004233ff1654dd580852``. Its validated Pinakotheke return
 path renders a product-aware sign-on modelled on the DASObjectStore reference:
 the restrained Mnemosyne wordmark and product purpose lead, the task panel says
 ``Pinakotheke sign in``, Monas session ownership remains explicit, and the
@@ -156,6 +156,9 @@ and HEAD requests use body-free, hop-by-hop-safe loopback forwarding. Before
 serving, an upgraded host idempotently migrates legacy local users and sessions
 to immutable Prosopikon IDs with source-digest verification, a private backup,
 deterministic identifiers, uniqueness checks, and atomic replacement.
+Absolute HTTP/2 browser URIs are reduced to their path-and-query component
+before composition with the fixed loopback origin; the public scheme and
+authority are never concatenated into or forwarded as the backend URL.
 
 Point the backend at the reviewed build directory:
 
