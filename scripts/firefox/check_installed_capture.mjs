@@ -31,7 +31,8 @@ run("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
 { stdio: "ignore" });
 
 const captures = [];
-const svg = colour => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48"><rect width="64" height="48" fill="${colour}"/></svg>`);
+let syntheticVideo = Buffer.alloc(0);
+const svg = colour => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="72"><rect width="96" height="72" fill="${colour}"/></svg>`);
 const server = https.createServer({
   key: fs.readFileSync(path.join(temporary, "key.pem")),
   cert: fs.readFileSync(path.join(temporary, "cert.pem")),
@@ -47,8 +48,49 @@ const server = https.createServer({
     });
     return;
   }
+  if (request.method === "POST" && request.url === "/synthetic-video") {
+    const chunks = [];
+    request.on("data", chunk => chunks.push(chunk));
+    request.on("end", () => {
+      syntheticVideo = Buffer.concat(chunks);
+      response.writeHead(syntheticVideo.length > 0 ? 204 : 400);
+      response.end();
+    });
+    return;
+  }
+  if (request.url === "/synthetic-video.webm" && syntheticVideo.length > 0) {
+    response.writeHead(200, {
+      "content-type": "video/webm",
+      "content-length": syntheticVideo.length,
+      "accept-ranges": "bytes",
+    });
+    response.end(syntheticVideo);
+    return;
+  }
+  if (request.url === "/video") {
+    const body = Buffer.from(`<!doctype html><meta charset=utf-8><title>Synthetic video</title>
+      <video id=clip width=160 height=120 muted playsinline></video>
+      <script>
+      (async () => {
+        const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 120;
+        const context = canvas.getContext('2d'); context.fillStyle = '#176b87'; context.fillRect(0, 0, 160, 120);
+        const stream = canvas.captureStream(10);
+        const recorder = new MediaRecorder(stream, {mimeType: 'video/webm'}); const chunks = [];
+        recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+        const stopped = new Promise(resolve => recorder.onstop = resolve);
+        recorder.start(); await new Promise(resolve => setTimeout(resolve, 250)); recorder.stop(); await stopped;
+        stream.getTracks().forEach(track => track.stop());
+        await fetch('/synthetic-video', {method: 'POST', body: new Blob(chunks, {type: 'video/webm'})});
+        const video = document.querySelector('#clip'); video.src = '/synthetic-video.webm'; video.load();
+        video.addEventListener('click', () => void video.play(), {once: true});
+      })();
+      </script>`);
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-length": body.length });
+    response.end(body);
+    return;
+  }
   if (request.url === "/gallery") {
-    const body = Buffer.from("<!doctype html><meta charset=utf-8><title>Synthetic gallery</title><a id=open href=/original.svg><img id=art src=/thumb.svg width=64 height=48 alt='Synthetic artwork'></a>");
+    const body = Buffer.from("<!doctype html><meta charset=utf-8><title>Synthetic gallery</title><a id=open href=/original.svg><img id=art src=/thumb.svg width=96 height=72 alt='Synthetic artwork'></a>");
     response.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-length": body.length });
     response.end(body);
     return;
@@ -83,7 +125,7 @@ const initializePoint = "async function initializeStorage(details) {";
 assert.ok(background.includes(initializePoint));
 fs.writeFileSync(backgroundPath, background.replace(
   initializePoint,
-  `${initializePoint}\n  await browser.storage.local.set({instanceUrl:${JSON.stringify(origin)},instanceId:"test-instance",pairId:"test-pair",sites:[{origin:${JSON.stringify(origin)},capture:true,substitution:false,media:["images"]}]});`,
+  `${initializePoint}\n  await browser.storage.local.set({instanceUrl:${JSON.stringify(origin)},instanceId:"test-instance",pairId:"test-pair",sites:[{origin:${JSON.stringify(origin)},capture:true,substitution:false,media:["images","videos"]}]});`,
 ));
 fs.appendFileSync(path.join(extension, "content-explicit-open.js"), "\nvoid browser.runtime.sendMessage({command: \"run-cache\"});\n");
 run("zip", ["-q", "-r", xpi, "."], { cwd: extension });
@@ -166,12 +208,35 @@ try {
   const original = captures.find(item => item.capture_kind === "explicit_original");
   assert.equal(observed.media_url, `${origin}/thumb.svg`);
   assert.equal(observed.presentation_url, `${origin}/original.svg`);
-  assert.equal(original.media_url, `${origin}/original.svg`);
+  assert.equal(original.media_url, `${origin}/thumb.svg`);
   assert.equal(original.presentation_url, `${origin}/original.svg`);
   assert.equal(observed.page_url, `${origin}/gallery`);
   assert.equal(original.page_url, `${origin}/gallery`);
   assert.equal(captures.some(item => item.cookie || item.headers || item.payload), false);
-  console.log("Installed Firefox capture passed: observed linked thumbnail and trusted opened original share presentation identity");
+  await command("browsingContext.navigate", { context, url: `${origin}/video`, wait: "complete" });
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  const playable = await command("script.evaluate", {
+    expression: "document.querySelector('#clip')?.readyState >= 1 && document.querySelector('#clip')?.currentSrc.endsWith('/synthetic-video.webm')",
+    target: { context }, awaitPromise: false,
+  });
+  assert.equal(playable.result.type, "boolean");
+  assert.equal(playable.result.value, true, "Firefox must load the synthetic progressive video");
+  const videoNode = await command("script.evaluate", {
+    expression: "document.querySelector('#clip')", target: { context }, awaitPromise: false,
+  });
+  assert.equal(videoNode.result.type, "node");
+  await command("input.performActions", { context, actions: [{
+    type: "pointer", id: "video-mouse", parameters: { pointerType: "mouse" }, actions: [
+      { type: "pointerMove", x: 10, y: 10, duration: 0, origin: { type: "element", element: { sharedId: videoNode.result.sharedId } } },
+      { type: "pointerDown", button: 0 }, { type: "pointerUp", button: 0 },
+    ],
+  }] });
+  await waitFor(() => captures.some(item => item.capture_kind === "explicit_video"), "trusted-play progressive video");
+  const video = captures.find(item => item.capture_kind === "explicit_video");
+  assert.equal(video.media_url, `${origin}/synthetic-video.webm`);
+  assert.equal(video.page_url, `${origin}/video`);
+  assert.equal(captures.some(item => item.cookie || item.headers || item.payload), false);
+  console.log("Installed Firefox capture passed: observed thumbnail, trusted opened image, and trusted-play progressive video");
   await command("session.end", {});
 } finally {
   if (socket?.readyState === WebSocket.OPEN) socket.close();
