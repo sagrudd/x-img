@@ -140,6 +140,12 @@ removed before capture is paused or the origin permission is revoked. It does
 not require the user to press the toolbar cache control on every page and it
 does not add tab, history, cookie, or ``webRequest`` permission.
 
+After registration, the extension also injects the same idempotent observer
+into eligible tabs that are already open. This matters for long-lived
+single-page applications: an extension update activates the new observer
+without requiring a page reload. Tabs that close or become restricted during
+injection are skipped and normal origin loading remains fail-open.
+
 The content script submits an ``explicit_original`` only for a trusted
 primary-button click on an image link, or an image already displayed as the
 document itself. Unlinked thumbnail clicks, synthetic events, hidden traversal,
@@ -580,7 +586,9 @@ The persistent observer uses Firefox Manifest V3
 ``scripting.registerContentScripts`` with the already granted exact-origin
 permission. Firefox 101 or newer supports this API; the extension requires
 Firefox 128 or newer. Dynamic registrations are explicitly reconstructed on
-extension update as required by Firefox's registration lifecycle.
+extension update as required by Firefox's registration lifecycle. The same
+observer is immediately injected into already-open eligible tabs so update and
+startup do not leave an existing single-page application unobserved.
 
 Verification
 ------------

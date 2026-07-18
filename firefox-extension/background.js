@@ -136,8 +136,35 @@ async function syncExplicitOpenObservers() {
     persistAcrossSessions: true,
     runAt: "document_idle",
   }]);
-  await traceEvent("observer_registration", "registered", `${eligible.length} exact-origin rule(s)`);
-  return { registered: eligible.length };
+  let injected = 0;
+  for (const tab of await browser.tabs.query({})) {
+    if (!tab.id || !tab.url) continue;
+    let target;
+    try {
+      target = new URL(tab.url);
+    } catch (_) {
+      continue;
+    }
+    const match = eligible.find(({ site, adapter }) =>
+      target.origin === site.origin
+        && !adapter.exclude_paths.some(path => target.pathname.startsWith(path)));
+    if (!match) continue;
+    try {
+      await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content-explicit-open.js"],
+      });
+      injected += 1;
+    } catch (_) {
+      // A tab can close or become restricted between query and injection.
+    }
+  }
+  await traceEvent(
+    "observer_registration",
+    "registered",
+    `${eligible.length} exact-origin rule(s); injected ${injected} open tab(s)`,
+  );
+  return { registered: eligible.length, injected };
 }
 
 async function submitCapture(instanceUrl, pairId, origin, pageUrl, adapter, captureKind, media) {

@@ -10,6 +10,7 @@ let messageListener;
 let startupListener;
 const captures = [];
 let registeredScripts = [];
+const fileInjections = [];
 const storage = {
   instanceUrl: "https://pinakotheke.example.invalid",
   instanceId: "instance-1",
@@ -51,9 +52,18 @@ const browser = {
       async set(values) { Object.assign(storage, values); },
     },
   },
-  tabs: { async query() { return []; }, async sendMessage() {} },
+  tabs: {
+    async query() { return [{ id: 73, url: "https://art.example.invalid:8443/gallery" }]; },
+    async sendMessage() {},
+  },
   scripting: {
-    async executeScript({ func }) { return [{ result: func() }]; },
+    async executeScript(details) {
+      if (details.files) {
+        fileInjections.push(details);
+        return [];
+      }
+      return [{ result: details.func() }];
+    },
     async getRegisteredContentScripts() { return registeredScripts; },
     async unregisterContentScripts() { registeredScripts = []; },
     async registerContentScripts(scripts) { registeredScripts = scripts; },
@@ -146,7 +156,11 @@ assert.equal(
 
 const sync = await messageListener({ command: "sync-capture-observers" }, {});
 assert.equal(sync.registered, 1);
+assert.equal(sync.injected, 1);
 assert.equal(registeredScripts.length, 1);
+assert.equal(fileInjections.length, 1);
+assert.equal(fileInjections[0].target.tabId, 73);
+assert.deepEqual(Array.from(fileInjections[0].files), ["content-explicit-open.js"]);
 assert.deepEqual(Array.from(registeredScripts[0].matches), ["https://art.example.invalid/*"]);
 assert.deepEqual(Array.from(registeredScripts[0].excludeMatches), [
   "https://art.example.invalid/login*",

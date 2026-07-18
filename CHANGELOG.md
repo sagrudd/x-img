@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.17.1 - 2026-07-18
+
+- Inject the persistent capture observer into eligible tabs that are already
+  open when the extension is installed, updated, started, or resynchronised.
+  This restores trusted play capture in long-lived single-page applications
+  without requiring a page reload.
+
 ## 1.17.0 - 2026-07-18
 
 - Detect user-played progressive video fetched by page script as well as a

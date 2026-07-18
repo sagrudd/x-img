@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.17.0
+Version: 1.17.1
 
 Updated: 2026-07-18
 
@@ -1156,6 +1156,17 @@ Mozilla signed the ``1.17.0`` extension, permanent-install verification passed,
 and DASServer serves the checksum-identical XPI with
 ``application/x-xpinstall`` beside the ready ``1.17.0`` backend. The remaining
 gate is a real user-played X MP4 reaching verified settlement and the gallery.
+
+## 1.17.1 — Activate capture in already-open tabs
+
+Live ``1.17.0`` diagnostics proved that no capture event reached the backend
+after an in-place extension update in an existing X single-page application
+tab. The dynamic observer registration covered future navigations but did not
+inject into that already-loaded document. ``1.17.1`` retains persistent
+registration and immediately injects the guarded observer into every currently
+open, exact-origin, non-excluded eligible tab after install, update, startup,
+or site-corpus synchronisation. XIMG-116 still requires real user-played video
+settlement and playable-gallery evidence before completion.
 
 ## Post-1.0 candidates
 

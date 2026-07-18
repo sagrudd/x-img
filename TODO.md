@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.17.0
+Version: 1.17.1
 
 Updated: 2026-07-18
 
@@ -1384,7 +1384,8 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   releases and reacquires the capture-worker lease without manual cleanup.
 
 - [ ] **XIMG-116 P0 — Capture late script-fetched progressive video after
-  trusted play.** The implementation is complete for ``1.17.0``: the exact
+  trusted play.** The progressive-resource implementation landed in
+  ``1.17.0``: the exact
   opted-in top-frame observer now polls nine bounded times over two seconds
   after recent trusted activation, considers script/fetch initiated progressive
   resources as well as native video initiators, and retains the strict
@@ -1394,7 +1395,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   playback remains origin-served. Mozilla signed the ``1.17.0`` extension,
   permanent-install verification passed, and DASServer serves the
   checksum-identical XPI with ``application/x-xpinstall`` beside the ready
-  ``1.17.0`` backend. Remaining acceptance: install that XPI and prove one real
+  ``1.17.0`` backend. Live diagnostics after installation showed no new
+  content-observer event and no server plan because Firefox had registered the
+  updated script only for future documents in the already-open X
+  single-page-application tab. ``1.17.1`` now immediately injects the guarded,
+  idempotent observer into every open eligible tab after registration while
+  retaining persistent registration for future navigation. Remaining
+  acceptance: install the ``1.17.1`` XPI and prove one real
   user-played X video reaches verified DASObjectStore settlement and appears as
   a playable gallery item. Do not mark complete from an admitted or pending
   plan.
