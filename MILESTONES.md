@@ -1167,6 +1167,11 @@ registration and immediately injects the guarded observer into every currently
 open, exact-origin, non-excluded eligible tab after install, update, startup,
 or site-corpus synchronisation. XIMG-116 still requires real user-played video
 settlement and playable-gallery evidence before completion.
+Mozilla signed the ``1.17.1`` extension, the permanent-install fixture accepted
+its stable identity, and DASServer now runs the ``1.17.1`` backend and serves
+the checksum-identical XPI as ``application/x-xpinstall`` over trusted HTTPS.
+The remaining release gate is one real user-played X video reaching verified
+DASObjectStore settlement and the playable gallery.
 
 ## Post-1.0 candidates
 
