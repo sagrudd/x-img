@@ -1425,7 +1425,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   completion path. Synthetic tests must prove master-over-track selection,
   fragment rejection, structured FFmpeg invocation and bounds. Completion
   additionally requires one real user-played X video to settle and appear in
-  the gallery; do not mark complete from plan admission alone.
+  the gallery; do not mark complete from plan admission alone. Implementation
+  is pushed in ``8828024``. Mozilla signing, permanent-install verification,
+  and checksum-identical DASServer deployment of the ``1.18.0`` backend and XPI
+  are complete; the live user-played settlement criterion remains unchecked.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

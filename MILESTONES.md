@@ -1202,7 +1202,12 @@ assembles them with structured FFmpeg arguments under a five-minute process
 deadline, 15-second network read deadline, one-GiB output cap, and two-hour
 duration cap. The standalone MP4 then traverses the existing FFprobe,
 DASObjectStore verified-completion, and gallery paths. No cookies, headers, or
-credentials are forwarded.
+credentials are forwarded. Mozilla signed ``1.18.0`` and the permanent-install
+fixture accepted its stable identity. DASServer now runs the matching
+``1.18.0`` backend with the bounded FFmpeg and timeout executables explicitly
+configured, and serves the checksum-identical signed XPI as
+``application/x-xpinstall`` over HTTPS. One real user-played settlement remains
+the release gate: deployment alone does not complete XIMG-117.
 
 ## Post-1.0 candidates
 
