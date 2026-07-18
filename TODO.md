@@ -1316,13 +1316,19 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   until the existing normalized rendition and exact Firefox evidence gate is
   satisfied.
 
-- [ ] **XIMG-113 P1 — Complete the playable-video library campaign.**
+- [x] **XIMG-113 P1 — Complete the playable-video library campaign.**
   Expose a dedicated Videos filter and a keyboard-accessible quick viewer using
   authorized DASObjectStore range delivery, committed posters, native controls,
   and inline playback. Add duration, dimensions, codec/profile, capture time,
   source account/origin label, and normalization state. Prove prompt loading,
   seeking, missing-object behavior, and that the viewer never contacts the
-  source website.
+  source website. Completed in ``9279979``: normalization probe metadata and
+  the separately committed poster now survive the isolated worker handoff and
+  persistent catalogue; the dedicated Playable videos view and quick viewer
+  expose the complete evidence. Installed Firefox passed the real Yew filter,
+  metadata, keyboard, virtualization, unavailable/no-origin, and responsive
+  checks plus ephemeral normalized-MP4 metadata load, range seek, concurrent
+  and conditional reads, cancellation, pause/resume, and missing-object proof.
 
 - [x] **XIMG-114 P0 — Terminate trusted HTTPS directly in Axum.** Completed in
   ``e61699f``, ``d2fdfc2``, and ``65ba25b`` with Monas host support in

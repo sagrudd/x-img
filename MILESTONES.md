@@ -1112,6 +1112,7 @@ host-authorized DASObjectStore single-range route. Installed Firefox assurance
 covers the real Yew video filter/metadata UI plus metadata loading, seeking,
 parallel ranges, conditional reads, cancellation, pause/resume, missing-object
 handling, responsive behavior, and absence of source-site fallback.
+XIMG-113 was completed in ``9279979``.
 
 ## Post-1.0 candidates
 
