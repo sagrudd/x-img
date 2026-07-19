@@ -2033,7 +2033,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Remaining handoff: click one previously failing deep-timeline image and
   record its plan admission plus verified settlement beyond the historic 64
   plans before marking this item complete.
-- [ ] **XIMG-134 P0 — Make the persisted site corpus authoritative.** Resolve
+- [x] **XIMG-134 P0 — Make the persisted site corpus authoritative.** Resolve
   executable capture eligibility from the authenticated actor's exact-origin
   site rule and selected media kind. Keep pairing ownership/expiry and the
   reviewed endpoint/ObjectStore selection as independent mandatory gates;
@@ -2049,17 +2049,25 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   video-enabled exact-origin corpus rules remain persisted, and the served XPI
   matches local SHA-256
   ``6bb3bcc3ddee3510f39f85cab004762253db9870442a979770c21b8ff9d49733``.
-  Remaining handoff: one user-trusted play on the corrected generic origin,
-  followed by log evidence that the plan is admitted rather than rejected as
-  ``SiteNotEnabled``.
-- [ ] **XIMG-135 P0 — Retrieve clear segmented media with bounded provenance.**
+  A user-trusted play on the newly persisted corrected-origin rule admitted
+  capture plan 64 without the former ``SiteNotEnabled`` rejection. Completed
+  in ``5815882``; the acceptance evidence is deployed in ``1.27.5``.
+- [x] **XIMG-135 P0 — Retrieve clear segmented media with bounded provenance.**
   Supply only the validated canonical page referrer and exact enabled origin
   already present in the admitted plan when FFmpeg retrieves a clear HLS/DASH
   manifest. Never forward cookies, authorization headers, arbitrary browser
   headers, credentials, or browser storage. Report segmented assembly failures
   categorically. Acceptance requires structured-argument and redaction tests,
   local release checks, DASServer deployment, retry of the already admitted
-  generic video plan, and verified DASObjectStore settlement.
+  generic video plan, and verified DASObjectStore settlement. Completed in
+  ``36c6795``. All 254 Rust tests, strict Clippy, Wasm compilation, repository
+  quality checks, and both pinned Sphinx container checks pass locally.
+  DASServer runs ``1.27.5`` and recovered capture plan 64 on restart. The
+  69,977,212-byte H.264/AAC MP4 and its 15,196-byte WebP poster are settled in
+  ``pinakotheke_media`` with verified SHA-256 identities and ready gallery
+  records. A scoped 1,024-byte DASObjectStore range read returned the expected
+  MP4 header, exact full-object length, content type, checksum, and range. The
+  matching extension is available from the application HTTPS download route.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

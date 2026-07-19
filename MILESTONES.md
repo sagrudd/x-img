@@ -1417,6 +1417,12 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   storage state crosses into server retrieval.
 - A deterministic structured-argument test pins the bounded FFmpeg invocation,
   and assembly failures retain a specific redacted diagnostic category.
+- Implementation ``36c6795`` is deployed on DASServer as ``1.27.5``. Restart
+  recovery completed the previously admitted generic-video plan 64: the
+  69,977,212-byte H.264/AAC MP4 and its WebP poster are checksum-verified,
+  settled in ``pinakotheke_media``, catalogue-visible, and readable through the
+  scoped DASObjectStore range-read boundary. The matching test XPI is served
+  directly by the HTTPS application endpoint.
 
 ## 1.27.4 — Actor-scoped site-corpus capture authority
 
@@ -1426,9 +1432,11 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   remain independent mandatory admission and worker-time gates.
 - Legacy ``sites`` records remain parseable but grant no authority. Restart
   recovery re-evaluates each pending plan against its actor's current corpus.
-- Implementation ``5815882`` is deployed on DASServer as ``1.27.4``. Its
-  private authority contains no site list, and the checksum-identical test XPI
-  is served; final acceptance awaits one user-trusted generic-video admission.
+- Implementation ``5815882`` was deployed on DASServer as ``1.27.4`` and is
+  included in ``1.27.5``. Its private authority contains no site list. A
+  user-trusted play on a newly persisted corrected-origin corpus rule admitted
+  plan 64 without the former ``SiteNotEnabled`` rejection, proving the
+  actor-scoped corpus is the executable origin authority.
 - Compatibility-sensitive review used design language
   ``fbfa28e55d1c8111ef95a139d83927c231534b5f``, Monas
   ``dac0e113c8b197cb06abc38187d72f27e562ad63``, DASObjectStore
