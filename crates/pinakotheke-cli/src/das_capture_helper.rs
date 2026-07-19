@@ -174,6 +174,7 @@ struct Failed {
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "outcome", rename_all = "snake_case")]
+#[serde(rename = "progress")]
 struct Progress<'a> {
     schema_version: &'static str,
     phase: &'a str,
@@ -1524,6 +1525,23 @@ impl Drop for Scratch {
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn progress_protocol_uses_the_lowercase_wire_discriminator() {
+        let encoded = serde_json::to_value(Progress {
+            schema_version: REQUEST_SCHEMA,
+            phase: "downloading",
+            progress_percent: 42,
+            bytes_downloaded: Some(21),
+            bytes_total: Some(50),
+        })
+        .unwrap();
+
+        assert_eq!(encoded["outcome"], "progress");
+        assert_eq!(encoded["schema_version"], REQUEST_SCHEMA);
+        assert_eq!(encoded["phase"], "downloading");
+        assert_eq!(encoded["progress_percent"], 42);
+    }
 
     #[test]
     fn protocol_failures_are_bounded_categories_without_error_text() {

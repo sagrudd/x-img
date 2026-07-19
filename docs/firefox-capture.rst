@@ -152,6 +152,14 @@ bounded helper error class are retained; source URLs and credentials are not.
 Helper failures use only ``policy-blocked``, ``unavailable``, or ``rejected``;
 raw downloader messages are excluded because they can contain signed URLs or
 local paths.
+
+An admitted selection that remains pending should be diagnosed at the helper
+boundary before changing browser selection logic. Capture-helper v1 messages
+use the exact lower-snake-case outcomes ``progress``, ``committed``,
+``policy_blocked``, ``unavailable``, and ``rejected``. Progress is non-terminal:
+the worker continues reading until a verified commit or a bounded terminal
+outcome. A restart safely retries an admitted, unsettled plan; it never treats
+progress as storage evidence and never falls back to the source website.
 On the DASServer inspect them with:
 
 .. code-block:: console

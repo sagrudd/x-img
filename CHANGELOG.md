@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.27.1 - 2026-07-19
+
+- Fixes capture-helper progress serialization so admitted explicit images no
+  longer abort before DASObjectStore settlement with an unknown ``Progress``
+  outcome.
+- Pins the lower-snake-case capture-helper v1 discriminator with regression
+  coverage at the producer and strict consumer boundaries.
+- Retains the bounded trusted-selection snapshot used when a deep virtualized
+  timeline replaces the selected image node between pointerdown and click.
+
 ## 1.27.0 - 2026-07-19
 
 - Reconciles gallery object availability from the authoritative DASObjectStore

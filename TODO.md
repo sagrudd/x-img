@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.27.0
+Version: 1.27.1
 
 Updated: 2026-07-19
 
@@ -1986,6 +1986,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   authenticated report is authoritative ``0``, projected-ready ``0``, orphan
   ``0``, stale ``54`` after the earlier out-of-band reset, and a subsequent
   periodic pass reports zero further changes.
+- [ ] **XIMG-131 P0 — Recover deep-timeline explicit image settlement.** Keep
+  trusted selection snapshotting bounded to the selected image, then ensure an
+  admitted original can consume capture-helper progress and proceed to
+  DASObjectStore verification. Pin the v1 producer discriminator to lowercase
+  ``progress`` and retain strict consumer rejection of genuinely unknown
+  outcomes. Acceptance requires exact producer serialization, consumer
+  progress/commit, virtualized-node replacement, native/quality/docs checks,
+  deployment, and live recovery or retry evidence for an admitted X image.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

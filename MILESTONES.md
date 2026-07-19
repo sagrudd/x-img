@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.27.0
+Version: 1.27.1
 
 Updated: 2026-07-19
 
@@ -1408,6 +1408,18 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   ``pinakotheke_media`` store has no folder-profile binding and the current
   DASObjectStore application-auth surface has no exact-object delete operation;
   raw S3 deletion is explicitly not accepted as release evidence.
+
+## 1.27.1 — Explicit-image capture protocol recovery
+
+- A trusted image selection admitted from a deep virtualized timeline must
+  survive every helper progress update and continue to verified DASObjectStore
+  settlement; progress is never mistaken for an unknown terminal outcome.
+- The capture-helper v1 wire discriminator is pinned to lower snake case at
+  both producer and consumer boundaries, including an exact serialization
+  regression for ``progress``.
+- Deployment acceptance recovers or safely retries previously admitted image
+  plans and proves a subsequent explicit image reaches a terminal, observable
+  state without browser credentials or source-site fallback.
 
 ## 1.27.0 — Authoritative gallery convergence
 
