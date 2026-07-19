@@ -1310,6 +1310,17 @@ settle a 12,628,955-byte MP4. The catalogue now exposes the verified object as
 a new ``normalized_video`` card for the originating X account with an
 authorized video delivery route, closing XIMG-117.
 
+## 1.20.4 — Correct normalized-video availability
+
+The first settled X video exposed a presentation defect: a missing optional
+poster made the Yew metadata pane report the committed, range-readable MP4 as
+``Object unavailable``. Pinakotheke now selects the committed video as the
+primary representation for video availability and ObjectStore provenance while
+retaining the poster only as an optional visual aid. DASServer runs ``1.20.4``;
+the deployed route returned ``206 Partial Content``, ``video/mp4``, and the
+requested 1,024-byte range for the affected object. The pinned local-authority
+Sphinx container also built successfully on DASServer.
+
 ## Post-1.0 candidates
 
 - Synoptikon catalogue/plugin integration through the preserved host adapter

@@ -35,12 +35,14 @@ host-authenticated x-img route:
 
    /products/pinakotheke/api/gallery/v1/objects/{catalogue_id}/video
 
-The committed WebP poster is a separate DASObjectStore object delivered through
-the corresponding ``thumbnail`` role. The video route preserves the verified
-MIME type, ETag, and a single byte range;
-see :doc:`direct-playback`.  A video without a ready ObjectStore rendition
-remains visibly unavailable or non-playable.  The Web client does not supply an
-origin URL as a backup.
+A WebP poster, when generated, is a separate DASObjectStore object delivered
+through the corresponding ``thumbnail`` role. Poster availability never
+determines video availability: the status and provenance shown for a normalized
+video come from its committed video representation. The video route preserves
+the verified MIME type, ETag, and a single byte range; see
+:doc:`direct-playback`. A video without a ready ObjectStore rendition remains
+visibly unavailable or non-playable. The Web client does not supply an origin
+URL as a backup.
 
 Keyboard behavior
 -----------------

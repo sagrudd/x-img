@@ -1478,6 +1478,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``/video`` delivery route and an ObjectStore key beneath that account's
   ``explicit_video`` prefix. XIMG-117 is complete.
 
+- [x] **XIMG-118 P0 — Report committed video availability independently of
+  optional posters.** Completed in ``383a920``. The gallery now derives a
+  normalized video's availability, endpoint, ObjectStore, and object version
+  from its committed video representation. An absent poster no longer causes a
+  range-readable MP4 to be labelled ``Object unavailable``. A regression test
+  covers the ready-video/unavailable-poster record. DASServer was upgraded to
+  ``1.20.4`` and live verification returned a 1,024-byte ``206`` MP4 range for
+  the affected 12,628,955-byte object; both services remained active.
+
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,
   ``c91c544``, and ``90ed54a`` and recorded
