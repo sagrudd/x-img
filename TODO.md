@@ -2027,6 +2027,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   logging. Acceptance requires deterministic automatic-page and explicit-item
   budget tests, local release checks, deployment, and one new deep-timeline
   explicit original admitted beyond the existing live 64-plan history.
+  Implementation ``6f08390`` passes all 252 native tests, strict Clippy, Wasm,
+  extension contracts, repository quality, and both pinned Sphinx container
+  checks. DASServer runs ``1.27.3`` and serves the matching unsigned test XPI.
+  Remaining handoff: click one previously failing deep-timeline image and
+  record its plan admission plus verified settlement beyond the historic 64
+  plans before marking this item complete.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

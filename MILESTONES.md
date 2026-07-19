@@ -1418,6 +1418,9 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   do not exhaust one long scrolling profile URL.
 - Rejections emit only a fixed capture-plan error category in server logs;
   page, media, and presentation URLs remain excluded.
+- Implementation ``6f08390`` passes the full local release suite and is
+  deployed on DASServer as ``1.27.3``. Final acceptance awaits one user-driven
+  deep-timeline selection beyond the pre-existing 64-plan profile history.
 
 ## 1.27.2 — Native-control trusted video activation
 
