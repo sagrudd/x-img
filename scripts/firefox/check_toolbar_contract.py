@@ -66,7 +66,9 @@ def main() -> int:
     assert 'outcome: "pairing_incomplete"' in background
     assert "if (image.currentSrc && isXMediaUrl(image.currentSrc)) return inViewport" in content
     assert "if (xMedia) return inViewport" in background
-    assert 'lookupAlias(instanceUrl, instanceId || "", pairId' in background
+    assert 'lookupAliases(' in background
+    assert 'cache-aliases/lookup-batch' in background
+    assert '`${body.results.length} identities in one request`' in background
     assert "canonical_presentation: presentation" in background
     assert 'command: "visible-media-changed", images, videos' in content
     assert 'evidence.media_class === "original_image"' in background

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.21
+Version: 1.23.0
 
 Updated: 2026-07-19
 
@@ -1891,6 +1891,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   acceptance step is installation and real-Firefox proof of the 1.22.21
   extension-side node-replacement frame fix; extension signing remains skipped
   at the user's request rather than being represented as complete.
+- [ ] **XIMG-123 P0 — Make cache evidence lookup viewport-fast.** Replace
+  sequential per-media HTTP evidence checks with one bounded authenticated
+  viewport batch backed entirely by Pinakotheke's process-resident capture and
+  gallery metadata. The lookup must not contact DASObjectStore, framing and
+  substitution must reuse the same response, the single-item endpoint remains
+  compatible during rollout, and misses fail open. Acceptance requires one
+  request for a 16-image Firefox viewport, correct green framing for every
+  returned original and none for misses, a bounded 256-identity server test,
+  local quality/docs verification, deployment, and real-Firefox proof.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

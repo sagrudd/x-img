@@ -41,6 +41,14 @@ two-pixel green frame. User-selected videos receive a dashed in-progress frame
 while acquisition runs and the green stored frame after settlement. These
 frames remain browser-only.
 
+Cache evidence never performs an ObjectStore read or listing. DASObjectStore
+remains authoritative for committed bytes, while Pinakotheke keeps settled
+capture and catalogue metadata in process memory. Each viewport scan submits
+one authenticated batch of up to 256 canonical media identities. Its single
+response drives both stored framing and optional substitution; a miss or an
+unavailable batch fails open to the website. The legacy single-identity route
+remains available only for extension-version compatibility during rollout.
+
 Clicking an eligible linked image retains the stricter explicit-original path
 and uses the same verified status before framing. Firefox sends the rendered
 image URL as the byte source and records an enclosing link, such as an X status

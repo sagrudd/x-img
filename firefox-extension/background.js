@@ -651,6 +651,39 @@ async function lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, ali
   return result.schema_version === "x-img.cache-alias-result.v1" ? result : null;
 }
 
+async function lookupAliases(instanceUrl, instanceId, pairId, origin, adapter, queries) {
+  const unique = new Map();
+  for (const query of queries.slice(0, 256)) {
+    if (!unique.has(query.alias)) unique.set(query.alias, query.presentation);
+  }
+  if (!unique.size) return new Map();
+  const response = await fetch(`${instanceUrl}/products/pinakotheke/api/extension/v1/cache-aliases/lookup-batch`, {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "content-type": "application/json", "x-pinakotheke-pairing": pairId },
+    body: JSON.stringify({
+      schema_version: "x-img.cache-alias-lookup.v1",
+      pairing_id: pairId,
+      instance_id: instanceId,
+      origin,
+      adapter_id: adapter.id,
+      adapter_version: adapter.version,
+      aliases: [...unique].map(([canonical_alias, canonical_presentation]) => ({
+        canonical_alias,
+        ...(canonical_presentation ? { canonical_presentation } : {}),
+      })),
+    }),
+  });
+  if (!response.ok) throw new Error("batch cache lookup unavailable");
+  const body = await response.json();
+  if (body.schema_version !== "x-img.cache-alias-batch-result.v1" || !Array.isArray(body.results)) {
+    throw new Error("batch cache lookup returned an incompatible result");
+  }
+  await traceEvent("cache_evidence", "batch", `${body.results.length} identities in one request`, origin);
+  return new Map(body.results.map(result => [result.canonical_alias, result]));
+}
+
 async function recordSiteDiagnostic(origin, update) {
   const stored = await browser.storage.local.get(["sites", "siteDiagnostics"]);
   if (!(stored.sites || []).some(site => site.origin === origin)) return;
@@ -760,20 +793,35 @@ async function runCacheForTab(tab, contentImages = null, contentVideos = null) {
     const images = eligibleObservedImages(origin, rule, displayed);
     const videos = rule.media.includes("videos") ? validatedObservedVideos(contentVideos) : [];
     await traceEvent("viewport_scan", "complete", `${displayed.length} visible image(s); ${images.length} eligible`, origin);
+    let evidenceByAlias = new Map();
+    try {
+      evidenceByAlias = await lookupAliases(
+        instanceUrl,
+        instanceId || "",
+        pairId,
+        origin,
+        adapter,
+        [
+          ...images.map(observed => ({ alias: canonicalAlias(observed.url) })),
+          ...videos.map(observed => {
+            const presentation = canonicalAlias(observed.presentationUrl);
+            return { alias: presentation, presentation };
+          }),
+        ],
+      );
+    } catch (error) {
+      await traceEvent("cache_evidence", "error", String(error?.message || "batch lookup failed"), origin);
+    }
     for (const observed of images) {
       // Pairing plus the Monas-authenticated host context are authoritative for
       // this instance-scoped evidence route. Older installations may not have
       // persisted the legacy display-only instanceId; that must never suppress
       // lookup of objects already settled in an earlier browsing session.
-      try {
-        const alias = canonicalAlias(observed.url);
-        const evidence = await lookupAlias(instanceUrl, instanceId || "", pairId, origin, adapter, alias);
-        if (evidence?.outcome === "hit" && evidence.media_class === "original_image") {
-          const framing = await browser.tabs.sendMessage(tab.id, { command: "frame-stored", mediaUrl: observed.url, mediaToken: observed.mediaToken });
-          await traceEvent("stored_frame", framing?.matched ? "applied" : "unmatched", `${framing?.matched || 0} page element(s)`, origin);
-        }
-      } catch (error) {
-        await traceEvent("cache_evidence", "error", String(error?.message || "lookup failed"), origin);
+      const alias = canonicalAlias(observed.url);
+      const evidence = evidenceByAlias.get(alias);
+      if (evidence?.outcome === "hit" && evidence.media_class === "original_image") {
+        const framing = await browser.tabs.sendMessage(tab.id, { command: "frame-stored", mediaUrl: observed.url, mediaToken: observed.mediaToken });
+        await traceEvent("stored_frame", framing?.matched ? "applied" : "unmatched", `${framing?.matched || 0} page element(s)`, origin);
       }
       if (rule.capture && adapter.capabilities.observed_thumbnail) {
         void captureAndFrame(
@@ -784,8 +832,7 @@ async function runCacheForTab(tab, contentImages = null, contentVideos = null) {
         });
       }
       if (rule.substitution && instanceId && adapter.capabilities.image_substitution) {
-        const alias = canonicalAlias(observed.url);
-        const hit = await lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias);
+        const hit = evidenceByAlias.get(alias);
         if (!hit || hit.outcome !== "hit" || !hit.media_class?.endsWith("_image") || !hit.delivery_path) {
           await recordSiteDiagnostic(origin, {
             channel: "substitution",
@@ -820,25 +867,19 @@ async function runCacheForTab(tab, contentImages = null, contentVideos = null) {
       }
     }
     for (const observed of videos) {
-      try {
-        const presentation = canonicalAlias(observed.presentationUrl);
-        const evidence = await lookupAlias(
-          instanceUrl, instanceId || "", pairId, origin, adapter, presentation, presentation,
+      const presentation = canonicalAlias(observed.presentationUrl);
+      const evidence = evidenceByAlias.get(presentation);
+      if (evidence?.outcome === "hit" && evidence.media_class === "normalized_mp4") {
+        const framing = await browser.tabs.sendMessage(tab.id, {
+          command: "frame-stored",
+          mediaToken: observed.mediaToken,
+        });
+        await traceEvent(
+          "stored_video_frame",
+          framing?.matched ? "applied" : "unmatched",
+          `${framing?.matched || 0} page element(s)`,
+          origin,
         );
-        if (evidence?.outcome === "hit" && evidence.media_class === "normalized_mp4") {
-          const framing = await browser.tabs.sendMessage(tab.id, {
-            command: "frame-stored",
-            mediaToken: observed.mediaToken,
-          });
-          await traceEvent(
-            "stored_video_frame",
-            framing?.matched ? "applied" : "unmatched",
-            `${framing?.matched || 0} page element(s)`,
-            origin,
-          );
-        }
-      } catch (error) {
-        await traceEvent("video_cache_evidence", "error", String(error?.message || "lookup failed"), origin);
       }
     }
     if (rule.substitution && instanceId && rule.media.includes("videos") && adapter.capabilities.mp4_substitution) {

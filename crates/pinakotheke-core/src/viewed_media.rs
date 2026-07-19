@@ -392,6 +392,58 @@ impl CapturePlanService {
             .map(|pending| pending.plan.clone())
     }
 
+    #[must_use]
+    pub fn settled_for_alias_batch(
+        &self,
+        actor_id: &str,
+        pairing_id: &str,
+        now: u64,
+        origin: &str,
+        adapter_version: &str,
+        queries: &[(String, Option<String>)],
+    ) -> Vec<Option<CapturePlan>> {
+        let mut results = vec![None; queries.len()];
+        let Some(pairing) = self.pairings.get(pairing_id) else {
+            return results;
+        };
+        if pairing.actor_id != actor_id || pairing.revoked || pairing.expires_at <= now {
+            return results;
+        }
+        let mut aliases: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+        let mut presentations: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+        for (index, (alias, presentation)) in queries.iter().enumerate() {
+            aliases
+                .entry(cache_alias_identity(alias))
+                .or_default()
+                .push(index);
+            if let Some(presentation) = presentation.as_deref() {
+                presentations.entry(presentation).or_default().push(index);
+            }
+        }
+        for pending in self.accepted.iter().filter(|pending| {
+            pending.actor_id == actor_id
+                && pending.settled
+                && pending.plan.origin == origin
+                && pending.plan.adapter_version == adapter_version
+        }) {
+            let alias = cache_alias_identity(&pending.plan.canonical_media_url);
+            if let Some(indices) = aliases.get(alias) {
+                for index in indices {
+                    replace_with_stronger_capture(&mut results[*index], &pending.plan);
+                }
+            }
+            if pending.plan.capture_kind == CaptureKind::ExplicitVideo
+                && let Some(indices) =
+                    presentations.get(pending.plan.canonical_presentation_url.as_str())
+            {
+                for index in indices {
+                    replace_with_stronger_capture(&mut results[*index], &pending.plan);
+                }
+            }
+        }
+        results
+    }
+
     pub fn settle(&mut self, actor_id: &str, plan_id: &str) -> Result<(), CapturePlanError> {
         let Some(index) = self
             .accepted
@@ -623,6 +675,20 @@ impl CapturePlanService {
                 .map_err(|_| CapturePlanError::Scheduler),
             Err(_) => Err(CapturePlanError::Scheduler),
         }
+    }
+}
+
+fn replace_with_stronger_capture(current: &mut Option<CapturePlan>, candidate: &CapturePlan) {
+    let priority = |kind| match kind {
+        CaptureKind::ObservedThumbnail => 0,
+        CaptureKind::ExplicitOriginal => 1,
+        CaptureKind::ExplicitVideo => 2,
+    };
+    if current
+        .as_ref()
+        .is_none_or(|existing| priority(candidate.capture_kind) > priority(existing.capture_kind))
+    {
+        *current = Some(candidate.clone());
     }
 }
 

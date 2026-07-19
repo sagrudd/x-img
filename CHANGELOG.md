@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.23.0 - 2026-07-19
+
+- Replaced sequential per-image cache-evidence requests with one bounded batch
+  request for up to 256 canonical media identities. Framing and substitution
+  reuse the same response and never query DASObjectStore for existence.
+- Added large-viewport regressions proving one network request covers sixteen
+  visible images and every settled original receives stored-object framing.
+- Added an authenticated server regression proving 256 in-memory evidence
+  lookups complete as one bounded request.
+
 ## 1.22.21 - 2026-07-19
 
 - Apply a stored frame to an X modal/gallery node that replaces the clicked

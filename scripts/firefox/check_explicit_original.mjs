@@ -87,6 +87,19 @@ const fetchFixture = async (url, options) => {
   if (String(url).includes("/capture-plans/")) {
     return { ok: true, async json() { return { schema_version: "pinakotheke.capture-plan-status.v1", state: "stored" }; } };
   }
+  if (String(url).includes("/cache-aliases/lookup-batch")) {
+    captures.push({ url: String(url), options });
+    const request = JSON.parse(options.body);
+    return {
+      ok: true,
+      async json() {
+        return {
+          schema_version: "x-img.cache-alias-batch-result.v1",
+          results: request.aliases.map(alias => ({ canonical_alias: alias.canonical_alias, ...cacheResult })),
+        };
+      },
+    };
+  }
   if (String(url).includes("/cache-aliases/lookup")) {
     captures.push({ url: String(url), options });
     return { ok: true, async json() { return cacheResult; } };
@@ -174,7 +187,8 @@ assert.equal(
 );
 const evidenceBody = JSON.parse(captures[0].options.body);
 assert.equal(evidenceBody.instance_id, "");
-assert.equal(evidenceBody.canonical_alias, "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small");
+assert.equal(evidenceBody.aliases.length, 1);
+assert.equal(evidenceBody.aliases[0].canonical_alias, "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small");
 const observedBody = JSON.parse(captures[1].options.body);
 assert.equal(observedBody.capture_kind, "observed_thumbnail");
 assert.equal(observedBody.media_url, "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small");
@@ -182,6 +196,42 @@ assert.equal(observedBody.presentation_url, "https://x.com/FixtureArtist/status/
 captures.length = 0;
 storage.sites.pop();
 storage.instanceId = "instance-1";
+cacheResult = { schema_version: "x-img.cache-alias-result.v1", outcome: "miss" };
+
+storage.sites.push({
+  origin: "https://x.com",
+  capture: false,
+  substitution: true,
+  xIngress: true,
+  media: ["images"],
+});
+cacheResult = {
+  schema_version: "x-img.cache-alias-result.v1",
+  outcome: "hit",
+  media_class: "original_image",
+};
+const largeViewport = Array.from({ length: 16 }, (_, index) => ({
+  url: `https://pbs.twimg.com/media/batch-${index}.jpg?name=small`,
+  presentationUrl: `https://x.com/FixtureArtist/status/${index}`,
+  width: 640,
+  height: 480,
+  mediaToken: `batch-token-${index}`,
+}));
+const frameCountBeforeBatch = framedMessages.length;
+await messageListener(
+  { command: "visible-media-changed", images: largeViewport },
+  { tab: { id: 8, url: "https://x.com/home" } },
+);
+assert.equal(captures.length, 1, "a large viewport must use one bounded evidence request");
+assert.match(captures[0].url, /lookup-batch$/);
+assert.equal(JSON.parse(captures[0].options.body).aliases.length, 16);
+assert.equal(
+  framedMessages.length - frameCountBeforeBatch,
+  16,
+  "every settled original in the batch must receive stored-frame feedback",
+);
+captures.length = 0;
+storage.sites.pop();
 cacheResult = { schema_version: "x-img.cache-alias-result.v1", outcome: "miss" };
 
 assert.equal(
@@ -206,7 +256,7 @@ const videoEvidenceResult = await messageListener(
 );
 assert.equal(videoEvidenceResult.completed, true);
 const videoEvidenceBody = JSON.parse(captures.at(-1).options.body);
-assert.equal(videoEvidenceBody.canonical_presentation, "https://x.com/FixtureArtist/status/42");
+assert.equal(videoEvidenceBody.aliases[0].canonical_presentation, "https://x.com/FixtureArtist/status/42");
 assert.equal(framedMessages.at(-1).command, "frame-stored");
 assert.equal(framedMessages.at(-1).mediaToken, "video-token-42");
 completedRequestListener({ tabId: 91, url: "https://video.twimg.com/amplify_video/42/pl/avc1/video.m3u8" });

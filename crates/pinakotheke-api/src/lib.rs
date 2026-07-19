@@ -179,6 +179,41 @@ struct CacheAliasLookupEnvelope {
     adapter_version: String,
 }
 
+const MAX_CACHE_EVIDENCE_BATCH: usize = 256;
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CacheAliasBatchLookupEnvelope {
+    schema_version: String,
+    pairing_id: String,
+    instance_id: String,
+    origin: String,
+    adapter_id: String,
+    adapter_version: String,
+    aliases: Vec<CacheAliasBatchQuery>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CacheAliasBatchQuery {
+    canonical_alias: String,
+    #[serde(default)]
+    canonical_presentation: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct CacheAliasBatchLookupResponse {
+    schema_version: &'static str,
+    results: Vec<CacheAliasBatchResult>,
+}
+
+#[derive(Debug, Serialize)]
+struct CacheAliasBatchResult {
+    canonical_alias: String,
+    #[serde(flatten)]
+    evidence: CacheAliasLookupResponse,
+}
+
 #[derive(Debug, Serialize)]
 struct CacheAliasLookupResponse {
     schema_version: &'static str,
@@ -924,6 +959,10 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             .route(
                 "/products/pinakotheke/api/extension/v1/cache-aliases/lookup",
                 post(capture_alias_evidence).layer(Extension(Arc::clone(&gallery))),
+            )
+            .route(
+                "/products/pinakotheke/api/extension/v1/cache-aliases/lookup-batch",
+                post(capture_alias_evidence_batch).layer(Extension(Arc::clone(&gallery))),
             );
         if let Some(onboarding) = onboarding.clone() {
             protected = protected
@@ -2207,14 +2246,46 @@ async fn capture_alias_evidence(
     if envelope.adapter_id.is_empty() || envelope.adapter_id.len() > 128 {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);
     }
-    if envelope
-        .canonical_presentation
-        .as_deref()
-        .is_some_and(|value| {
-            value.len() > 2_048
-                || !value.starts_with("https://")
-                || value.contains([' ', '\n', '\r', '@', '?', '#'])
-        })
+    if !valid_cache_presentation(envelope.canonical_presentation.as_deref()) {
+        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .as_secs();
+    let plans = capture_plans
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let gallery = gallery
+        .lock()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(evidence_from_memory(
+        &plans,
+        &gallery,
+        context.actor_id(),
+        &envelope.pairing_id,
+        now,
+        &envelope.origin,
+        &envelope.adapter_version,
+        &envelope.canonical_alias,
+        envelope.canonical_presentation.as_deref(),
+    )))
+}
+
+async fn capture_alias_evidence_batch(
+    Extension(context): Extension<AuthenticatedHostContext>,
+    Extension(capture_plans): Extension<CapturePlans>,
+    Extension(gallery): Extension<MonasGalleryCatalogue>,
+    Json(envelope): Json<CacheAliasBatchLookupEnvelope>,
+) -> Result<Json<CacheAliasBatchLookupResponse>, StatusCode> {
+    if !context.permits(XIMG_ACCESS) || envelope.schema_version != CACHE_LOOKUP_SCHEMA_VERSION {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    if envelope.adapter_id.is_empty()
+        || envelope.adapter_id.len() > 128
+        || envelope.instance_id.len() > 256
+        || envelope.aliases.is_empty()
+        || envelope.aliases.len() > MAX_CACHE_EVIDENCE_BATCH
     {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);
     }
@@ -2222,32 +2293,107 @@ async fn capture_alias_evidence(
         .duration_since(UNIX_EPOCH)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .as_secs();
-    let plan = capture_plans
+    let plans = capture_plans
         .lock()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .settled_for_alias_or_presentation(
-            context.actor_id(),
-            &envelope.pairing_id,
-            now,
-            &envelope.origin,
-            &envelope.adapter_version,
-            &envelope.canonical_alias,
-            envelope.canonical_presentation.as_deref(),
-        );
-    let Some(plan) = plan else {
-        eprintln!("pinakotheke_cache_evidence outcome=miss stage=settled_alias");
-        return Ok(Json(cache_fallback("miss", None)));
-    };
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let gallery = gallery
         .lock()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let Some(item) = gallery
+    for query in &envelope.aliases {
+        if !valid_cache_presentation(query.canonical_presentation.as_deref()) {
+            return Err(StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    }
+    let queries = envelope
+        .aliases
+        .iter()
+        .map(|query| {
+            (
+                query.canonical_alias.clone(),
+                query.canonical_presentation.clone(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let matches = plans.settled_for_alias_batch(
+        context.actor_id(),
+        &envelope.pairing_id,
+        now,
+        &envelope.origin,
+        &envelope.adapter_version,
+        &queries,
+    );
+    let gallery_by_id = gallery
         .items()
         .iter()
-        .find(|item| item.catalogue_id == plan.catalogue_id)
-    else {
-        eprintln!("pinakotheke_cache_evidence outcome=miss stage=gallery");
-        return Ok(Json(cache_fallback("miss", None)));
+        .map(|item| (item.catalogue_id.as_str(), item))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let mut results = Vec::with_capacity(envelope.aliases.len());
+    for (query, plan) in envelope.aliases.into_iter().zip(matches) {
+        let evidence = evidence_for_plan(&gallery_by_id, plan.as_ref());
+        results.push(CacheAliasBatchResult {
+            canonical_alias: query.canonical_alias,
+            evidence,
+        });
+    }
+    eprintln!(
+        "pinakotheke_cache_evidence outcome=batch_complete count={}",
+        results.len()
+    );
+    Ok(Json(CacheAliasBatchLookupResponse {
+        schema_version: "x-img.cache-alias-batch-result.v1",
+        results,
+    }))
+}
+
+fn valid_cache_presentation(value: Option<&str>) -> bool {
+    !value.is_some_and(|value| {
+        value.len() > 2_048
+            || !value.starts_with("https://")
+            || value.contains([' ', '\n', '\r', '@', '?', '#'])
+    })
+}
+
+// Authority dimensions remain explicit so batch acceleration cannot omit one.
+#[allow(clippy::too_many_arguments)]
+fn evidence_from_memory(
+    plans: &CapturePlanService,
+    gallery: &GalleryCatalogue,
+    actor_id: &str,
+    pairing_id: &str,
+    now: u64,
+    origin: &str,
+    adapter_version: &str,
+    canonical_alias: &str,
+    canonical_presentation: Option<&str>,
+) -> CacheAliasLookupResponse {
+    let Some(plan) = plans.settled_for_alias_or_presentation(
+        actor_id,
+        pairing_id,
+        now,
+        origin,
+        adapter_version,
+        canonical_alias,
+        canonical_presentation,
+    ) else {
+        return cache_fallback("miss", None);
+    };
+    let gallery_by_id = gallery
+        .items()
+        .iter()
+        .map(|item| (item.catalogue_id.as_str(), item))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    evidence_for_plan(&gallery_by_id, Some(&plan))
+}
+
+fn evidence_for_plan(
+    gallery_by_id: &std::collections::BTreeMap<&str, &x_img_core::gallery_catalogue::GalleryItem>,
+    plan: Option<&CapturePlan>,
+) -> CacheAliasLookupResponse {
+    let Some(plan) = plan else {
+        return cache_fallback("miss", None);
+    };
+    let Some(item) = gallery_by_id.get(plan.catalogue_id.as_str()) else {
+        return cache_fallback("miss", None);
     };
     let representation = match plan.capture_kind {
         CaptureKind::ObservedThumbnail => Some(&item.thumbnail),
@@ -2255,11 +2401,9 @@ async fn capture_alias_evidence(
         CaptureKind::ExplicitVideo => item.preview.as_ref().or(Some(&item.thumbnail)),
     };
     let Some(representation) = representation else {
-        eprintln!("pinakotheke_cache_evidence outcome=miss stage=representation");
-        return Ok(Json(cache_fallback("miss", None)));
+        return cache_fallback("miss", None);
     };
-    eprintln!("pinakotheke_cache_evidence outcome=hit stage=ready");
-    Ok(Json(CacheAliasLookupResponse {
+    CacheAliasLookupResponse {
         schema_version: CACHE_RESULT_SCHEMA_VERSION,
         outcome: "hit",
         reason: None,
@@ -2272,7 +2416,7 @@ async fn capture_alias_evidence(
         content_length: Some(representation.content_length),
         object_checksum: Some(representation.checksum.clone()),
         delivery_path: representation.delivery_path.clone(),
-    }))
+    }
 }
 
 fn cache_fallback(outcome: &'static str, reason: Option<&'static str>) -> CacheAliasLookupResponse {
@@ -4147,6 +4291,46 @@ mod tests {
         let evidence: serde_json::Value =
             serde_json::from_slice(&to_bytes(evidence.into_body(), 4_096).await.unwrap()).unwrap();
         assert_eq!(evidence["outcome"], "miss");
+
+        let aliases = (0..256)
+            .map(|index| {
+                serde_json::json!({
+                    "canonical_alias": format!("https://example.invalid/media/{index}.jpg")
+                })
+            })
+            .collect::<Vec<_>>();
+        let started = std::time::Instant::now();
+        let batch = router()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/cache-aliases/lookup-batch")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::from(
+                        serde_json::to_vec(&serde_json::json!({
+                            "schema_version": "x-img.cache-alias-lookup.v1",
+                            "pairing_id": "pair-0",
+                            "instance_id": "pinakotheke-monolith",
+                            "origin": "https://example.invalid",
+                            "adapter_id": "generic-observed-image",
+                            "adapter_version": "1.0.0",
+                            "aliases": aliases
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(batch.status(), StatusCode::OK);
+        assert!(started.elapsed() < std::time::Duration::from_millis(100));
+        let batch: serde_json::Value =
+            serde_json::from_slice(&to_bytes(batch.into_body(), 128 * 1024).await.unwrap())
+                .unwrap();
+        assert_eq!(batch["schema_version"], "x-img.cache-alias-batch-result.v1");
+        assert_eq!(batch["results"].as_array().unwrap().len(), 256);
     }
 
     #[tokio::test]

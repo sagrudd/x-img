@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.22.21
+Version: 1.23.0
 
 Updated: 2026-07-19
 
@@ -1347,6 +1347,21 @@ The implementation is pushed in ``9e874df`` and the Mozilla-signed XPI passed
 permanent installation. DASServer serves the checksum-matching artifact and
 runs the ``1.22.0`` package; final milestone evidence is one user-driven X
 browse/play cycle demonstrating the frames and settled toolbar transition.
+
+## 1.23.0 — Viewport-fast cache evidence
+
+- One extension viewport scan performs one authenticated, bounded evidence
+  request for up to 256 canonical identities instead of one or two sequential
+  requests per image.
+- Evidence is resolved only from Pinakotheke's process-resident capture-plan and
+  gallery metadata; DASObjectStore remains the byte authority but is absent
+  from the existence-check hot path.
+- The same batch result drives green stored framing and optional substitution.
+  Misses fail open and the legacy single-item route remains available during
+  extension rollout.
+- Release evidence includes a 16-image/one-request extension regression, green
+  framing assertions for every returned original, a 256-identity server bound,
+  and real installed-Firefox assurance.
 
 ## 1.22.21 — Visible explicit-image settlement convergence
 
