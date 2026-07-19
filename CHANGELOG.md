@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.19.1 - 2026-07-19
+
+- Admit a visible video play for capture after a recent genuine page pointer or
+  keyboard activation when X's overlay controls cannot be mapped to the exact
+  ``video`` element. Autoplay without a trusted activation remains ineligible.
+
 ## 1.19.0 - 2026-07-18
 
 - Accept Monas host context bound to the verified Prosopikon authority,

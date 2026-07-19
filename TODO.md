@@ -2,9 +2,9 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.19.0
+Version: 1.19.1
 
-Updated: 2026-07-18
+Updated: 2026-07-19
 
 ## How to use this backlog
 
@@ -1428,7 +1428,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   the gallery; do not mark complete from plan admission alone. Implementation
   is pushed in ``8828024``. Mozilla signing, permanent-install verification,
   and checksum-identical DASServer deployment of the ``1.18.0`` backend and XPI
-  are complete; the live user-played settlement criterion remains unchecked.
+  are complete. A subsequent live play reached the content observer but was
+  rejected as ``missing_trusted_activation`` before any server request.
+  ``1.19.1`` adds a bounded genuine-page-activation fallback while retaining
+  the autoplay block; the live user-played settlement criterion remains
+  unchecked.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

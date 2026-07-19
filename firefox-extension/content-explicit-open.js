@@ -48,6 +48,14 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
 
   const videoActivations = new WeakMap();
   let recentVisibleVideoActivation = null;
+  let recentPageActivation = null;
+  const trustedPlayWindowMilliseconds = 8000;
+  const isVisibleVideo = video => {
+    const rect = video.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0
+      && rect.bottom > 0 && rect.right > 0
+      && rect.top < innerHeight && rect.left < innerWidth;
+  };
   const visibleVideoAtPoint = event => [...document.querySelectorAll("video")].find(video => {
     const rect = video.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0
@@ -57,6 +65,11 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
   }) || null;
   const rememberVideoActivation = event => {
     if (!event.isTrusted) return;
+    const activation = {
+      epochMilliseconds: Date.now(),
+      performanceMilliseconds: performance.now(),
+    };
+    recentPageActivation = activation;
     let element = event.target instanceof Element ? event.target : null;
     let video = element?.closest("video") || null;
     for (let depth = 0; !video && element && depth < 5; depth += 1, element = element.parentElement) {
@@ -64,10 +77,6 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
     }
     if (!video && event.type === "pointerdown") video = visibleVideoAtPoint(event);
     if (video) {
-      const activation = {
-      epochMilliseconds: Date.now(),
-      performanceMilliseconds: performance.now(),
-      };
       videoActivations.set(video, activation);
       recentVisibleVideoActivation = { video, activation };
     }
@@ -119,7 +128,7 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
   const resolvePlayedVideo = async (video, activation) => {
     if (videoResolutions.has(video)) return;
     videoResolutions.add(video);
-    if (!activation || Date.now() - activation.epochMilliseconds > 2000) {
+    if (!activation || Date.now() - activation.epochMilliseconds > trustedPlayWindowMilliseconds) {
       videoResolutions.delete(video);
       return;
     }
@@ -180,8 +189,9 @@ if (!globalThis.__pinakothekeExplicitOpenObserver) {
     const video = event.target;
     const activation = videoActivations.get(video)
       || (recentVisibleVideoActivation?.video === video
-        ? recentVisibleVideoActivation.activation : null);
-    if (!activation || Date.now() - activation.epochMilliseconds > 2000) {
+        ? recentVisibleVideoActivation.activation : null)
+      || (isVisibleVideo(video) ? recentPageActivation : null);
+    if (!activation || Date.now() - activation.epochMilliseconds > trustedPlayWindowMilliseconds) {
       void browser.runtime.sendMessage({ command: "explicit-video-observer", outcome: "missing_trusted_activation" });
       return;
     }

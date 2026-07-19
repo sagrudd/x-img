@@ -2,9 +2,9 @@
 
 Status: 1.0 stable release
 
-Version: 1.19.0
+Version: 1.19.1
 
-Updated: 2026-07-18
+Updated: 2026-07-19
 
 Product identity: Pinakotheke is canonical from v1.0.0 at
 `sagrudd/pinakotheke`; `x-img` remains only where documented compatibility or
@@ -1219,6 +1219,18 @@ canonical group and does not treat them as bearer credentials. Legacy
 pairing v1, but cannot grant a new canonical-only capability. Removing that
 compatibility path remains gated on inventory, rollback, mapping decisions,
 and cross-product canary acceptance.
+
+## 1.19.1 — Reliable trusted-play admission
+
+Live Firefox ``1.18.0`` evidence showed that X emitted the genuine video play
+event but the extension rejected it as ``missing_trusted_activation`` before
+contacting Pinakotheke. Overlay controls are not always geometrically associated
+with the page's ``video`` element and playback can outlive the former two-second
+window. ``1.19.1`` preserves exact-video activation when available and adds an
+eight-second fallback from a genuine page pointer or Enter/Space activation to
+a visible trusted play. Playback without that user activation remains
+ineligible, and the server continues to enforce site policy and destination
+authority.
 
 ## Post-1.0 candidates
 

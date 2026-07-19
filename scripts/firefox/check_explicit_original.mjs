@@ -207,6 +207,8 @@ vm.runInNewContext(contentSource, {
   MutationObserver: class { observe() {} },
   setTimeout() { return 1; },
   clearTimeout() {},
+  innerHeight: 800,
+  innerWidth: 1200,
   performance: {
     now() { return 5000; },
     getEntriesByType(type) {
@@ -262,6 +264,28 @@ contentListeners.get("play")({ isTrusted: true, target: overlayPlayedVideo });
 assert.equal(contentMessages.length, 3);
 assert.equal(contentMessages[2].command, "explicit-video-opened");
 assert.equal(contentMessages[2].width, 854);
+
+const delayedOverlayVideo = new FixtureVideo();
+delayedOverlayVideo.currentSrc = "blob:https://art.example.invalid/delayed-overlay";
+delayedOverlayVideo.videoWidth = 1920;
+delayedOverlayVideo.videoHeight = 1080;
+delayedOverlayVideo.clientWidth = 960;
+delayedOverlayVideo.clientHeight = 540;
+delayedOverlayVideo.getBoundingClientRect = () => ({
+  left: 20, top: 20, right: 980, bottom: 560, width: 960, height: 540,
+});
+contentDocument.querySelectorAll = () => [];
+contentListeners.get("pointerdown")({
+  isTrusted: true,
+  type: "pointerdown",
+  target: overlayControl,
+  clientX: 900,
+  clientY: 700,
+});
+contentListeners.get("play")({ isTrusted: true, target: delayedOverlayVideo });
+assert.equal(contentMessages.length, 4);
+assert.equal(contentMessages[3].command, "explicit-video-opened");
+assert.equal(contentMessages[3].width, 1920);
 
 const sender = { tab: { id: 7, url: "https://art.example.invalid:8443/gallery?private=drop" } };
 const result = await messageListener({
