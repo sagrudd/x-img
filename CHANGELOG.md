@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.22.17 - 2026-07-19
+
+- Reserve the two-pixel green browser frame for verified user-opened originals
+  and user-played videos; an automatically observed thumbnail no longer claims
+  that its original was imported.
+- Bind page-element tokens and overlays to the rendered media identity, clear
+  them when X recycles an element for different media, and require both token
+  and URL to match when both are supplied by a settlement receipt.
+- Prefer verified explicit-original evidence over thumbnail-only evidence for
+  the same canonical alias.
+
 ## 1.22.16 - 2026-07-19
 
 - Capture X playback initiated by site JavaScript when it follows the recorded

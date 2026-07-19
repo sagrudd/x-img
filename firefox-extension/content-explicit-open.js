@@ -13,10 +13,20 @@
     ".pinakotheke-stored-object { box-sizing: border-box !important; border: 2px solid #238636 !important; outline: 2px solid #238636 !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px #238636 !important; }",
   ].join("\n");
   (document.head || document.documentElement).append(style);
+  for (const stale of document.querySelectorAll(
+    ".pinakotheke-capture-selected, .pinakotheke-stored-object",
+  )) {
+    stale.classList.remove("pinakotheke-capture-selected", "pinakotheke-stored-object");
+    if (stale.dataset) delete stale.dataset.pinakothekeCaptureState;
+  }
+  for (const staleOverlay of document.querySelectorAll("[data-pinakotheke-stored-overlay]")) {
+    staleOverlay.remove();
+  }
   const canonical = raw => { const url = new URL(raw); url.search = ""; url.hash = ""; return url.href; };
   const mediaTokens = new WeakMap();
   const storedOverlays = new WeakMap();
   const storedMedia = new Set();
+  const framedTargets = new WeakMap();
   const isXMediaUrl = raw => {
     try {
       const url = new URL(raw);
@@ -35,13 +45,35 @@
     url.searchParams.set("name", "orig");
     return url.href;
   };
+  const mediaIdentityFor = media => {
+    const kind = media instanceof HTMLVideoElement ? "video" : "image";
+    const rendered = media.currentSrc || media.src || "";
+    try {
+      const source = rendered.startsWith("blob:") ? rendered : canonical(rendered);
+      return kind === "video"
+        ? `${kind}|${canonical(presentationUrlFor(media))}|${source}`
+        : `${kind}|${source}`;
+    } catch (_) {
+      return `${kind}|unavailable`;
+    }
+  };
+  const newMediaToken = () => globalThis.crypto?.randomUUID?.()
+    || `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const mediaTokenFor = media => {
-    let token = mediaTokens.get(media) || media.dataset?.pinakothekeMediaToken;
-    if (!token) token = globalThis.crypto?.randomUUID?.()
-      || `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    mediaTokens.set(media, token);
-    if (media.dataset) media.dataset.pinakothekeMediaToken = token;
-    return token;
+    const identity = mediaIdentityFor(media);
+    let record = mediaTokens.get(media);
+    const datasetMatches = !media.dataset
+      || media.dataset.pinakothekeMediaIdentity === identity;
+    if (!record || record.identity !== identity || !datasetMatches) {
+      clearMediaFrame(media);
+      record = { identity, token: newMediaToken() };
+      mediaTokens.set(media, record);
+      if (media.dataset) {
+        media.dataset.pinakothekeMediaIdentity = identity;
+        media.dataset.pinakothekeMediaToken = record.token;
+      }
+    }
+    return record.token;
   };
   const framingTargets = media => {
     const targets = [media];
@@ -87,6 +119,19 @@
     overlay.style.width = `${rect.width}px`;
     overlay.style.height = `${rect.height}px`;
     overlay.style.borderRadius = getComputedStyle(media).borderRadius;
+  };
+  const clearMediaFrame = media => {
+    const targets = new Set([media, ...(framedTargets.get(media) || [])]);
+    for (const target of targets) {
+      target.classList?.remove("pinakotheke-capture-selected");
+      target.classList?.remove("pinakotheke-stored-object");
+    }
+    framedTargets.delete(media);
+    const overlay = storedOverlays.get(media);
+    overlay?.remove();
+    storedOverlays.delete(media);
+    storedMedia.delete(media);
+    if (media.dataset) delete media.dataset.pinakothekeCaptureState;
   };
   const refreshStoredOverlays = () => {
     for (const media of [...storedMedia]) positionStoredOverlay(media);
@@ -163,19 +208,26 @@
     let matched = 0;
     for (const media of document.querySelectorAll("img,video")) {
       try {
-        const matches = (message.mediaToken && mediaTokenFor(media) === message.mediaToken)
-          || (wanted && media.currentSrc && canonical(media.currentSrc) === wanted);
+        const tokenMatches = Boolean(message.mediaToken
+          && mediaTokenFor(media) === message.mediaToken);
+        const urlMatches = Boolean(wanted && media.currentSrc
+          && canonical(media.currentSrc) === wanted);
+        const matches = message.mediaToken && wanted
+          ? tokenMatches && urlMatches
+          : tokenMatches || urlMatches;
         if (!matches) continue;
         matched += 1;
+        const targets = framingTargets(media);
+        framedTargets.set(media, targets);
         if (message.command === "frame-stored" || message.state === "stored") {
-          for (const target of framingTargets(media)) {
+          for (const target of targets) {
             target.classList.remove("pinakotheke-capture-selected");
             target.classList.add("pinakotheke-stored-object");
           }
           media.dataset.pinakothekeCaptureState = "Stored in ObjectStore";
           positionStoredOverlay(media);
         } else {
-          for (const target of framingTargets(media)) target.classList.add("pinakotheke-capture-selected");
+          for (const target of targets) target.classList.add("pinakotheke-capture-selected");
           media.dataset.pinakothekeCaptureState = message.label || "Selected for download";
         }
       } catch (_) { /* ignore malformed page media */ }

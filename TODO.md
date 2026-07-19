@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.16
+Version: 1.22.17
 
 Updated: 2026-07-19
 
@@ -1842,6 +1842,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   evidence lookup by the stable X status/presentation identity, allowing a
   stored video's transient ``blob:`` element to regain its green frame after
   browser or page restart. Fresh installed-Firefox proof remains.
+  Version ``1.22.17`` corrects false-positive green frames: thumbnail-only
+  observation remains eligible for cache/catalogue admission but cannot claim
+  an imported original, explicit-original evidence wins over thumbnail
+  evidence for the same alias, and an X-recycled media element loses its token,
+  overlay, and frame as soon as its rendered identity changes.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

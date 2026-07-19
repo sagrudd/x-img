@@ -150,6 +150,12 @@ storage.sites.push({
 });
 storage.instanceId = "";
 backgroundContext.document.images = [];
+cacheResult = {
+  schema_version: "x-img.cache-alias-result.v1",
+  outcome: "hit",
+  media_class: "thumbnail_image",
+};
+const framesBeforeObservedThumbnail = framedMessages.length;
 await messageListener(
   { command: "visible-media-changed", images: [{
     url: "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small",
@@ -161,6 +167,11 @@ await messageListener(
 );
 await new Promise(resolve => setImmediate(resolve));
 assert.equal(captures.length, 2, "paired historical lookup and visible X capture must both run without legacy instance id");
+assert.equal(
+  framedMessages.length,
+  framesBeforeObservedThumbnail,
+  "observed thumbnail settlement must not claim that an original was imported",
+);
 const evidenceBody = JSON.parse(captures[0].options.body);
 assert.equal(evidenceBody.instance_id, "");
 assert.equal(evidenceBody.canonical_alias, "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small");
@@ -171,6 +182,7 @@ assert.equal(observedBody.presentation_url, "https://x.com/FixtureArtist/status/
 captures.length = 0;
 storage.sites.pop();
 storage.instanceId = "instance-1";
+cacheResult = { schema_version: "x-img.cache-alias-result.v1", outcome: "miss" };
 
 assert.equal(
   vm.runInContext('canonicalAlias("https://pbs.twimg.com/media/fixture?name=small&format=jpg&token=drop")', backgroundContext),
@@ -225,8 +237,26 @@ assert.equal(registeredScripts[0].allFrames, false);
 
 const contentListeners = new Map();
 const contentMessages = [];
+let contentMessageListener;
 let contentListenerRegistrations = 0;
 class FixtureElement {
+  constructor() {
+    this.dataset = {};
+    this.parentElement = null;
+    this.isConnected = true;
+    this.style = {};
+    this.classes = new Set();
+    this.classList = {
+      add: (...names) => names.forEach(name => this.classes.add(name)),
+      remove: (...names) => names.forEach(name => this.classes.delete(name)),
+      contains: name => this.classes.has(name),
+    };
+  }
+  getBoundingClientRect() {
+    return { left: 0, top: 0, right: 320, bottom: 240, width: 320, height: 240 };
+  }
+  setAttribute() {}
+  remove() { this.isConnected = false; }
   closest(selector) {
     if (selector === "img") return this;
     if (selector === "video" && this instanceof FixtureVideo) return this;
@@ -244,7 +274,8 @@ const contentDocument = {
   contentType: "text/html",
   documentElement: {},
   head: { append() {} },
-  createElement() { return { textContent: "" }; },
+  body: { append() {} },
+  createElement() { return new FixtureElement(); },
   querySelectorAll() { return []; },
   addEventListener(kind, callback, capture) {
     contentListenerRegistrations += 1;
@@ -263,7 +294,7 @@ const contentContext = vm.createContext({
       contentMessages.push(message);
       return Promise.resolve({});
     },
-    onMessage: { addListener() {} },
+    onMessage: { addListener(listener) { contentMessageListener = listener; } },
   } },
   document: contentDocument,
   Element: FixtureElement,
@@ -274,6 +305,9 @@ const contentContext = vm.createContext({
   clearTimeout() {},
   innerHeight: 800,
   innerWidth: 1200,
+  getComputedStyle() {
+    return { borderRadius: "0px", display: "block", visibility: "visible", opacity: "1" };
+  },
   performance: {
     now() { return 5000; },
     getEntriesByType(type) {
@@ -414,4 +448,33 @@ assert.equal(captures.length, 1, "paused site policy must block explicit capture
 await messageListener({ command: "sync-capture-observers" }, {});
 assert.equal(registeredScripts.length, 0, "pausing capture removes the persistent observer");
 
-console.log("Firefox explicit-media contract passed: persistent observer, trusted image/video activation, generic progressive request");
+const recycledImage = new FixtureElement();
+recycledImage.currentSrc = "https://media.example.invalid/first.jpg?name=small";
+recycledImage.naturalWidth = 1200;
+recycledImage.naturalHeight = 800;
+contentDocument.querySelectorAll = selector => selector === "img,video" ? [recycledImage] : [];
+clickListener({ isTrusted: true, button: 0, target: recycledImage });
+const firstIdentityCapture = contentMessages.at(-1);
+assert.equal(firstIdentityCapture.command, "explicit-original-opened");
+const firstFrame = await contentMessageListener({
+  command: "frame-stored",
+  mediaUrl: recycledImage.currentSrc,
+  mediaToken: firstIdentityCapture.mediaToken,
+});
+assert.equal(firstFrame.matched, 1);
+assert.equal(recycledImage.classList.contains("pinakotheke-stored-object"), true);
+
+recycledImage.currentSrc = "https://media.example.invalid/unrelated.jpg?name=small";
+const staleFrame = await contentMessageListener({
+  command: "frame-stored",
+  mediaUrl: "https://media.example.invalid/first.jpg?name=orig",
+  mediaToken: firstIdentityCapture.mediaToken,
+});
+assert.equal(staleFrame.matched, 0, "a delayed receipt must not frame a recycled image node");
+assert.equal(
+  recycledImage.classList.contains("pinakotheke-stored-object"),
+  false,
+  "changing rendered identity must remove the previous green frame",
+);
+
+console.log("Firefox explicit-media contract passed: persistent observer, trusted image/video activation, identity-bound stored frames");

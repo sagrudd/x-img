@@ -669,6 +669,15 @@ explicit-video plan for the same actor, pairing, origin, adapter version, and
 presentation may produce a hit. The frame is an overlay; it neither changes
 the source page nor mutates stored media bytes.
 
+The green frame has deliberately narrow meaning: it is shown only for a
+verified user-opened original image or user-played normalized video. A
+thumbnail that was merely visible may still be cached and admitted to the
+catalogue as ``Previously observed``, but it does not receive the green frame
+and does not claim that its original was imported. X may recycle one media DOM
+element for several gallery items; Pinakotheke binds the element token and
+overlay to the current rendered-media identity and clears them whenever that
+identity changes, so a delayed receipt cannot mark the replacement image.
+
 Verification
 ------------
 

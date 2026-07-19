@@ -67,6 +67,10 @@ def main() -> int:
     assert 'lookupAlias(instanceUrl, instanceId || "", pairId' in background
     assert "canonical_presentation: presentation" in background
     assert 'command: "visible-media-changed", images, videos' in content
+    assert 'evidence.media_class === "original_image"' in background
+    assert 'captureKind !== "observed_thumbnail"' in background
+    assert "record.identity !== identity" in content
+    assert "tokenMatches && urlMatches" in content
     assert "settled_video_frame" not in background
     assert '"stored_video_frame"' in background
     assert "if (!(event.target instanceof HTMLVideoElement)) return" in content

@@ -329,13 +329,20 @@ async function captureAndFrame(tabId, instanceUrl, pairId, origin, pageUrl, adap
     }
     await traceEvent("capture_plan", "admitted", `${captureKind}; ${plan.plan_id}`, origin);
     await recordMediaCapture(origin, plan.plan_id, captureKind, "selected", "Selected by your video play action");
-    await notifyCaptureState(tabId, media, "selected", "Selected for download");
+    const decoratePageMedia = captureKind !== "observed_thumbnail";
+    if (decoratePageMedia) {
+      await notifyCaptureState(tabId, media, "selected", "Selected for download");
+    }
     for (let attempt = 0; attempt < 180; attempt += 1) {
       const status = await fetch(`${instanceUrl}/products/pinakotheke/api/extension/v1/capture-plans/${encodeURIComponent(plan.plan_id)}`, { cache: "no-store", headers: { "x-pinakotheke-pairing": pairId } });
       if (status.ok) {
         const state = await status.json();
         if (state.schema_version === "pinakotheke.capture-plan-status.v1" && state.state === "stored") {
-          await browser.tabs.sendMessage(tabId, { command: "frame-stored", mediaUrl: media.url, mediaToken: media.mediaToken });
+          if (decoratePageMedia) {
+            await browser.tabs.sendMessage(tabId, {
+              command: "frame-stored", mediaUrl: media.url, mediaToken: media.mediaToken,
+            });
+          }
           await recordMediaCapture(origin, plan.plan_id, captureKind, "stored", "Available in DASObjectStore");
           await traceEvent("capture_status", "stored", `${captureKind}; ${plan.plan_id}`, origin);
           return { outcome: "stored" };
@@ -343,7 +350,9 @@ async function captureAndFrame(tabId, instanceUrl, pairId, origin, pageUrl, adap
       }
       if (attempt === 1) {
         await recordMediaCapture(origin, plan.plan_id, captureKind, "downloading", "Acquisition and ObjectStore settlement are in progress");
-        await notifyCaptureState(tabId, media, "downloading", "Download in progress");
+        if (decoratePageMedia) {
+          await notifyCaptureState(tabId, media, "downloading", "Download in progress");
+        }
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -749,7 +758,7 @@ async function runCacheForTab(tab, contentImages = null, contentVideos = null) {
       try {
         const alias = canonicalAlias(observed.url);
         const evidence = await lookupAlias(instanceUrl, instanceId || "", pairId, origin, adapter, alias);
-        if (evidence?.outcome === "hit") {
+        if (evidence?.outcome === "hit" && evidence.media_class === "original_image") {
           const framing = await browser.tabs.sendMessage(tab.id, { command: "frame-stored", mediaUrl: observed.url, mediaToken: observed.mediaToken });
           await traceEvent("stored_frame", framing?.matched ? "applied" : "unmatched", `${framing?.matched || 0} page element(s)`, origin);
         }

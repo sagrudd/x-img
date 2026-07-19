@@ -369,8 +369,7 @@ impl CapturePlanService {
         }
         self.accepted
             .iter()
-            .rev()
-            .find(|pending| {
+            .filter(|pending| {
                 pending.actor_id == actor_id
                     && pending.settled
                     && pending.plan.origin == origin
@@ -381,6 +380,11 @@ impl CapturePlanService {
                             && canonical_presentation.is_some_and(|presentation| {
                                 pending.plan.canonical_presentation_url == presentation
                             })))
+            })
+            .max_by_key(|pending| match pending.plan.capture_kind {
+                CaptureKind::ObservedThumbnail => 0,
+                CaptureKind::ExplicitOriginal => 1,
+                CaptureKind::ExplicitVideo => 2,
             })
             .map(|pending| pending.plan.clone())
     }
@@ -878,6 +882,34 @@ mod tests {
                 .map(|matched| matched.plan_id),
             Some(plan.plan_id)
         );
+        let site = planner
+            .sites
+            .get_mut("https://example.invalid")
+            .expect("site");
+        site.allow_explicit_originals = true;
+        site.max_candidates_per_page = 3;
+        let mut original_request = request();
+        original_request.capture_kind = CaptureKind::ExplicitOriginal;
+        let original = planner
+            .plan("actor", 3, original_request)
+            .expect("original plan");
+        planner
+            .settle("actor", &original.plan_id)
+            .expect("settle original");
+        assert_eq!(
+            planner
+                .settled_for_alias(
+                    "actor",
+                    "pair-0",
+                    4,
+                    &original.origin,
+                    &original.adapter_version,
+                    &original.canonical_media_url,
+                )
+                .map(|matched| matched.plan_id),
+            Some(original.plan_id),
+            "an explicit original is stronger stored evidence than an observed thumbnail",
+        );
         assert!(
             planner
                 .settled_for_alias(
@@ -891,11 +923,6 @@ mod tests {
                 .is_none()
         );
         let mut video_request = request();
-        planner
-            .sites
-            .get_mut("https://example.invalid")
-            .expect("site")
-            .allow_explicit_originals = true;
         video_request.capture_kind = CaptureKind::ExplicitVideo;
         video_request.media_url = "https://video.example.invalid/fixture.m3u8".into();
         video_request.presentation_url = Some("https://example.invalid/status/42".into());
