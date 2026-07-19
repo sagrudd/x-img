@@ -212,9 +212,12 @@
           && mediaTokenFor(media) === message.mediaToken);
         const urlMatches = Boolean(wanted && media.currentSrc
           && canonical(media.currentSrc) === wanted);
-        const matches = message.mediaToken && wanted
-          ? tokenMatches && urlMatches
-          : tokenMatches || urlMatches;
+        // X replaces a clicked thumbnail node with a new modal/gallery node.
+        // A stable canonical media URL is therefore authoritative when one is
+        // supplied; the element token is only a fallback for URL-less state
+        // messages. A different rendered media identity still cannot inherit
+        // the frame from a recycled node.
+        const matches = wanted ? urlMatches : tokenMatches;
         if (!matches) continue;
         matched += 1;
         const targets = framingTargets(media);

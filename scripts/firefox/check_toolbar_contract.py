@@ -43,6 +43,8 @@ def main() -> int:
     assert "needsXMediaPermission" in popup_script
     assert "browser.permissions.request({origins:[X_MEDIA_PERMISSION]})" in popup_script
     assert 'id="video-downloads"' in popup
+    assert "Selected downloads" in popup
+    assert "No images or videos selected" in popup + popup_script
     assert "mediaCaptureStates" in popup_script
     assert "Available in DASObjectStore" in background
     assert 'command: "media-capture-state"' in background
@@ -70,7 +72,7 @@ def main() -> int:
     assert 'evidence.media_class === "original_image"' in background
     assert 'captureKind !== "observed_thumbnail"' in background
     assert "record.identity !== identity" in content
-    assert "tokenMatches && urlMatches" in content
+    assert "const matches = wanted ? urlMatches : tokenMatches" in content
     assert "settled_video_frame" not in background
     assert '"stored_video_frame"' in background
     assert "if (!(event.target instanceof HTMLVideoElement)) return" in content

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.20
+Version: 1.22.21
 
 Updated: 2026-07-19
 
@@ -1876,6 +1876,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   left 246 unique catalogue IDs with no duplicate card. Pinakotheke and Monas
   were active on version ``1.22.20`` and the authenticated app redirected
   correctly to fresh login.
+- [ ] **XIMG-122 P0 — Make explicit-image settlement visibly convergent.** An
+  X thumbnail may be replaced by a modal/gallery DOM node before DASObjectStore
+  settlement. Frame the replacement only when it displays the same immutable
+  canonical media identity, retain rejection for a node recycled to different
+  media, and list selected image progress alongside video progress in the
+  toolbar. Extend bounded server retry across observed multi-second storage
+  contention with destination revalidation on every attempt. Acceptance
+  requires a synthetic node-replacement regression, selected-image toolbar
+  state proof, live recovery of the user's pending original, and deployment.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

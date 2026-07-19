@@ -1898,7 +1898,7 @@ fn acquire_capture_with_retry(
     actor_id: &str,
     plan: &CapturePlan,
 ) -> Result<VerifiedCaptureCompletion, String> {
-    const MAX_ATTEMPTS: usize = 3;
+    const MAX_ATTEMPTS: usize = 6;
     for attempt in 0..MAX_ATTEMPTS {
         revalidate_capture_destination(runtime, actor_id, plan)?;
         let result = runtime
@@ -1911,7 +1911,7 @@ fn acquire_capture_with_retry(
         match result {
             Ok(evidence) => return Ok(evidence),
             Err(reason) if transient_capture_failure(&reason) && attempt + 1 < MAX_ATTEMPTS => {
-                std::thread::sleep(std::time::Duration::from_millis(200 * (attempt as u64 + 1)));
+                std::thread::sleep(std::time::Duration::from_secs(attempt as u64 + 1));
             }
             Err(reason) => return Err(reason),
         }
@@ -4411,7 +4411,7 @@ mod tests {
             .unwrap();
         assert_eq!(planned.status(), StatusCode::OK);
         let mut visible = false;
-        for _ in 0..50 {
+        for _ in 0..200 {
             let response = app
                 .clone()
                 .oneshot(

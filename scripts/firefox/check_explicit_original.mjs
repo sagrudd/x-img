@@ -441,6 +441,8 @@ assert.equal(body.presentation_url, "https://media.example.invalid/original.jpg"
 assert.equal(body.width, 1920);
 assert.equal(storage.siteDiagnostics[body.origin].state, "Stored in ObjectStore");
 assert.equal(storage.siteDiagnostics[body.origin].storedInObjectStore, true);
+assert.equal(storage.mediaCaptureStates.at(-1).kind, "Image");
+assert.equal(storage.mediaCaptureStates.at(-1).state, "stored");
 
 captures.length = 0;
 storage.sites[0].media.push("videos");
@@ -497,5 +499,22 @@ assert.equal(
   false,
   "changing rendered identity must remove the previous green frame",
 );
+
+const replacementModalImage = new FixtureElement();
+replacementModalImage.currentSrc = "https://media.example.invalid/first.jpg?name=large";
+replacementModalImage.naturalWidth = 1600;
+replacementModalImage.naturalHeight = 1200;
+contentDocument.querySelectorAll = selector => selector === "img,video" ? [replacementModalImage] : [];
+const replacementFrame = await contentMessageListener({
+  command: "frame-stored",
+  mediaUrl: "https://media.example.invalid/first.jpg?name=orig",
+  mediaToken: firstIdentityCapture.mediaToken,
+});
+assert.equal(
+  replacementFrame.matched,
+  1,
+  "a replacement modal node displaying the same stable media must receive the stored frame",
+);
+assert.equal(replacementModalImage.classList.contains("pinakotheke-stored-object"), true);
 
 console.log("Firefox explicit-media contract passed: persistent observer, trusted image/video activation, identity-bound stored frames");

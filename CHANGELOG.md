@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.22.21 - 2026-07-19
+
+- Apply a stored frame to an X modal/gallery node that replaces the clicked
+  thumbnail when both nodes display the same stable media identity; a recycled
+  node displaying different media remains unframed.
+- Track explicitly selected image downloads alongside videos in the extension
+  popup, including selected, downloading, pending, failed, and stored states.
+- Extend transient DASObjectStore acquisition retries to cover the observed
+  multi-second settlement contention while revalidating destination authority
+  before every attempt.
+
 ## 1.22.20 - 2026-07-19
 
 - Preserve a safe source-presentation link for new captures and backfill

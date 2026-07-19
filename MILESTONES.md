@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.22.20
+Version: 1.22.21
 
 Updated: 2026-07-19
 
@@ -1347,6 +1347,22 @@ The implementation is pushed in ``9e874df`` and the Mozilla-signed XPI passed
 permanent installation. DASServer serves the checksum-matching artifact and
 runs the ``1.22.0`` package; final milestone evidence is one user-driven X
 browse/play cycle demonstrating the frames and settled toolbar transition.
+
+## 1.22.21 — Visible explicit-image settlement convergence
+
+Goal: make a user-selected image visibly converge from selection through
+DASObjectStore settlement even when X replaces its thumbnail DOM node.
+
+Exit criteria:
+
+- the same canonical image may transfer its stored frame from the clicked node
+  to an X modal/gallery replacement, while different media cannot inherit it;
+- explicitly selected image and video plans expose worded progress in the
+  extension popup;
+- server retries cover measured multi-second ObjectStore contention without
+  losing destination revalidation or becoming unbounded; and
+- deterministic extension and Axum regressions plus live pending-plan recovery
+  prove the complete behavior before deployment.
 
 ## 1.22.20 — Thumbnail-to-original recovery assurance
 

@@ -41,11 +41,15 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
 browser.tabs.onActivated.addListener(({ tabId }) => scheduleTabScan(tabId));
 
 async function recordMediaCapture(origin, planId, kind, state, detail) {
-  if (kind !== "explicit_video") return;
+  if (!["explicit_original", "explicit_video"].includes(kind)) return;
   const stored = await browser.storage.local.get(["mediaCaptureStates"]);
   const entries = Array.isArray(stored.mediaCaptureStates) ? stored.mediaCaptureStates : [];
   const next = entries.filter(entry => entry.planId !== planId);
-  next.push({ planId, origin, kind: "Video", state, detail, updatedAt: new Date().toISOString() });
+  next.push({
+    planId, origin, captureKind: kind,
+    kind: kind === "explicit_video" ? "Video" : "Image",
+    state, detail, updatedAt: new Date().toISOString(),
+  });
   await browser.storage.local.set({ mediaCaptureStates: next.slice(-24) });
 }
 
@@ -70,7 +74,13 @@ async function refreshMediaCaptureStates() {
       if (!response.ok) return;
       const status = await response.json();
       if (status.schema_version === "pinakotheke.capture-plan-status.v1" && status.state === "stored") {
-        await recordMediaCapture(entry.origin, entry.planId, "explicit_video", "stored", "Available in DASObjectStore");
+        await recordMediaCapture(
+          entry.origin,
+          entry.planId,
+          entry.captureKind || (entry.kind === "Image" ? "explicit_original" : "explicit_video"),
+          "stored",
+          "Available in DASObjectStore",
+        );
       }
     } catch (_) { /* popup refresh is advisory and fails open */ }
   }));

@@ -676,7 +676,16 @@ catalogue as ``Previously observed``, but it does not receive the green frame
 and does not claim that its original was imported. X may recycle one media DOM
 element for several gallery items; Pinakotheke binds the element token and
 overlay to the current rendered-media identity and clears them whenever that
-identity changes, so a delayed receipt cannot mark the replacement image.
+identity changes, so a delayed receipt cannot mark unrelated replacement
+media. X also replaces a clicked thumbnail node with a distinct modal/gallery
+node for the *same* immutable image. In that case the stable canonical media
+URL, rather than the obsolete element token, authorizes the new node's green
+frame after settlement.
+
+The extension popup lists explicitly selected images and videos with worded
+``selected``, ``downloading``, ``pending``, ``failed``, or ``stored`` state.
+Colour is never the only evidence of progress. A stored claim still requires
+the server plan to report verified DASObjectStore settlement.
 
 Verification
 ------------
