@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.22.2 - 2026-07-19
+
+- Treat X ``name=small``, ``name=medium``, and opened-size renditions as the
+  same stable media asset for stored-evidence framing.
+
 ## 1.22.1 - 2026-07-19
 
 - Mount authoritative cache-alias evidence in the production monolith and

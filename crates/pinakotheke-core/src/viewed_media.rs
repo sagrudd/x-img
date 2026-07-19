@@ -356,7 +356,8 @@ impl CapturePlanService {
                     && pending.plan.origin == origin
                     && pending.plan.site_id == adapter_id
                     && pending.plan.adapter_version == adapter_version
-                    && pending.plan.canonical_media_url == canonical_alias
+                    && cache_alias_identity(&pending.plan.canonical_media_url)
+                        == cache_alias_identity(canonical_alias)
             })
             .map(|pending| pending.plan.clone())
     }
@@ -574,6 +575,14 @@ impl CapturePlanService {
                 .map_err(|_| CapturePlanError::Scheduler),
             Err(_) => Err(CapturePlanError::Scheduler),
         }
+    }
+}
+
+fn cache_alias_identity(value: &str) -> &str {
+    if value.starts_with("https://pbs.twimg.com/media/") {
+        value.split('?').next().unwrap_or(value)
+    } else {
+        value
     }
 }
 
@@ -906,6 +915,14 @@ mod tests {
 
     #[test]
     fn x_cdn_variant_query_is_preserved_without_admitting_arbitrary_queries() {
+        assert_eq!(
+            cache_alias_identity("https://pbs.twimg.com/media/fixture?format=jpg&name=small"),
+            cache_alias_identity("https://pbs.twimg.com/media/fixture?format=jpg&name=900x900")
+        );
+        assert_ne!(
+            cache_alias_identity("https://pbs.twimg.com/media/fixture-a?name=small"),
+            cache_alias_identity("https://pbs.twimg.com/media/fixture-b?name=small")
+        );
         assert_eq!(
             canonical_media_url(
                 "https://pbs.twimg.com/media/fixture?name=small&format=jpg#fragment"

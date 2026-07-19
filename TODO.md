@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.1
+Version: 1.22.2
 
 Updated: 2026-07-19
 
@@ -1734,6 +1734,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   product boundary; version ``1.22.1`` and its Mozilla-signed matching
   extension are deployed. A repeated browser observation remains the closing
   proof.
+  The repeated cycle exposed X rendition drift: stored opened images used
+  ``name=900x900`` while page thumbnails used ``small`` or ``medium``. The
+  evidence identity now binds the stable ``pbs.twimg.com/media/<asset>`` path
+  while acquisition and provenance retain the exact rendition URL.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
