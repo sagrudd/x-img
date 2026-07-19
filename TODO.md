@@ -1929,6 +1929,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   requires same-identity repair and changed-identity rejection regressions,
   one-request large-viewport proof, deployment, and real-Firefox long-timeline
   assurance.
+  Implementation commit ``9b0dd91`` passes a 32-identity/one-request regression,
+  changed-identity rejection, workspace checks, and the local documentation
+  container. Pinakotheke ``1.23.2`` and its matching unsigned test XPI are
+  deployed on DASServer; installed-Firefox long-timeline assurance remains.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
