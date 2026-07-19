@@ -96,9 +96,10 @@ root. It retains only review metadata and verified DASObjectStore references;
 media bytes are never stored in the Pinakotheke root. Missing state is empty,
 while corrupt, future-schema, oversized, or symlinked state fails closed.
 Verified Firefox image admission now joins committed acquisition evidence and
-the common website review queue to this store. An observed thumbnail creates a
-card; an explicitly opened and independently committed original can enrich that
-same card. Original-first, uncommitted, destination-changing, and conflicting
+the common website review queue to this store. Displayed thumbnails are
+lookup-only and create no new cards; an explicitly opened and independently
+committed original creates the card. Historic thumbnail-only cards remain
+readable. Uncommitted, destination-changing, and conflicting
 replays are rejected, and delivery paths are generated server-side.
 For an enabled image site, a trusted click on an image link (or an image
 document) can submit the explicitly opened original through the same capture
@@ -145,7 +146,7 @@ Firefox with 1,000 ephemeral mixed records, bounded windowing, keyboard focus,
 server filtering, unavailable/no-origin behavior, and desktop/narrow reflow.
 It is browser-component evidence and does not replace live authority proof.
 ``make critical-vertical-check VIDEO=/ephemeral/normalized.mp4`` assembles that
-browser proof with automatic thumbnail and trusted-open capture, verified
+browser proof with lookup-only thumbnails and trusted-open capture, verified
 settlement/restart tests, and real Firefox normalized playback. See the
 [critical vertical acceptance guide](docs/critical-vertical.rst) for the exact
 scope and the separately recorded live DASObjectStore authority evidence.
@@ -294,12 +295,12 @@ forwards cookies or credentials, never automates browsing, and fails open to
 the origin. A dedicated Instagram API connector is optional future work, not a
 requirement for this path.
 
-Firefox observed-image capture is now admitted through a narrow,
-host-authenticated metadata-only plan endpoint. The extension submits only
-viewport-displayed images after a toolbar click; x-img checks the paired actor,
-site policy, adapter, and candidate bound before adding a redacted plan to the
-common scheduler. It does not accept browser media bytes or mark anything as
-stored. See [Firefox capture plans](docs/firefox-capture.rst).
+Firefox viewport observation is lookup-only. The extension submits an image
+capture plan only after a trusted user open and a video plan only after trusted
+user-started playback; x-img checks the paired actor, site policy, adapter, and
+candidate bound before adding either redacted plan to the common scheduler. It
+does not accept browser media bytes or mark anything as stored. See [Firefox
+capture plans](docs/firefox-capture.rst).
 
 The packaged manifest uses Firefox's background-script declaration while
 retaining the service-worker declaration for compatible browsers. On macOS,

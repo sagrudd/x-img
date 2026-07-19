@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.23.3
+Version: 1.24.0
 
 Updated: 2026-07-19
 
@@ -1347,6 +1347,24 @@ The implementation is pushed in ``9e874df`` and the Mozilla-signed XPI passed
 permanent installation. DASServer serves the checksum-matching artifact and
 runs the ``1.22.0`` package; final milestone evidence is one user-driven X
 browse/play cycle demonstrating the frames and settled toolbar transition.
+
+## 1.24.0 — Explicit-selection-only acquisition
+
+- Displayed thumbnails perform cache-evidence lookup only and never create a
+  capture plan, gallery record, or DASObjectStore payload.
+- Only a user-opened image or user-played video may initiate Firefox acquisition.
+- Viewport equality is based on canonical media identities rather than X's
+  disposable DOM-node tokens.
+- A repeated request for a settled plan returns its stable identity and status
+  without requeueing the capture helper or settlement path.
+- The Pinakotheke gallery must be an exact metadata projection of live
+  DASObjectStore authority: externally removed objects are removed or
+  tombstoned before they can be reported as available, and counts expose no
+  silent divergence.
+- The dedicated ``pinakotheke_media`` cache store uses one required verified
+  copy; this is an explicit per-store policy, not a global DAS default.
+- Release evidence compares total and unique plan admissions during a prolonged
+  timeline scroll and requires no repeated worker execution for settled media.
 
 ## 1.23.3 — Deep-timeline explicit image capture
 

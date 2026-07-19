@@ -1812,12 +1812,21 @@ async fn capture_plan(
         None => capture_plans.plan(context.actor_id(), now, request),
     }
     .map_err(capture_plan_status)?;
+    let already_settled = capture_plans.is_settled(context.actor_id(), &plan.plan_id);
     eprintln!(
-        "pinakotheke_ingress event=plan_admitted plan_id={} kind={:?} origin={} site_id={}",
-        plan.plan_id, plan.capture_kind, plan.origin, plan.site_id
+        "pinakotheke_ingress event={} plan_id={} kind={:?} origin={} site_id={}",
+        if already_settled {
+            "plan_reused_settled"
+        } else {
+            "plan_admitted"
+        },
+        plan.plan_id,
+        plan.capture_kind,
+        plan.origin,
+        plan.site_id
     );
     drop(capture_plans);
-    if let Some(runtime) = runtime.map(|runtime| runtime.0) {
+    if !already_settled && let Some(runtime) = runtime.map(|runtime| runtime.0) {
         schedule_capture_runtime(&runtime, context.actor_id().to_owned(), plan.clone())
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
@@ -4688,6 +4697,27 @@ mod tests {
         }
         assert!(visible, "background capture should update the live gallery");
         assert_eq!(attempts.load(Ordering::SeqCst), 2);
+        let replay = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", dispatch)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(request_body())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(replay.status(), StatusCode::OK);
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            2,
+            "a settled idempotent plan must not requeue the capture helper"
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 

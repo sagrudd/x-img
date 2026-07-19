@@ -105,9 +105,10 @@ integration, review, tests, commits, and the final handoff.
 - Firefox capture and substitution are per-site opt-in, transparent, and
   routed through that same x-img instance and DASObjectStore authority. The
   extension must never automatically open pages, traverse hidden content,
-  bulk-crawl, or simulate browsing. It may cache a thumbnail only when that
-  thumbnail was actually displayed or observed; it may capture/cache an
-  original only after the user explicitly opens it. It must never extract or
+  bulk-crawl, or simulate browsing. Displayed thumbnails are lookup-only
+  evidence candidates and must never create capture plans or stored payloads;
+  it may capture/cache an original only after the user explicitly opens it. It
+  must never extract or
   forward site cookies or credentials, and avoiding an API does not exempt any
   behavior from platform terms.
 - The browser cache must fail open to the origin and must never break ordinary

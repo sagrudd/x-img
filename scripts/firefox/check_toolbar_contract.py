@@ -75,6 +75,7 @@ def main() -> int:
     assert "canonical_presentation: presentation" in background
     assert 'command: "visible-media-changed", images, videos' in content
     assert 'evidence.media_class === "original_image"' in background
+    assert '"observed_thumbnail", observed' not in background
     assert 'captureKind !== "observed_thumbnail"' in background
     assert "record.identity !== identity" in content
     assert "const matches = wanted ? urlMatches : tokenMatches" in content

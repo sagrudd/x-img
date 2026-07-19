@@ -830,14 +830,6 @@ async function runCacheForTab(tab, contentImages = null, contentVideos = null) {
         const framing = await browser.tabs.sendMessage(tab.id, { command: "frame-stored", mediaUrl: observed.url, mediaToken: observed.mediaToken });
         await traceEvent("stored_frame", framing?.matched ? "applied" : "unmatched", `${framing?.matched || 0} page element(s)`, origin);
       }
-      if (rule.capture && adapter.capabilities.observed_thumbnail) {
-        void captureAndFrame(
-          tab.id, instanceUrl, pairId, origin, tab.url, adapter, "observed_thumbnail", observed,
-        ).then(async capture => {
-          if (capture.outcome === "stored") await recordSiteDiagnostic(origin, { channel: "capture", state: "Stored in ObjectStore", reason: "Visible thumbnail committed and admitted to the gallery", previouslyObserved: true, storedInObjectStore: true });
-          else if (capture.outcome === "pending") await recordSiteDiagnostic(origin, { channel: "capture", state: "Capture pending", reason: "Visible thumbnail is awaiting ObjectStore completion", previouslyObserved: true, storedInObjectStore: false });
-        });
-      }
       if (rule.substitution && instanceId && adapter.capabilities.image_substitution) {
         const hit = evidenceByAlias.get(alias);
         if (!hit || hit.outcome !== "hit" || !hit.media_class?.endsWith("_image") || !hit.delivery_path) {

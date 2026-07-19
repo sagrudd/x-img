@@ -101,7 +101,7 @@ const server = https.createServer({
     return;
   }
   if (request.url === "/gallery") {
-    const body = Buffer.from("<!doctype html><meta charset=utf-8><title>Synthetic gallery</title><a id=open href=/original.svg><img id=art src=/thumb.svg width=96 height=72 alt='Synthetic artwork'></a>");
+    const body = Buffer.from("<!doctype html><meta charset=utf-8><title>Synthetic gallery</title><a id=open href=/original.svg onclick='event.preventDefault()'><img id=art src=/thumb.svg width=96 height=72 alt='Synthetic artwork'></a>");
     response.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-length": body.length });
     response.end(body);
     return;
@@ -203,14 +203,8 @@ try {
   const context = created.context;
   await command("browsingContext.activate", { context });
   await command("browsingContext.navigate", { context, url: `${origin}/gallery`, wait: "complete" });
-  await waitFor(() => captures.some(item => item.capture_kind === "observed_thumbnail"), "observed thumbnail");
-  await waitFor(async () => {
-    const framed = await command("script.evaluate", {
-      expression: "document.querySelector('#art')?.classList.contains('pinakotheke-stored-object') === true",
-      target: { context }, awaitPromise: false,
-    });
-    return framed.result.type === "boolean" && framed.result.value;
-  }, "stored thumbnail frame");
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  assert.equal(captures.length, 0, "displaying a thumbnail must remain lookup-only");
   const evaluated = await command("script.evaluate", {
     expression: "document.querySelector('#art')", target: { context }, awaitPromise: false,
   });
@@ -222,13 +216,16 @@ try {
     ],
   }] });
   await waitFor(() => captures.some(item => item.capture_kind === "explicit_original"), "explicit original");
-  const observed = captures.find(item => item.capture_kind === "observed_thumbnail");
+  await waitFor(async () => {
+    const framed = await command("script.evaluate", {
+      expression: "document.querySelector('#art')?.classList.contains('pinakotheke-stored-object') === true",
+      target: { context }, awaitPromise: false,
+    });
+    return framed.result.type === "boolean" && framed.result.value;
+  }, "stored opened-image frame");
   const original = captures.find(item => item.capture_kind === "explicit_original");
-  assert.equal(observed.media_url, `${origin}/thumb.svg`);
-  assert.equal(observed.presentation_url, `${origin}/original.svg`);
   assert.equal(original.media_url, `${origin}/thumb.svg`);
   assert.equal(original.presentation_url, `${origin}/original.svg`);
-  assert.equal(observed.page_url, `${origin}/gallery`);
   assert.equal(original.page_url, `${origin}/gallery`);
   assert.equal(captures.some(item => item.cookie || item.headers || item.payload), false);
   await command("browsingContext.navigate", { context, url: `${origin}/video`, wait: "complete" });
@@ -261,7 +258,7 @@ try {
   assert.equal(video.media_url, `${origin}/synthetic-video.webm`);
   assert.equal(video.page_url, `${origin}/video`);
   assert.equal(captures.some(item => item.cookie || item.headers || item.payload), false);
-  console.log("Installed Firefox capture passed: automatic thumbnail, trusted opened image/video, and verified 2px stored frames");
+  console.log("Installed Firefox capture passed: lookup-only thumbnail, trusted opened image/video, and verified 2px stored frames");
   await command("session.end", {});
 } finally {
   if (socket?.readyState === WebSocket.OPEN) socket.close();

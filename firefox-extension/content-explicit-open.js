@@ -209,8 +209,8 @@
       const images = visibleImages();
       const videos = visibleVideos();
       const fingerprint = [
-        ...images.map(image => `image|${canonical(image.url)}|${image.mediaToken}`),
-        ...videos.map(video => `video|${canonical(video.presentationUrl)}|${video.mediaToken}`),
+        ...images.map(image => `image|${canonical(image.url)}`),
+        ...videos.map(video => `video|${canonical(video.presentationUrl)}`),
       ].join("\n");
       if (fingerprint === lastVisibleFingerprint) return;
       void browser.runtime.sendMessage({ command: "visible-media-changed", images, videos })

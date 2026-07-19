@@ -16,9 +16,9 @@ What the gate proves
 --------------------
 
 Installed Firefox uses the production extension scripts on a temporary HTTPS
-origin. An opted-in visible thumbnail is submitted automatically. A real
-pointer action opens the image and a separate trusted play action submits the
-progressive video. The isolated server emulates the production ``stored``
+origin. An opted-in visible thumbnail produces lookup evidence only. A real
+pointer action opens and submits the image, and a separate trusted play action
+submits the progressive video. The isolated server emulates the production ``stored``
 response; the native and live-authority checks below prove the settlement and
 gallery-admission conditions that authorize that response in production.
 Firefox then applies the extension-only two-pixel green frame to the thumbnail

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.23.3
+Version: 1.24.0
 
 Updated: 2026-07-19
 
@@ -1172,10 +1172,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   the normalized-video worker and equivalent verified gallery/status path.
   Mozilla signed extension 1.5.1 on 2026-07-17; permanent-install acceptance
   passed and the authenticated application advertises the deployed LAN XPI.
-  Treat an enabled exact-origin site rule as the user's standing consent to
-  cache the selected media classes. Cache displayed thumbnails immediately;
-  cache an image original only after the user opens it, and cache video only
-  after the user opens or plays it. Verified commits enter the common gallery
+  The original implementation treated an enabled exact-origin site rule as
+  standing consent to cache displayed thumbnails immediately. That behaviour
+  is retired and superseded by XIMG-127: viewport images are lookup-only, an
+  image is captured only after the user opens it, and video only after the user
+  opens or plays it. Verified commits enter the common gallery
   immediately with review state ``New`` and require no pre-ingest approval.
   Ignore incidental browser/site chrome when a source adapter can identify
   content media. A cache hit must add a non-obstructing two-pixel green frame
@@ -1184,8 +1185,8 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``x.com/<canonical-account>/...`` rather than an unmanaged filesystem
   subdirectory. Deduplicate immutable bytes across actors while retaining
   actor-specific observation, provenance, and review state.
-  Completed by the assembled gate in ``f7dadb1``: installed Firefox proves an
-  automatically observed thumbnail plus trusted opened original and video,
+  Completed by the historical assembled gate in ``f7dadb1``: installed Firefox
+  proved the then-current automatically observed thumbnail plus trusted opened original and video,
   waits for verified ``stored`` status, and checks the browser-only two-pixel
   frame. XIMG-111 supplies automatic incompatible-video normalization and
   XIMG-113 supplies committed poster/metadata, immediate persistent gallery
@@ -1944,6 +1945,29 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   regression and full local verification. Pinakotheke ``1.23.3`` and its
   matching unsigned test XPI are deployed on DASServer; the remaining evidence
   is one user-driven deep-timeline settlement in the installed Firefox.
+- [ ] **XIMG-127 P0 — Make Firefox acquisition explicit-selection-only.** Never
+  create a capture plan or ObjectStore payload for a merely displayed
+  thumbnail; use viewport observation only for cache evidence and green-frame
+  feedback. Capture an image only after the user opens it and a video only after
+  the user starts playback. Fingerprint the viewport by canonical media
+  identity and make server replay of a settled plan read-only. Acceptance
+  requires browser lookup-only, recycled-token fingerprint, trusted image/play,
+  and settled-server-replay tests;
+  deployment; and a prolonged installed-Firefox scroll showing no repeated
+  helper execution for settled plans. Live diagnosis found 78 admissions for
+  only 11 unique observed-thumbnail plans in seven minutes, including individual
+  settled plans replayed 28 and 20 times.
+- [ ] **XIMG-128 P0 — Enforce DASObjectStore/gallery convergence.** Treat the
+  live DASObjectStore catalogue as payload authority and Pinakotheke as its
+  metadata projection. Reconcile at startup and after delete/commit events;
+  never report an object as available when its exact endpoint/store/object
+  version is absent. Expose DAS count, projected count, orphan count, and stale
+  count in authenticated diagnostics. Acceptance requires commit, external
+  deletion, restart, and crash reconciliation tests with equal authoritative
+  and projected availability counts. On 2026-07-19 live reset evidence exposed
+  397 Garage objects, 38 DAS-catalogued objects, and 308 Pinakotheke records;
+  all three authorities were deliberately reset to zero while the writer was
+  stopped, and ``pinakotheke_media`` was changed from two copies to one.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

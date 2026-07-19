@@ -176,6 +176,21 @@ The verified image admission boundary below now populates this store. Live
 worker composition, authorized image/video delivery, and the real-Firefox
 restart proof remain the next XIMG-096 slices.
 
+Authority convergence
+---------------------
+
+DASObjectStore is authoritative for payload existence. Pinakotheke gallery
+metadata must converge with the exact endpoint, ObjectStore, object identifier,
+and immutable version reported by DASObjectStore. A gallery row cannot make an
+absent object available. Startup and post-commit/delete reconciliation must
+remove or tombstone stale projections and authenticated diagnostics must expose
+authoritative, projected, orphan, and stale counts. Direct Garage bucket counts
+are diagnostic only and never override the DASObjectStore catalogue.
+
+The dedicated ``pinakotheke_media`` cache may use a one-copy per-store policy;
+this does not change other DASObjectStore policies. A copy is acknowledged only
+under DASObjectStore's configured verified-placement contract.
+
 Verified Firefox image admission
 --------------------------------
 
@@ -184,19 +199,19 @@ acquisition state machine, common review queue, and persistent gallery store.
 It is an internal worker boundary, not a browser endpoint. Firefox cannot send
 an ObjectStore reference or delivery path and cannot mark a record committed.
 
-An observed thumbnail creates a ``New`` image card only when the acquisition is
-already ``Committed`` with verified endpoint, ObjectStore, object-reference,
+Legacy observed thumbnails create a ``New`` image card only when the acquisition
+is already ``Committed`` with verified endpoint, ObjectStore, object-reference,
 positive object version, and checksum evidence and the capture plan passes
-website review admission.
+website review admission. Firefox 1.24.0 and later never create these records;
+displayed thumbnails are lookup-only.
 The server derives the source classification and a host-local thumbnail route.
 Replaying the same immutable object is idempotent; changing the object for the
 same card is an explicit conflict.
 
-An explicitly opened original may attach to an existing observed-thumbnail
-card only after its own independent verified commit. Original-first admission
-is rejected. The endpoint and logical ObjectStore must match the reviewed
-thumbnail destination; an original cannot silently move the card to another
-store. The server generates the original delivery path and atomically replaces
+An explicitly opened original creates or enriches a card only after its own
+independent verified commit. The endpoint and logical ObjectStore must match
+any existing thumbnail destination; an original cannot silently move the card
+to another store. The server generates the original delivery path and atomically replaces
 the complete metadata document. A restart test proves that one card retains
 both object references, dimensions, ``New`` review state, and ready
 availability without retaining image bytes.

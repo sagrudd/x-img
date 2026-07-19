@@ -4,8 +4,9 @@ Exact X image deduplication
 Pinakotheke treats the immutable X media path as the identity of an image. The
 page currently displaying it, the status/gallery route, the user-defined site
 rule name, and the ``small``, ``900x900``, or ``orig`` rendition query do not
-create separate gallery cards. An observed thumbnail and a subsequently opened
-original therefore enrich one card.
+create separate gallery cards. A legacy observed thumbnail and a subsequently
+opened original therefore enrich one card; current Firefox releases create no
+new observed-thumbnail records.
 
 This exact identity rule is separate from future perceptual duplicate
 grouping. Two different media identifiers remain separate even when their

@@ -16,15 +16,15 @@ the toolbar. The subsequent request starts directly in the button handler,
 before any awaited work, because Firefox preserves approval eligibility only
 for the immediate user action.
 
-Automatic cache interaction
----------------------------
+Lookup and explicit acquisition
+-------------------------------
 
-An enabled exact-origin rule is standing capture consent for its selected
-media classes. Firefox observes meaningful images currently displayed in the
-viewport after page load, scrolling, or DOM changes and submits them without a
-toolbar action. Images smaller than 64 by 64 pixels are excluded from the
-generic path to avoid incidental interface icons. Mutation notifications are
-debounced and identical in-flight media is coalesced.
+An enabled exact-origin rule permits lookup for its selected media classes.
+Firefox observes meaningful images currently displayed in the viewport after
+page load, scrolling, or DOM changes only to ask whether their canonical media
+identities are already stored. Observation never creates a capture plan,
+gallery record, or ObjectStore payload. Image acquisition requires a trusted
+user open, and video acquisition requires trusted user-started playback.
 
 The plan response is not storage evidence. Firefox polls the actor-scoped
 ``GET /products/pinakotheke/api/extension/v1/capture-plans/{plan_id}`` status.
@@ -48,6 +48,12 @@ one authenticated batch of up to 256 canonical media identities. Its single
 response drives both stored framing and optional substitution; a miss or an
 unavailable batch fails open to the website. The legacy single-identity route
 remains available only for extension-version compatibility during rollout.
+
+The extension never submits an observed-thumbnail acquisition plan. Viewport equality uses
+canonical media identities rather than X's disposable DOM tokens, so recycling
+an unchanged element cannot create background work. If a compatible client
+still repeats a settled capture request, the server returns the stable plan and
+stored status without requeueing acquisition or ObjectStore settlement.
 
 Long X timelines reuse and temporarily disconnect image elements. The
 extension therefore remembers up to 4,096 server-confirmed canonical image
@@ -160,8 +166,8 @@ Installed Firefox acceptance
 On macOS, ``make firefox-capture-check`` starts the installed Firefox binary
 with an isolated temporary profile and an ephemeral HTTPS gallery. It installs
 an unsigned temporary test copy of the extension and uses the production
-background and content scripts. The check requires an automatically observed
-thumbnail, a trusted opened original, and a trusted-play progressive video. It
+background and content scripts. The check requires a displayed thumbnail to
+remain lookup-only, a trusted opened original, and a trusted-play progressive video. It
 returns verified stored status and proves that Firefox applies the two-pixel
 frame to the matching image and video. Capture requests contain no payload,
 cookie, or header fields. The certificate, profile, add-on, and synthetic media
@@ -186,11 +192,12 @@ port.
 Eligibility
 -----------
 
-On a direct toolbar click, the Firefox extension considers at most 32 ``img``
-elements that are complete, have natural dimensions, are not hidden, and
-intersect the current viewport. It submits each eligible item separately to
-the paired instance. It does not open an image, inspect off-screen images,
-traverse hidden DOM content, crawl a page, or simulate browsing.
+The Firefox extension considers only complete, visible ``img`` elements that
+intersect the current viewport when building a bounded cache-evidence batch.
+It does not submit those elements for acquisition. A trusted user open submits
+one eligible image; trusted user-started playback submits one eligible video.
+It does not inspect off-screen images, traverse hidden DOM content, crawl a
+page, or simulate browsing.
 
 After a site is explicitly enabled for image capture, Firefox dynamically
 registers one persistent, top-frame content script for that exact origin. The
@@ -419,10 +426,11 @@ schema is
 Run-one acquisition helper
 --------------------------
 
-For X ingress, automatic thumbnail observation admits only media delivered by
-X's dedicated image-media host. Interface artwork, emoji, and other decorative
-assets from application hosts are excluded. Generic opted-in websites retain
-their adapter-defined visible-media behaviour.
+For X ingress, thumbnail observation performs bounded cache-evidence lookup
+only for media delivered by X's dedicated image-media host. Interface artwork,
+emoji, and other decorative assets from application hosts are excluded.
+Neither X nor generic opted-in websites admit observed-thumbnail acquisition;
+only trusted image opens and trusted user-started video playback do so.
 
 The first production-worker boundary is an offline, run-one CLI operation. A
 reviewed host executable receives one approved canonical plan and the fixed

@@ -92,11 +92,12 @@ never blocks or modifies the request.
 The toolbar has no effect unless a paired instance and an explicitly enabled
 site exist, and failures are silent so ordinary page use continues.
 
-When the user clicks the toolbar on an enabled image site, only images actually
-displayed in the current viewport are eligible for an ``observed_thumbnail``
-capture plan. The extension does not automatically open an original. The
-paired host must authenticate and authorize the plan before it enters the
-shared scheduler; this is never a direct browser payload upload. See
+On an enabled image site, images displayed in the viewport are eligible only
+for cache-evidence lookup and stored-state framing. They never create an
+``observed_thumbnail`` capture plan. A trusted user open may submit the image's
+original, and trusted user-started playback may submit a video. The paired host
+must authenticate and authorize either plan before it enters the shared
+scheduler; this is never a direct browser payload upload. See
 :doc:`firefox-capture` for the endpoint, policy, and fail-open contract.
 
 The toolbar now opens the explicit per-site cache control and diagnostic

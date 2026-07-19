@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.24.0 - 2026-07-19
+
+- Makes Firefox acquisition explicit-selection-only: displayed thumbnails are
+  lookup candidates but never create capture plans or stored objects.
+- Captures image bytes only after the user opens an image and video bytes only
+  after the user starts playback.
+- Fingerprints visible media by canonical identity rather than recycled DOM
+  token, preventing long timelines from repeating unchanged viewport work.
+- Makes settled capture-plan replay a read-only idempotent response that never
+  requeues acquisition or ObjectStore settlement.
+
 ## 1.23.3 - 2026-07-19
 
 - Retains an identity-bound image capture snapshot from a trusted pointerdown

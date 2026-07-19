@@ -169,8 +169,7 @@ storage.instanceId = "";
 backgroundContext.document.images = [];
 cacheResult = {
   schema_version: "x-img.cache-alias-result.v1",
-  outcome: "hit",
-  media_class: "thumbnail_image",
+  outcome: "miss",
 };
 const framesBeforeObservedThumbnail = framedMessages.length;
 await messageListener(
@@ -183,7 +182,7 @@ await messageListener(
   { tab: { id: 8, url: "https://x.com/home" } },
 );
 await new Promise(resolve => setImmediate(resolve));
-assert.equal(captures.length, 2, "paired historical lookup and visible X capture must both run without legacy instance id");
+assert.equal(captures.length, 1, "visible X thumbnails must perform evidence lookup without acquisition");
 assert.equal(
   framedMessages.length,
   framesBeforeObservedThumbnail,
@@ -193,10 +192,24 @@ const evidenceBody = JSON.parse(captures[0].options.body);
 assert.equal(evidenceBody.instance_id, "");
 assert.equal(evidenceBody.aliases.length, 1);
 assert.equal(evidenceBody.aliases[0].canonical_alias, "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small");
-const observedBody = JSON.parse(captures[1].options.body);
-assert.equal(observedBody.capture_kind, "observed_thumbnail");
-assert.equal(observedBody.media_url, "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small");
-assert.equal(observedBody.presentation_url, "https://x.com/FixtureArtist/status/42");
+captures.length = 0;
+cacheResult = {
+  schema_version: "x-img.cache-alias-result.v1",
+  outcome: "hit",
+  media_class: "thumbnail_image",
+};
+await messageListener(
+  { command: "visible-media-changed", images: [{
+    url: "https://pbs.twimg.com/media/visible-thumbnail.jpg?format=jpg&name=small",
+    presentationUrl: "https://x.com/FixtureArtist/status/42",
+    width: 640,
+    height: 480,
+  }] },
+  { tab: { id: 8, url: "https://x.com/home" } },
+);
+await new Promise(resolve => setImmediate(resolve));
+assert.equal(captures.length, 1, "settled thumbnail evidence must remain lookup-only");
+assert.match(captures[0].url, /lookup-batch$/);
 captures.length = 0;
 storage.sites.pop();
 storage.instanceId = "instance-1";
@@ -598,5 +611,7 @@ assert.equal(replacementModalImage.classList.contains("pinakotheke-stored-object
 assert.match(contentSource, /repairKnownStoredFrame\(image\)/);
 assert.match(contentSource, /storedImageIdentityOrder\.length > 4096/);
 assert.match(contentSource, /\.slice\(0, 64\)/);
+assert.match(contentSource, /images\.map\(image => `image\|\$\{canonical\(image\.url\)\}`\)/);
+assert.doesNotMatch(contentSource, /canonical\(image\.url\)\}\|\$\{image\.mediaToken\}/);
 
 console.log("Firefox explicit-media contract passed: persistent observer, trusted image/video activation, identity-bound stored frames");
