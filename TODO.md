@@ -1455,8 +1455,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Live ``1.20.1`` then produced no new plan because Firefox had not granted the
   user-controlled ``video.twimg.com`` origin permission. ``1.20.2`` requests
   that exact permission during X-video enablement and from the toolbar repair
-  action for existing rules; a new signed-install and real settlement proof
-  remain required.
+  action for existing rules. Implementation is pushed in ``2c6ce92``; Mozilla
+  signing, permanent-install verification, and checksum-identical DASServer
+  deployment of the matching backend and XPI are complete. Real settlement
+  proof after granting the permission remains required.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

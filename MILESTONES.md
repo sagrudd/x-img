@@ -1285,6 +1285,9 @@ extension was active but showed no granted origin access for
 see worker manifests. ``1.20.2`` makes this an explicit runtime permission,
 requests it while the user enables X video ingress, and offers a toolbar repair
 for an existing saved rule. Refusal leaves ordinary X playback unchanged.
+Mozilla signed ``1.20.2`` and the permanent-install fixture accepted its stable
+identity. DASServer runs the matching backend and serves the checksum-identical
+XPI as ``application/x-xpinstall``.
 
 ## Post-1.0 candidates
 
