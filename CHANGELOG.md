@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.23.3 - 2026-07-19
+
+- Retains an identity-bound image capture snapshot from a trusted pointerdown
+  for two seconds so X cannot lose an explicit original request by replacing a
+  deeply virtualized media node before the click event reaches the extension.
+- Resolves image targets through the composed event path and records a redacted
+  diagnostic when a trusted X click still has no eligible image.
+
 ## 1.23.2 - 2026-07-19
 
 - Repairs stored-image frames locally when X disconnects and reuses a known

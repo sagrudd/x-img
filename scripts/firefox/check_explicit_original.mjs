@@ -417,6 +417,31 @@ assert.equal(contentMessages.length, 2, "an X-style overlay click must resolve t
 assert.equal(contentMessages[1].command, "explicit-original-opened");
 assert.equal(contentMessages[1].mediaUrl, "https://pbs.twimg.com/media/fixture?format=jpg&name=orig");
 contentMessages.pop();
+contentDocument.images = [overlayXImage];
+contentListeners.get("pointerdown")({
+  isTrusted: true,
+  type: "pointerdown",
+  button: 0,
+  target: imageOverlay,
+  clientX: 120,
+  clientY: 80,
+});
+contentDocument.images = [];
+clickListener({
+  isTrusted: true,
+  button: 0,
+  target: imageOverlay,
+  clientX: 120,
+  clientY: 80,
+});
+assert.equal(
+  contentMessages.length,
+  2,
+  "an X node removed between pointerdown and click must retain its explicit image capture",
+);
+assert.equal(contentMessages[1].command, "explicit-original-opened");
+assert.equal(contentMessages[1].mediaUrl, "https://pbs.twimg.com/media/fixture?format=jpg&name=orig");
+contentMessages.pop();
 contentDocument.images = [openedImage];
 
 const playedVideo = new FixtureVideo();

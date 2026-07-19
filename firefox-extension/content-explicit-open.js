@@ -266,7 +266,50 @@
 
   const videoActivations = new WeakMap();
   let recentVisibleVideoActivation = null;
+  let recentImageActivation = null;
   const trustedPlayWindowMilliseconds = 8000;
+  const imageAtPoint = event => [...document.images].reverse().find(image => {
+    if (location.origin === "https://x.com" && !isXMediaUrl(image.currentSrc)) return false;
+    const rect = image.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0
+      && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)
+      && event.clientX >= rect.left && event.clientX <= rect.right
+      && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  }) || null;
+  const imageForActivation = event => {
+    const pathImage = event.composedPath?.().find(candidate => candidate instanceof Element
+      && candidate.closest?.("img"))?.closest?.("img") || null;
+    const directImage = event.target instanceof Element ? event.target.closest("img") : null;
+    return pathImage || directImage || imageAtPoint(event);
+  };
+  const imageCaptureSnapshot = image => {
+    if (!image?.currentSrc || image.naturalWidth < 1 || image.naturalHeight < 1) return null;
+    const link = image.closest("a[href]");
+    const xMedia = location.origin === "https://x.com" && isXMediaUrl(image.currentSrc);
+    if (!link && !xMedia && !document.contentType?.startsWith("image/")) return null;
+    const mediaUrl = xMedia ? xOriginalUrl(image.currentSrc) : image.currentSrc;
+    try {
+      if (new URL(mediaUrl).protocol !== "https:") return null;
+    } catch (_) {
+      return null;
+    }
+    return {
+      mediaUrl,
+      presentationUrl: presentationUrlFor(image),
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      mediaToken: mediaTokenFor(image),
+    };
+  };
+  const submitExplicitImage = capture => browser.runtime.sendMessage({
+    command: "explicit-original-opened",
+    ...capture,
+  });
+  const rememberImageActivation = event => {
+    if (!event.isTrusted || (event.button !== undefined && event.button !== 0)) return;
+    const capture = imageCaptureSnapshot(imageForActivation(event));
+    if (capture) recentImageActivation = { capture, epochMilliseconds: Date.now() };
+  };
   const isVisibleVideo = video => {
     const rect = video.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0
@@ -302,7 +345,10 @@
       }, 150);
     }
   };
-  document.addEventListener("pointerdown", rememberVideoActivation, true);
+  document.addEventListener("pointerdown", event => {
+    rememberImageActivation(event);
+    rememberVideoActivation(event);
+  }, true);
   document.addEventListener("keydown", event => {
     if (event.key === "Enter" || event.key === " ") rememberVideoActivation(event);
   }, true);
@@ -431,39 +477,28 @@
   }, true);
   document.addEventListener("click", event => {
     if (!event.isTrusted || event.button !== 0) return;
-    const directImage = event.target instanceof Element ? event.target.closest("img") : null;
-    const image = directImage || [...document.images].reverse().find(candidate => {
-      if (location.origin !== "https://x.com" || !isXMediaUrl(candidate.currentSrc)) return false;
-      const rect = candidate.getBoundingClientRect();
-      return Number.isFinite(event.clientX) && Number.isFinite(event.clientY)
-        && event.clientX >= rect.left && event.clientX <= rect.right
-        && event.clientY >= rect.top && event.clientY <= rect.bottom;
-    });
-    if (!image || !image.currentSrc || image.naturalWidth < 1 || image.naturalHeight < 1) return;
-    const link = image.closest("a[href]");
-    const xMedia = location.origin === "https://x.com" && isXMediaUrl(image.currentSrc);
-    if (!link && !xMedia && !document.contentType?.startsWith("image/")) return;
-    // The enclosing link is presentation provenance (for example an X status
-    // page), not necessarily the image payload. Always submit the bytes that
-    // Firefox actually rendered as the media candidate.
-    // The trusted click is the user's explicit-open action. X thumbnails are
-    // rendition aliases of a stable public media object; request its original
-    // rendition instead of permanently settling the small grid rendition.
-    const mediaUrl = xMedia ? xOriginalUrl(image.currentSrc) : image.currentSrc;
-    const presentationUrl = presentationUrlFor(image);
-    try {
-      if (new URL(mediaUrl).protocol !== "https:") return;
-    } catch (_) {
+    const capture = imageCaptureSnapshot(imageForActivation(event));
+    if (capture) {
+      recentImageActivation = null;
+      void submitExplicitImage(capture);
       return;
     }
-    void browser.runtime.sendMessage({
-      command: "explicit-original-opened",
-      mediaUrl,
-      presentationUrl,
-      width: image.naturalWidth,
-      height: image.naturalHeight,
-      mediaToken: mediaTokenFor(image),
-    });
+    // X may replace a deeply virtualized media node between pointerdown and
+    // click. The pointerdown snapshot is identity-bound to the pixels the user
+    // selected and avoids losing that explicit-open action during replacement.
+    if (recentImageActivation
+      && Date.now() - recentImageActivation.epochMilliseconds <= 2000) {
+      const retained = recentImageActivation.capture;
+      recentImageActivation = null;
+      void submitExplicitImage(retained);
+      return;
+    }
+    if (location.origin === "https://x.com") {
+      void browser.runtime.sendMessage({
+        command: "explicit-image-observer",
+        outcome: "missing_trusted_image",
+      });
+    }
   }, true);
   }
 })();

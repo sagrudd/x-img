@@ -999,6 +999,12 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     await traceEvent("video_observer", message.outcome, "trusted play was not capture-eligible", origin);
     return { completed: false };
   }
+  if (message?.command === "explicit-image-observer" && sender?.tab?.url
+    && message.outcome === "missing_trusted_image") {
+    const origin = new URL(sender.tab.url).origin;
+    await traceEvent("image_observer", message.outcome, "trusted click did not resolve an eligible image", origin);
+    return { completed: false };
+  }
   if (!["explicit-original-opened", "explicit-video-opened"].includes(message?.command) || !sender?.tab?.id || !sender.tab.url) {
     return undefined;
   }

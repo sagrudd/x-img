@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.23.2
+Version: 1.23.3
 
 Updated: 2026-07-19
 
@@ -1933,6 +1933,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   changed-identity rejection, workspace checks, and the local documentation
   container. Pinakotheke ``1.23.2`` and its matching unsigned test XPI are
   deployed on DASServer; installed-Firefox long-timeline assurance remains.
+- [ ] **XIMG-126 P0 — Preserve explicit image capture through deep X node
+  replacement.** Snapshot the exact eligible image on trusted pointerdown and
+  retain that identity for no more than two seconds when X removes the node
+  before click delivery. Resolve composed-path and overlay targets, reject
+  synthetic/unrelated input, and emit redacted missing-target diagnostics.
+  Acceptance requires a pointerdown/node-removal/click regression, deployment,
+  and one installed-Firefox deep-timeline original settlement.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

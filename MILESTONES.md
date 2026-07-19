@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.23.2
+Version: 1.23.3
 
 Updated: 2026-07-19
 
@@ -1347,6 +1347,15 @@ The implementation is pushed in ``9e874df`` and the Mozilla-signed XPI passed
 permanent installation. DASServer serves the checksum-matching artifact and
 runs the ``1.22.0`` package; final milestone evidence is one user-driven X
 browse/play cycle demonstrating the frames and settled toolbar transition.
+
+## 1.23.3 — Deep-timeline explicit image capture
+
+- A trusted pointerdown snapshots the exact eligible image beneath the user's
+  selection before X can replace its virtualized node during click handling.
+- Only the identity-bound snapshot may survive node replacement, for at most
+  two seconds; unrelated clicks and synthetic events remain ineligible.
+- Redacted diagnostics distinguish an unresolved trusted image selection from
+  server admission or ObjectStore settlement failures.
 
 ## 1.23.2 — Long-timeline frame continuity
 

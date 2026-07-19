@@ -57,6 +57,15 @@ cache contains no image bytes and does not survive as an independent storage
 authority. One viewport batch covers up to 64 visible images, and redacted
 diagnostics report only the number of stored hits versus requested identities.
 
+Deep X timelines may replace an image element between pointerdown and click.
+Pinakotheke snapshots the exact eligible image identity, original-rendition
+URL, dimensions, presentation reference, and ephemeral media token on trusted
+pointerdown. Only the corresponding click within two seconds may consume that
+snapshot. It contains no bytes, cookies, or authorization headers and cannot
+make synthetic or unrelated input eligible. An unresolved trusted click is
+recorded as a redacted diagnostic rather than being mistaken for an
+ObjectStore failure.
+
 Clicking an eligible linked image retains the stricter explicit-original path
 and uses the same verified status before framing. Firefox sends the rendered
 image URL as the byte source and records an enclosing link, such as an X status
