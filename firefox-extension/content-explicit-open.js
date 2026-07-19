@@ -115,16 +115,25 @@
     .sort((left, right) => Number(isXMediaUrl(right.url)) - Number(isXMediaUrl(left.url)))
     .slice(0, 16);
   let observationTimer;
+  let lastVisibleFingerprint = "";
   const observed = () => {
     clearTimeout(observationTimer);
     observationTimer = setTimeout(() => {
       refreshStoredOverlays();
-      void browser.runtime.sendMessage({ command: "visible-media-changed", images: visibleImages() });
+      const images = visibleImages();
+      const fingerprint = images.map(image => `${canonical(image.url)}|${image.mediaToken}`).join("\n");
+      if (fingerprint === lastVisibleFingerprint) return;
+      lastVisibleFingerprint = fingerprint;
+      void browser.runtime.sendMessage({ command: "visible-media-changed", images });
     }, 250);
   };
   new MutationObserver(observed).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "srcset"] });
   document.addEventListener("scroll", observed, { passive: true, capture: true });
   document.addEventListener("load", observed, true);
+  // X virtualizes and reuses gallery nodes in ways that do not always produce
+  // a useful src/srcset mutation. A bounded safety scan repairs missed
+  // observer delivery; fingerprinting above prevents repeated server work.
+  setInterval(observed, 2000);
   observed();
 
   browser.runtime.onMessage.addListener(message => {

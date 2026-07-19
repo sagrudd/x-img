@@ -58,6 +58,8 @@ def main() -> int:
     assert "[...document.images].reverse().find" in content
     assert 'url.pathname.startsWith("/media/")' in content + background
     assert "mediaToken" in content
+    assert "lastVisibleFingerprint" in content
+    assert "setInterval(observed, 2000)" in content
     assert 'lookupAlias(instanceUrl, instanceId || "", pairId' in background
     assert "browser.tabs.onUpdated.addListener" in background
     assert "browser.tabs.onActivated.addListener" in background

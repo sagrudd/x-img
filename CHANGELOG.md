@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.12 - 2026-07-19
+
+- Add a bounded, fingerprint-deduplicated visible-media safety scan to recover
+  X virtualized gallery updates that emit neither a useful source mutation nor
+  a reliable observer message during an active browsing session.
+
 ## 1.22.11 - 2026-07-19
 
 - Add bounded tab-completion and tab-activation cache scans so historical

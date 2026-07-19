@@ -86,7 +86,7 @@ vm.runInNewContext(fs.readFileSync("firefox-extension/background.js", "utf8"), {
       }] };
     },
   }),
-  URL, AbortController, Blob, setTimeout, clearTimeout,
+  URL, AbortController, Blob, setTimeout, clearTimeout, setInterval,
 });
 assert.equal(typeof installed, "function");
 assert.equal(typeof startup, "function");

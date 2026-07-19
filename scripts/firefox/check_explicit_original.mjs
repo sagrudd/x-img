@@ -248,6 +248,7 @@ const contentContext = vm.createContext({
   HTMLVideoElement: FixtureVideo,
   MutationObserver: class { observe() {} },
   setTimeout() { return 1; },
+  setInterval() { return 1; },
   clearTimeout() {},
   innerHeight: 800,
   innerWidth: 1200,

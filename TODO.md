@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.11
+Version: 1.22.12
 
 Updated: 2026-07-19
 
@@ -1812,7 +1812,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   checks pass. Mozilla rejected the unlisted signing request only because its
   submission throttle reported a 6,085-second retry window; sign and deploy
   the unchanged v1.22.11 source after that window, then obtain the
-  historical-media visual proof.
+  historical-media visual proof. Temporary-install testing then showed
+  explicit click traffic but still no visible-media traffic. Version
+  ``1.22.12`` adds a two-second safety observation with stable fingerprint
+  deduplication for X's virtualized/reused gallery DOM. Temporary Firefox proof
+  precedes signing once the throttle clears.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
