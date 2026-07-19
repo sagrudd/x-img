@@ -104,6 +104,9 @@ struct VideoProbe {
     container: String,
     video_codec: String,
     audio_codec: Option<String>,
+    width: u32,
+    height: u32,
+    duration_millis: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -515,6 +518,24 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
     if !daemon_verified {
         return Err("DASObjectStore did not report verified completion".into());
     }
+    let video_metadata = if video {
+        Some(create_and_commit_video_poster(
+            request,
+            config,
+            &scratch,
+            &payload,
+            &object_key,
+            &probe_video(
+                config
+                    .ffprobe_executable
+                    .as_deref()
+                    .ok_or("video capture requires ffprobe")?,
+                &payload,
+            )?,
+        )?)
+    } else {
+        None
+    };
     Ok(Committed {
         schema_version: REQUEST_SCHEMA,
         catalogue_id: catalogue_id(request),
@@ -531,7 +552,80 @@ fn acquire(request: &Request, config: &Config) -> Result<Committed, Box<dyn std:
         object_version: version,
         checksum_sha256: checksum,
         verified_at_epoch_seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
-        video: None,
+        video: video_metadata,
+    })
+}
+
+fn create_and_commit_video_poster(
+    request: &Request,
+    config: &Config,
+    scratch: &Scratch,
+    payload: &Path,
+    video_key: &str,
+    probe: &VideoProbe,
+) -> Result<GalleryVideoCompletion, Box<dyn std::error::Error>> {
+    let timeout = config
+        .timeout_executable
+        .as_deref()
+        .ok_or("video poster generation requires a timeout boundary")?;
+    let ffmpeg = config
+        .ffmpeg_executable
+        .as_deref()
+        .ok_or("video poster generation requires ffmpeg")?;
+    let poster = scratch.path.join("poster.webp");
+    let status = Command::new(timeout)
+        .args(["--signal=TERM", "--kill-after=5", "60"])
+        .arg(ffmpeg)
+        .args(["-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-i"])
+        .arg(payload)
+        .args([
+            "-frames:v",
+            "1",
+            "-vf",
+            "scale='min(640,iw)':-2",
+            "-c:v",
+            "libwebp",
+        ])
+        .arg(&poster)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()?;
+    if !status.success() {
+        return Err("bounded video poster generation failed".into());
+    }
+    let metadata = fs::symlink_metadata(&poster)?;
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || metadata.len() == 0
+        || metadata.len() > 16 * 1024 * 1024
+    {
+        return Err("generated video poster is invalid".into());
+    }
+    let checksum = sha256_file(&poster)?;
+    let object_key = format!("{video_key}/poster.webp");
+    let mut upload = upload_command(config, scratch, &poster, request, &object_key, "image/webp")?;
+    let (status, stdout) = output_bounded(&mut upload, 64 * 1024)?;
+    if !status.success()
+        || !String::from_utf8(stdout)?.lines().any(|line| {
+            line.starts_with("Final:")
+                && line.contains("state=Complete")
+                && line.contains("stage=remote_s3_transfer_complete")
+        })
+    {
+        return Err("DASObjectStore did not verify video poster completion".into());
+    }
+    Ok(GalleryVideoCompletion {
+        duration_millis: probe.duration_millis,
+        width: probe.width,
+        height: probe.height,
+        video_codec: probe.video_codec.clone(),
+        audio_codec: probe.audio_codec.clone().unwrap_or_else(|| "none".into()),
+        profile_id: PINAKOTHEKE_VIDEO_MP4_V1.into(),
+        firefox_playback_evidence_id: "pinakotheke-firefox-mp4-v1".into(),
+        poster_object_key: object_key,
+        poster_object_version: u64::from_str_radix(&checksum[..16], 16).unwrap_or(1).max(1),
+        poster_checksum_sha256: checksum,
+        poster_content_length: metadata.len(),
     })
 }
 
@@ -851,7 +945,7 @@ fn probe_video(ffprobe: &Path, payload: &Path) -> Result<VideoProbe, Box<dyn std
             "-v",
             "error",
             "-show_entries",
-            "format=format_name:stream=codec_type,codec_name",
+            "format=format_name,duration:stream=codec_type,codec_name,width,height",
             "-of",
             "json",
         ])
@@ -889,10 +983,40 @@ fn probe_video(ffprobe: &Path, payload: &Path) -> Result<VideoProbe, Box<dyn std
         .and_then(serde_json::Value::as_str)
         .and_then(|names| names.split(',').find(|name| safe_codec(name)))
         .ok_or("video probe omitted a safe container")?;
+    let video_stream = streams
+        .iter()
+        .find(|stream| {
+            stream.get("codec_type").and_then(serde_json::Value::as_str) == Some("video")
+        })
+        .ok_or("video probe omitted video dimensions")?;
+    let width = video_stream
+        .get("width")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .filter(|value| *value > 0)
+        .ok_or("video probe omitted a valid width")?;
+    let height = video_stream
+        .get("height")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .filter(|value| *value > 0)
+        .ok_or("video probe omitted a valid height")?;
+    let duration_millis = value
+        .get("format")
+        .and_then(|format| format.get("duration"))
+        .and_then(serde_json::Value::as_str)
+        .and_then(|duration| duration.parse::<f64>().ok())
+        .filter(|duration| duration.is_finite() && *duration > 0.0)
+        .map(|duration| (duration * 1_000.0).round() as u64)
+        .filter(|duration| *duration > 0)
+        .ok_or("video probe omitted a valid duration")?;
     Ok(VideoProbe {
         container: container.into(),
         video_codec: video_codec.into(),
         audio_codec: audio_codec.map(str::to_owned),
+        width,
+        height,
+        duration_millis,
     })
 }
 
@@ -1241,16 +1365,102 @@ mod tests {
         fs::write(&payload, b"synthetic").unwrap();
         executable(
             &probe,
-            "#!/bin/sh\nprintf '%s' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"format_name\":\"mov,mp4\"}}'\n",
+            "#!/bin/sh\nprintf '%s' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":64,\"height\":48},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"format_name\":\"mov,mp4\",\"duration\":\"1.0\"}}'\n",
         );
         let compatible = probe_video(&probe, &payload).unwrap();
         assert!(firefox_compatible("video/mp4", &compatible));
         executable(
             &probe,
-            "#!/bin/sh\nprintf '%s' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"vp9\"},{\"codec_type\":\"audio\",\"codec_name\":\"opus\"}],\"format\":{\"format_name\":\"matroska,webm\"}}'\n",
+            "#!/bin/sh\nprintf '%s' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"vp9\",\"width\":64,\"height\":48},{\"codec_type\":\"audio\",\"codec_name\":\"opus\"}],\"format\":{\"format_name\":\"matroska,webm\",\"duration\":\"1.0\"}}'\n",
         );
         let incompatible = probe_video(&probe, &payload).unwrap();
         assert!(!firefox_compatible("video/webm", &incompatible));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn compatible_video_poster_is_generated_and_daemon_verified() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-video-poster-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir(&root).unwrap();
+        let ffmpeg = root.join("ffmpeg");
+        executable(&ffmpeg, "#!/bin/sh\nexit 0\n");
+        let timeout = root.join("timeout");
+        executable(
+            &timeout,
+            "#!/bin/sh\nfor last do :; done\nprintf poster-fixture > \"$last\"\n",
+        );
+        let remote = root.join("remote");
+        executable(
+            &remote,
+            "#!/bin/sh\nprintf '%s' \"$*\" | grep -q -- '--key x.com/artist/explicit_video/checksum/poster.webp --content-type image/webp' || exit 9\nprintf 'Final: job state=Complete stage=remote_s3_transfer_complete\\n'\n",
+        );
+        let remote_config = root.join("remote.json");
+        fs::write(&remote_config, "{}").unwrap();
+        fs::set_permissions(&remote_config, fs::Permissions::from_mode(0o600)).unwrap();
+        let config = Config {
+            schema_version: CONFIG_SCHEMA.into(),
+            endpoint_id: "endpoint-1".into(),
+            object_store_bucket: None,
+            curl_executable: ffmpeg.clone(),
+            ffmpeg_executable: Some(ffmpeg),
+            timeout_executable: Some(timeout),
+            ffprobe_executable: None,
+            dasobjectstore_remote_executable: Some(remote),
+            dasobjectstore_remote_config: Some(remote_config),
+            daemon_socket: Some(root.join("daemon.sock")),
+            submit_to_daemon: true,
+            container_execution: None,
+            max_image_bytes: None,
+            max_video_bytes: None,
+            normalization: None,
+        };
+        let scratch = Scratch::create_in(&root).unwrap();
+        let payload = scratch.path.join("payload");
+        fs::write(&payload, b"video-fixture").unwrap();
+        let request = Request {
+            schema_version: REQUEST_SCHEMA.into(),
+            plan_id: "video-plan".into(),
+            actor_ref: "actor-1".into(),
+            site_id: "x-web".into(),
+            origin: "https://x.com".into(),
+            canonical_page_url: "https://x.com/artist/status/1".into(),
+            canonical_media_url: "https://media.invalid/video.mp4".into(),
+            retrieval_media_url: "https://media.invalid/video.mp4".into(),
+            canonical_presentation_url: "https://x.com/artist/status/1".into(),
+            capture_kind: "explicit_video".into(),
+            width: 64,
+            height: 48,
+            adapter_version: "1.0.0".into(),
+            endpoint_id: "endpoint-1".into(),
+            object_store_id: "store-1".into(),
+        };
+        let completion = create_and_commit_video_poster(
+            &request,
+            &config,
+            &scratch,
+            &payload,
+            "x.com/artist/explicit_video/checksum",
+            &VideoProbe {
+                container: "mp4".into(),
+                video_codec: "h264".into(),
+                audio_codec: Some("aac".into()),
+                width: 64,
+                height: 48,
+                duration_millis: 1_000,
+            },
+        )
+        .unwrap();
+        assert_eq!(completion.poster_content_length, 14);
+        assert_eq!(
+            completion.poster_object_key,
+            "x.com/artist/explicit_video/checksum/poster.webp"
+        );
+        assert_eq!((completion.width, completion.height), (64, 48));
+        drop(scratch);
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -1320,7 +1530,7 @@ mod tests {
         let ffprobe = root.join("ffprobe");
         executable(
             &ffprobe,
-            "#!/bin/sh\nprintf '%s' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"vp9\"},{\"codec_type\":\"audio\",\"codec_name\":\"opus\"}],\"format\":{\"format_name\":\"matroska,webm\"}}'\n",
+            "#!/bin/sh\nprintf '%s' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"vp9\",\"width\":64,\"height\":48},{\"codec_type\":\"audio\",\"codec_name\":\"opus\"}],\"format\":{\"format_name\":\"matroska,webm\",\"duration\":\"1.0\"}}'\n",
         );
         let docker = root.join("docker-fixture.py");
         executable(
@@ -1422,6 +1632,7 @@ print(json.dumps({'schema_version':h['schema_version'],'endpoint_id':h['endpoint
         assert!(!journal.contains("example.invalid"));
         assert!(!journal.contains("video.webm"));
         assert_eq!(fs::read_dir(staging).unwrap().count(), 0);
+
         let _ = fs::remove_dir_all(root);
     }
 

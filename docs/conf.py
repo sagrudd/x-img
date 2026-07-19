@@ -4,7 +4,7 @@
 project = "Pinakotheke"
 copyright = "2026, x-img maintainers"
 author = "x-img maintainers"
-release = "1.20.4"
+release = "1.21.0"
 
 extensions = ["myst_parser"]
 templates_path = ["_templates"]

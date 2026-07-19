@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.21.0 - 2026-07-19
+
+- Extract a bounded WebP poster from every Firefox-compatible committed video
+  and settle it as a separate checksum-verified DASObjectStore object.
+- Populate video cards with the captured frame plus duration, dimensions,
+  codecs, playback profile, and Firefox playback evidence.
+
 ## 1.20.4 - 2026-07-19
 
 - Derive normalized-video availability and ObjectStore provenance from the

@@ -35,8 +35,9 @@ host-authenticated x-img route:
 
    /products/pinakotheke/api/gallery/v1/objects/{catalogue_id}/video
 
-A WebP poster, when generated, is a separate DASObjectStore object delivered
-through the corresponding ``thumbnail`` role. Poster availability never
+A WebP poster is extracted from each newly acquired video under a bounded
+FFmpeg timeout and committed as a separate checksum-verified DASObjectStore
+object delivered through the corresponding ``thumbnail`` role. Poster availability never
 determines video availability: the status and provenance shown for a normalized
 video come from its committed video representation. The video route preserves
 the verified MIME type, ETag, and a single byte range; see
