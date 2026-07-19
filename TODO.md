@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.27.3
+Version: 1.27.4
 
 Updated: 2026-07-19
 
@@ -2033,6 +2033,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Remaining handoff: click one previously failing deep-timeline image and
   record its plan admission plus verified settlement beyond the historic 64
   plans before marking this item complete.
+- [ ] **XIMG-134 P0 — Make the persisted site corpus authoritative.** Resolve
+  executable capture eligibility from the authenticated actor's exact-origin
+  site rule and selected media kind. Keep pairing ownership/expiry and the
+  reviewed endpoint/ObjectStore selection as independent mandatory gates;
+  never fall back to the legacy static site list. Restart recovery must
+  re-evaluate pending work against the current actor corpus. Acceptance
+  requires actor isolation, newly enabled origin admission, disabled media
+  rejection, legacy-config non-authority, restart recovery, local release
+  checks, DASServer deployment, and one live capture-plan admission from the
+  corrected generic video origin.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

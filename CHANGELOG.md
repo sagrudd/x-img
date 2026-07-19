@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.27.4 - 2026-07-19
+
+- Makes the authenticated actor's persisted exact-origin site corpus the sole
+  site-enablement authority for executable Firefox capture plans.
+- Retains independent pairing validation and reviewed endpoint/ObjectStore
+  destination binding for every admitted capture.
+- Accepts legacy static site records only for configuration compatibility;
+  they no longer grant capture authority or participate in restart recovery.
+
 ## 1.27.3 - 2026-07-19
 
 - Scopes explicit user-opened image and user-played video candidate budgets to

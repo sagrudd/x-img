@@ -378,8 +378,9 @@ The local monolith mounts capture planning at
 private metadata-only authority document. The endpoint remains behind Monas
 dispatch and requires the pairing actor to match the authenticated host
 context. The document binds every completion to one reviewed endpoint and
-logical ObjectStore and contains opaque pairing references plus explicit
-enabled site rules. It contains no browser cookies, site credentials, media
+logical ObjectStore and contains opaque pairing references. Exact-origin media
+eligibility comes only from the authenticated actor's persisted site corpus.
+The authority document contains no browser cookies, site credentials, media
 bytes, or DASObjectStore secrets.
 
 .. code-block:: json
@@ -393,16 +394,6 @@ bytes, or DASObjectStore secrets.
        "actor_id": "local-user",
        "expires_at": 4102444800,
        "revoked": false
-     }],
-     "sites": [{
-       "site_id": "art-site",
-       "origin": "https://art.example",
-       "capture_enabled": true,
-       "adapter_kind": "experimental_generic",
-       "adapter_version": "1.0.0",
-       "allow_observed_thumbnails": true,
-       "allow_explicit_originals": true,
-       "max_candidates_per_page": 32
      }]
    }
 
@@ -411,7 +402,10 @@ Save the reviewed document as a mode-``0600`` regular file and start with
 option is accepted by ``pinakotheke service install``. Unknown fields, future
 schemas, duplicate pairings/origins, unsafe origins, excessive records, and
 non-private or symlinked files fail closed. The wire schema is
-``contracts/monas/pinakotheke-capture-authority.v1.schema.json``.
+``contracts/monas/pinakotheke-capture-authority.v1.schema.json``. Existing
+version-1 documents with a ``sites`` array remain readable during migration,
+but those records are ignored for authorization. Adding or removing a website
+through the site-corpus API takes effect without editing this private file.
 
 Restart-safe pending plans
 --------------------------

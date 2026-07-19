@@ -4,6 +4,7 @@
 #![allow(missing_docs)]
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{self, OpenOptions},
@@ -11,6 +12,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use url::Url;
+
+use crate::viewed_media::{AdapterKind, CaptureKind, SiteCapturePolicy};
 
 pub const SITE_CORPUS_SCHEMA: &str = "pinakotheke.site-corpus.v1";
 const DOCUMENT_SCHEMA: &str = "pinakotheke.site-corpus-store.v1";
@@ -36,6 +39,45 @@ pub struct ActorSiteCorpus {
     pub revision: u64,
     pub rules: Vec<SiteRule>,
     pub tombstones: Vec<SiteTombstone>,
+}
+
+impl ActorSiteCorpus {
+    /// Resolve one exact-origin capture policy from this actor's persisted
+    /// corpus. Display-only observations never become acquisition authority.
+    #[must_use]
+    pub fn capture_policy(
+        &self,
+        origin: &str,
+        capture_kind: CaptureKind,
+    ) -> Option<SiteCapturePolicy> {
+        let rule = self
+            .rules
+            .iter()
+            .find(|rule| rule.origin == origin && rule.capture)?;
+        let eligible = match capture_kind {
+            CaptureKind::ObservedThumbnail => false,
+            CaptureKind::ExplicitOriginal => rule.images,
+            CaptureKind::ExplicitVideo => rule.videos,
+        };
+        if !eligible {
+            return None;
+        }
+        let digest = Sha256::digest(origin.as_bytes());
+        let identity = digest[..8]
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        Some(SiteCapturePolicy {
+            site_id: format!("site-{identity}"),
+            origin: origin.to_owned(),
+            capture_enabled: true,
+            adapter_kind: AdapterKind::ExperimentalGeneric,
+            adapter_version: "1.0.0".into(),
+            allow_observed_thumbnails: false,
+            allow_explicit_originals: true,
+            max_candidates_per_page: 64,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -349,5 +391,52 @@ mod tests {
             x_ingress: true,
         }];
         assert!(validate_rules(&rules).is_err());
+    }
+
+    #[test]
+    fn actor_corpus_is_the_exact_origin_capture_authority() {
+        let corpus = ActorSiteCorpus {
+            schema_version: SITE_CORPUS_SCHEMA.into(),
+            revision: 4,
+            rules: vec![SiteRule {
+                origin: "https://media.example.invalid".into(),
+                images: true,
+                videos: false,
+                capture: true,
+                substitution: false,
+                x_ingress: false,
+            }],
+            tombstones: Vec::new(),
+        };
+        let policy = corpus
+            .capture_policy(
+                "https://media.example.invalid",
+                CaptureKind::ExplicitOriginal,
+            )
+            .expect("enabled exact-origin image is authorized");
+        assert_eq!(policy.origin, "https://media.example.invalid");
+        assert_eq!(policy.adapter_kind, AdapterKind::ExperimentalGeneric);
+        assert!(!policy.allow_observed_thumbnails);
+        assert!(
+            corpus
+                .capture_policy(
+                    "https://media.example.invalid",
+                    CaptureKind::ObservedThumbnail
+                )
+                .is_none()
+        );
+        assert!(
+            corpus
+                .capture_policy("https://media.example.invalid", CaptureKind::ExplicitVideo)
+                .is_none()
+        );
+        assert!(
+            corpus
+                .capture_policy(
+                    "https://other.example.invalid",
+                    CaptureKind::ExplicitOriginal
+                )
+                .is_none()
+        );
     }
 }

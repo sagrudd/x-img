@@ -1127,6 +1127,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
         } = capture;
         let capture_plans = Arc::new(Mutex::new(capture_plans));
         let reviewed_destinations = reviewed_destinations.map(|store| Arc::new(Mutex::new(store)));
+        let site_corpus = site_corpus.map(|store| Arc::new(Mutex::new(store)));
         protected = protected
             .route(
                 "/products/pinakotheke/api/extension/v1/capture-plans",
@@ -1163,13 +1164,13 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             // ordering or onboarding presentation becoming a fallback.
             protected = protected.layer(Extension(Arc::clone(store)));
         }
-        if let Some(site_corpus) = site_corpus {
+        if let Some(site_corpus) = site_corpus.as_ref() {
             protected = protected
                 .route(
                     "/products/pinakotheke/api/extension/v1/site-corpus",
                     get(get_site_corpus).post(put_site_corpus),
                 )
-                .layer(Extension(Arc::new(Mutex::new(site_corpus))));
+                .layer(Extension(Arc::clone(site_corpus)));
         }
         protected = protected.layer(Extension(Arc::clone(&capture_plans)));
         if let Some(deletion) = deletion {
@@ -1212,7 +1213,19 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                 .map_or(0, |duration| duration.as_secs());
             let recoverable = capture_plans
                 .lock()
-                .map(|plans| plans.recoverable_pending(now))
+                .map(|plans| match site_corpus.as_ref() {
+                    Some(store) => {
+                        plans.recoverable_pending_with_site_policy(now, |actor_id, plan| {
+                            store
+                                .lock()
+                                .ok()?
+                                .get(actor_id)
+                                .ok()?
+                                .capture_policy(&plan.origin, plan.capture_kind)
+                        })
+                    }
+                    None => Vec::new(),
+                })
                 .unwrap_or_default();
             let runtime = Arc::new(CaptureCompletionRuntime {
                 authority,
@@ -2118,6 +2131,7 @@ async fn capture_plan(
     capture_plans: Option<Extension<CapturePlans>>,
     runtime: Option<Extension<Arc<CaptureCompletionRuntime>>>,
     reviewed_destinations: Option<Extension<ReviewedDestinations>>,
+    site_corpora: Option<Extension<SiteCorpora>>,
     context: Option<Extension<AuthenticatedHostContext>>,
     Json(request): Json<CapturePlanRequest>,
 ) -> Result<Json<CapturePlan>, StatusCode> {
@@ -2158,14 +2172,43 @@ async fn capture_plan(
     } else {
         None
     };
+    let site_policy = if let Some(store) = site_corpora {
+        let corpus = store
+            .0
+            .lock()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .get(context.actor_id())
+            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+        Some(
+            corpus
+                .capture_policy(&request.origin, request.capture_kind)
+                .ok_or(StatusCode::UNPROCESSABLE_ENTITY)?,
+        )
+    } else if runtime.is_some() {
+        // Executable capture requires the persisted actor-scoped corpus. The
+        // legacy host-global site list is never a production fallback.
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    } else {
+        None
+    };
     let mut capture_plans = capture_plans
         .lock()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let planned = match destination {
-        Some(destination) => {
+    let planned = match (destination, site_policy) {
+        (Some(destination), Some(site)) => capture_plans.plan_with_destination_and_site_policy(
+            context.actor_id(),
+            now,
+            request,
+            destination,
+            site,
+        ),
+        (None, Some(site)) => {
+            capture_plans.plan_with_site_policy(context.actor_id(), now, request, site)
+        }
+        (Some(destination), None) => {
             capture_plans.plan_with_destination(context.actor_id(), now, request, destination)
         }
-        None => capture_plans.plan(context.actor_id(), now, request),
+        (None, None) => capture_plans.plan(context.actor_id(), now, request),
     };
     let plan = match planned {
         Ok(plan) => plan,
@@ -3783,7 +3826,7 @@ mod tests {
                 adapter_kind: AdapterKind::ExperimentalGeneric,
                 adapter_version: "1.0.0".into(),
                 allow_observed_thumbnails: true,
-                allow_explicit_originals: false,
+                allow_explicit_originals: true,
                 max_candidates_per_page: 2,
             }],
         )
@@ -3793,7 +3836,8 @@ mod tests {
         composition: CapturePlanComposition,
         path: impl Into<std::path::PathBuf>,
     ) -> CapturePlanComposition {
-        let store = ReviewedDestinationStore::new(path);
+        let path = path.into();
+        let store = ReviewedDestinationStore::new(&path);
         store
             .seed_from_authority_if_absent(
                 "synthetic-monas-user",
@@ -3803,8 +3847,28 @@ mod tests {
                 },
             )
             .unwrap();
+        let site_corpus =
+            x_img_core::site_corpus::SiteCorpusStore::new(path.with_file_name("site-corpus.json"));
+        site_corpus
+            .replace(
+                "synthetic-monas-user",
+                x_img_core::site_corpus::ReplaceSiteCorpus {
+                    schema_version: x_img_core::site_corpus::SITE_CORPUS_SCHEMA.into(),
+                    expected_revision: 0,
+                    rules: vec![x_img_core::site_corpus::SiteRule {
+                        origin: "https://example.invalid".into(),
+                        images: true,
+                        videos: true,
+                        capture: true,
+                        substitution: false,
+                        x_ingress: false,
+                    }],
+                },
+            )
+            .unwrap();
         composition
             .with_reviewed_destinations(store)
+            .with_site_corpus(site_corpus)
             .with_destination_revalidator(HostCaptureDestinationRevalidateBackend::new(Box::new(
                 |_, snapshot, _| {
                     Ok(CaptureDestinationAuthorityState {
@@ -4007,6 +4071,26 @@ mod tests {
                 height: 200,
             })
             .expect("synthetic request serializes"),
+        )
+    }
+
+    fn explicit_request_body() -> Body {
+        Body::from(
+            serde_json::to_vec(&CapturePlanRequest {
+                schema_version: CAPTURE_REQUEST_SCHEMA_VERSION.into(),
+                pairing_id: "pair-0".into(),
+                origin: "https://example.invalid".into(),
+                page_url: "https://example.invalid/gallery?private=redacted".into(),
+                adapter_kind: AdapterKind::ExperimentalGeneric,
+                adapter_version: "1.0.0".into(),
+                capture_kind: CaptureKind::ExplicitOriginal,
+                media_url: "https://example.invalid/original.webp?signature=redacted".into(),
+                presentation_url: None,
+                creator_hint: None,
+                width: 640,
+                height: 480,
+            })
+            .expect("synthetic explicit request serializes"),
         )
     }
 
@@ -4689,7 +4773,7 @@ mod tests {
             .unwrap();
         assert_eq!(direct.status(), StatusCode::UNAUTHORIZED);
         let body = Body::from(
-            r#"{"schema_version":"pinakotheke.site-corpus.v1","expected_revision":0,"rules":[{"origin":"https://x.com","images":true,"videos":true,"capture":true,"substitution":true,"x_ingress":true}]}"#,
+            r#"{"schema_version":"pinakotheke.site-corpus.v1","expected_revision":0,"rules":[{"origin":"https://new.example.invalid","images":true,"videos":false,"capture":true,"substitution":true,"x_ingress":false}]}"#,
         );
         let saved = app
             .clone()
@@ -4709,6 +4793,44 @@ mod tests {
         let saved_json: serde_json::Value =
             serde_json::from_slice(&to_bytes(saved.into_body(), 4096).await.unwrap()).unwrap();
         assert_eq!(saved_json["revision"], 1);
+        let admitted = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::from(
+                        r#"{"schema_version":"x-img.capture-request.v1","pairing_id":"pair-0","origin":"https://new.example.invalid","page_url":"https://new.example.invalid/watch","adapter_kind":"experimental_generic","adapter_version":"1.0.0","capture_kind":"explicit_original","media_url":"https://cdn.example.invalid/original.jpg","presentation_url":"https://new.example.invalid/watch","creator_hint":null,"width":640,"height":480}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            admitted.status(),
+            StatusCode::OK,
+            "a newly persisted exact origin must not require a static site record"
+        );
+        let video_rejected = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/products/pinakotheke/api/extension/v1/capture-plans")
+                    .header("content-type", "application/json")
+                    .header("x-monas-dispatch-token", token)
+                    .header("x-monas-host-context", MONAS_CONTEXT)
+                    .body(Body::from(
+                        r#"{"schema_version":"x-img.capture-request.v1","pairing_id":"pair-0","origin":"https://new.example.invalid","page_url":"https://new.example.invalid/watch","adapter_kind":"experimental_generic","adapter_version":"1.0.0","capture_kind":"explicit_video","media_url":"https://cdn.example.invalid/video.mp4","presentation_url":"https://new.example.invalid/watch","creator_hint":null,"width":640,"height":480}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(video_rejected.status(), StatusCode::UNPROCESSABLE_ENTITY);
         let stale = app.clone().oneshot(Request::builder().method("POST").uri("/products/pinakotheke/api/extension/v1/site-corpus").header("content-type", "application/json").header("x-monas-dispatch-token", token).header("x-monas-host-context", MONAS_CONTEXT).body(Body::from(r#"{"schema_version":"pinakotheke.site-corpus.v1","expected_revision":0,"rules":[]}"#)).unwrap()).await.unwrap();
         assert_eq!(stale.status(), StatusCode::CONFLICT);
         let current: serde_json::Value =
@@ -4727,7 +4849,10 @@ mod tests {
             .unwrap();
         let reloaded_json: serde_json::Value =
             serde_json::from_slice(&to_bytes(reloaded.into_body(), 4096).await.unwrap()).unwrap();
-        assert_eq!(reloaded_json["rules"][0]["origin"], "https://x.com");
+        assert_eq!(
+            reloaded_json["rules"][0]["origin"],
+            "https://new.example.invalid"
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -5028,7 +5153,7 @@ mod tests {
                     .header("content-type", "application/json")
                     .header("x-monas-dispatch-token", dispatch)
                     .header("x-monas-host-context", MONAS_CONTEXT)
-                    .body(request_body())
+                    .body(explicit_request_body())
                     .unwrap(),
             )
             .await
@@ -5054,7 +5179,8 @@ mod tests {
         let pending_status: serde_json::Value =
             serde_json::from_slice(&to_bytes(pending_status.into_body(), 4096).await.unwrap())
                 .unwrap();
-        assert_eq!(pending_status["observed_thumbnails"], 1);
+        assert_eq!(pending_status["observed_thumbnails"], 0);
+        assert_eq!(pending_status["opened_originals"], 1);
         assert_eq!(pending_status["pending"], 1);
         assert_eq!(pending_status["stored"], 0);
         let completion = serde_json::json!({
@@ -5242,7 +5368,7 @@ mod tests {
                     .header("content-type", "application/json")
                     .header("x-monas-dispatch-token", dispatch)
                     .header("x-monas-host-context", MONAS_CONTEXT)
-                    .body(request_body())
+                    .body(explicit_request_body())
                     .unwrap(),
             )
             .await
@@ -5285,7 +5411,7 @@ mod tests {
                     .header("content-type", "application/json")
                     .header("x-monas-dispatch-token", dispatch)
                     .header("x-monas-host-context", MONAS_CONTEXT)
-                    .body(request_body())
+                    .body(explicit_request_body())
                     .unwrap(),
             )
             .await
@@ -5342,7 +5468,7 @@ mod tests {
                     .header("content-type", "application/json")
                     .header("x-monas-dispatch-token", dispatch)
                     .header("x-monas-host-context", MONAS_CONTEXT)
-                    .body(request_body())
+                    .body(explicit_request_body())
                     .unwrap(),
             )
             .await
@@ -5390,7 +5516,7 @@ mod tests {
                 adapter_kind: AdapterKind::ExperimentalGeneric,
                 adapter_version: "1.0.0".into(),
                 allow_observed_thumbnails: true,
-                allow_explicit_originals: false,
+                allow_explicit_originals: true,
                 max_candidates_per_page: 2,
             }]
         };
@@ -5408,7 +5534,7 @@ mod tests {
                     page_url: "https://example.invalid/gallery".into(),
                     adapter_kind: AdapterKind::ExperimentalGeneric,
                     adapter_version: "1.0.0".into(),
-                    capture_kind: CaptureKind::ObservedThumbnail,
+                    capture_kind: CaptureKind::ExplicitOriginal,
                     media_url: "https://example.invalid/startup.jpg".into(),
                     presentation_url: None,
                     creator_hint: None,

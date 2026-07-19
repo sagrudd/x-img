@@ -14,7 +14,7 @@ use x_img_core::{
     gallery_catalogue::GalleryCatalogueStore,
     reviewed_destination::{AuthoritySelectionSeed, ReviewedDestinationStore},
     site_corpus::SiteCorpusStore,
-    viewed_media::{AdapterKind, CapturePairing, CapturePlanService, SiteCapturePolicy},
+    viewed_media::{AdapterKind, CapturePairing, CapturePlanService},
 };
 
 const DEFAULT_PORT: u16 = 8731;
@@ -106,6 +106,9 @@ struct CaptureAuthorityDocument {
     endpoint_id: String,
     object_store_id: String,
     pairings: Vec<CapturePairingRecord>,
+    /// Accepted only so existing private v1 files remain readable. These
+    /// records are validated but never grant capture authority.
+    #[serde(default)]
     sites: Vec<SiteCapturePolicyRecord>,
 }
 
@@ -808,35 +811,28 @@ fn load_capture_authority(
         .into_iter()
         .collect();
     let mut origins = std::collections::BTreeSet::new();
-    let sites = document
-        .sites
-        .into_iter()
-        .map(|record| {
-            if !safe_identifier(&record.site_id)
-                || !safe_origin(&record.origin)
-                || !safe_semver(&record.adapter_version)
-                || record.max_candidates_per_page == 0
-                || record.max_candidates_per_page > 1_000
-                || !origins.insert(record.origin.clone())
-            {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "capture site policy is invalid or duplicated",
-                ));
-            }
-            Ok(SiteCapturePolicy {
-                site_id: record.site_id,
-                origin: record.origin,
-                capture_enabled: record.capture_enabled,
-                adapter_kind: record.adapter_kind,
-                adapter_version: record.adapter_version,
-                allow_observed_thumbnails: record.allow_observed_thumbnails,
-                allow_explicit_originals: record.allow_explicit_originals,
-                max_candidates_per_page: record.max_candidates_per_page,
-            })
-        })
-        .collect::<io::Result<Vec<_>>>()?;
-    let plans = CapturePlanService::with_journal(pairings, sites, journal_path)
+    document.sites.into_iter().try_for_each(|record| {
+        if !safe_identifier(&record.site_id)
+            || !safe_origin(&record.origin)
+            || !safe_semver(&record.adapter_version)
+            || record.max_candidates_per_page == 0
+            || record.max_candidates_per_page > 1_000
+            || !origins.insert(record.origin.clone())
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "capture site policy is invalid or duplicated",
+            ));
+        }
+        let _ = (
+            record.capture_enabled,
+            record.adapter_kind,
+            record.allow_observed_thumbnails,
+            record.allow_explicit_originals,
+        );
+        Ok(())
+    })?;
+    let plans = CapturePlanService::with_journal(pairings, [], journal_path)
         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
     Ok(LoadedCaptureAuthority {
         plans,
@@ -1059,8 +1055,7 @@ mod tests {
               "schema_version":"pinakotheke.capture-authority.v1",
               "endpoint_id":"endpoint-1",
               "object_store_id":"store-1",
-              "pairings":[{"pairing_id":"pair-1","actor_id":"actor-1","expires_at":4102444800,"revoked":false}],
-              "sites":[{"site_id":"example","origin":"https://example.invalid","capture_enabled":true,"adapter_kind":"experimental_generic","adapter_version":"1.0.0","allow_observed_thumbnails":true,"allow_explicit_originals":true,"max_candidates_per_page":32}]
+              "pairings":[{"pairing_id":"pair-1","actor_id":"actor-1","expires_at":4102444800,"revoked":false}]
             }"#,
         )
         .unwrap();
@@ -1091,6 +1086,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         use x_img_core::viewed_media::{
             AdapterKind, CAPTURE_REQUEST_SCHEMA_VERSION, CaptureKind, CapturePlanRequest,
+            SiteCapturePolicy,
         };
 
         let root = temporary_root();
@@ -1112,7 +1108,7 @@ mod tests {
         let mut loaded = load_capture_authority(&authority_path, journal).unwrap();
         let plan = loaded
             .plans
-            .plan(
+            .plan_with_site_policy(
                 "actor-1",
                 1,
                 CapturePlanRequest {
@@ -1128,6 +1124,16 @@ mod tests {
                     creator_hint: None,
                     width: 320,
                     height: 200,
+                },
+                SiteCapturePolicy {
+                    site_id: "site-corpus-example".into(),
+                    origin: "https://example.invalid".into(),
+                    capture_enabled: true,
+                    adapter_kind: AdapterKind::ExperimentalGeneric,
+                    adapter_version: "1.0.0".into(),
+                    allow_observed_thumbnails: true,
+                    allow_explicit_originals: true,
+                    max_candidates_per_page: 32,
                 },
             )
             .unwrap();

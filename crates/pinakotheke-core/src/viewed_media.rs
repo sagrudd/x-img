@@ -290,6 +290,19 @@ impl CapturePlanService {
 
     #[must_use]
     pub fn recoverable_pending(&self, now: u64) -> Vec<(String, CapturePlan)> {
+        self.recoverable_pending_with_site_policy(now, |_, plan| {
+            self.sites.get(&plan.origin).cloned()
+        })
+    }
+
+    /// Return restart-safe work only when the current actor-scoped site
+    /// authority still admits the exact origin and media kind.
+    #[must_use]
+    pub fn recoverable_pending_with_site_policy(
+        &self,
+        now: u64,
+        policy: impl Fn(&str, &CapturePlan) -> Option<SiteCapturePolicy>,
+    ) -> Vec<(String, CapturePlan)> {
         self.accepted
             .iter()
             .filter(|pending| {
@@ -301,18 +314,19 @@ impl CapturePlanService {
                         && !pairing.revoked
                         && pairing.expires_at > now
                 });
-                let site_authorized = self.sites.get(&pending.plan.origin).is_some_and(|site| {
-                    site.capture_enabled
-                        && site.site_id == pending.plan.site_id
-                        && site.adapter_kind == pending.plan.adapter_kind
-                        && site.adapter_version == pending.plan.adapter_version
-                        && match pending.plan.capture_kind {
-                            CaptureKind::ObservedThumbnail => site.allow_observed_thumbnails,
-                            CaptureKind::ExplicitOriginal | CaptureKind::ExplicitVideo => {
-                                site.allow_explicit_originals
+                let site_authorized =
+                    policy(&pending.actor_id, &pending.plan).is_some_and(|site| {
+                        site.capture_enabled
+                            && site.origin == pending.plan.origin
+                            && site.adapter_kind == pending.plan.adapter_kind
+                            && site.adapter_version == pending.plan.adapter_version
+                            && match pending.plan.capture_kind {
+                                CaptureKind::ObservedThumbnail => site.allow_observed_thumbnails,
+                                CaptureKind::ExplicitOriginal | CaptureKind::ExplicitVideo => {
+                                    site.allow_explicit_originals
+                                }
                             }
-                        }
-                });
+                    });
                 actor_authorized && site_authorized
             })
             .map(|pending| (pending.actor_id.clone(), pending.plan.clone()))
@@ -472,7 +486,18 @@ impl CapturePlanService {
         now: u64,
         request: CapturePlanRequest,
     ) -> Result<CapturePlan, CapturePlanError> {
-        self.plan_internal(actor_id, now, request, None)
+        self.plan_internal(actor_id, now, request, None, None)
+    }
+
+    /// Admit a metadata-only plan using actor-scoped site authority.
+    pub fn plan_with_site_policy(
+        &mut self,
+        actor_id: &str,
+        now: u64,
+        request: CapturePlanRequest,
+        site: SiteCapturePolicy,
+    ) -> Result<CapturePlan, CapturePlanError> {
+        self.plan_internal(actor_id, now, request, None, Some(site))
     }
 
     /// Admit a production capture plan bound to the exact reviewed
@@ -487,7 +512,23 @@ impl CapturePlanService {
         if !destination.is_valid() {
             return Err(CapturePlanError::InvalidRequest);
         }
-        self.plan_internal(actor_id, now, request, Some(destination))
+        self.plan_internal(actor_id, now, request, Some(destination), None)
+    }
+
+    /// Admit using an actor-scoped site policy resolved by the authenticated
+    /// API boundary rather than the legacy host-global site list.
+    pub fn plan_with_destination_and_site_policy(
+        &mut self,
+        actor_id: &str,
+        now: u64,
+        request: CapturePlanRequest,
+        destination: CaptureDestinationSnapshot,
+        site: SiteCapturePolicy,
+    ) -> Result<CapturePlan, CapturePlanError> {
+        if !destination.is_valid() {
+            return Err(CapturePlanError::InvalidRequest);
+        }
+        self.plan_internal(actor_id, now, request, Some(destination), Some(site))
     }
 
     fn plan_internal(
@@ -496,6 +537,7 @@ impl CapturePlanService {
         now: u64,
         request: CapturePlanRequest,
         destination: Option<CaptureDestinationSnapshot>,
+        site: Option<SiteCapturePolicy>,
     ) -> Result<CapturePlan, CapturePlanError> {
         validate_request(&request)?;
         let pairing = self
@@ -511,11 +553,9 @@ impl CapturePlanService {
         if pairing.expires_at <= now {
             return Err(CapturePlanError::PairingExpired);
         }
-        let site = self
-            .sites
-            .get(&request.origin)
-            .ok_or(CapturePlanError::SiteNotEnabled)?
-            .clone();
+        let site = site
+            .or_else(|| self.sites.get(&request.origin).cloned())
+            .ok_or(CapturePlanError::SiteNotEnabled)?;
         if !site.capture_enabled {
             return Err(CapturePlanError::SiteNotEnabled);
         }
@@ -553,7 +593,7 @@ impl CapturePlanService {
             .map(str::to_owned);
         if let Some(index) = self.accepted.iter().position(|pending| {
             pending.actor_id == actor_id
-                && pending.plan.site_id == site.site_id
+                && pending.plan.origin == request.origin
                 && cache_alias_identity(&pending.plan.canonical_media_url)
                     == cache_alias_identity(&canonical_media)
                 && pending.plan.capture_kind == request.capture_kind
@@ -582,6 +622,7 @@ impl CapturePlanService {
             .iter()
             .filter(|pending| {
                 pending.actor_id == actor_id
+                    && pending.plan.origin == request.origin
                     && match request.capture_kind {
                         CaptureKind::ObservedThumbnail => {
                             pending.plan.capture_kind == CaptureKind::ObservedThumbnail
@@ -613,7 +654,7 @@ impl CapturePlanService {
                 .iter()
                 .filter(|pending| {
                     pending.actor_id == actor_id
-                        && pending.plan.site_id == site.site_id
+                        && pending.plan.origin == request.origin
                         && pending.plan.destination == destination
                         && pending.plan.capture_kind != CaptureKind::ExplicitVideo
                         && cache_alias_identity(&pending.plan.canonical_media_url)
@@ -1001,6 +1042,27 @@ mod tests {
         assert_eq!(plan.capture_kind, CaptureKind::ObservedThumbnail);
         assert_eq!(plan.scheduler_job_id, "refresh-0");
         assert_eq!(plan.state, CapturePlanState::AwaitingApprovedAcquisition);
+    }
+
+    #[test]
+    fn actor_corpus_policy_reuses_a_legacy_site_id_for_the_same_origin() {
+        let mut planner = service();
+        let legacy = planner.plan("actor", 1, request()).expect("legacy plan");
+        let corpus_policy = SiteCapturePolicy {
+            site_id: "site-corpus-derived".into(),
+            origin: "https://example.invalid".into(),
+            capture_enabled: true,
+            adapter_kind: AdapterKind::ExperimentalGeneric,
+            adapter_version: "1.0.0".into(),
+            allow_observed_thumbnails: true,
+            allow_explicit_originals: true,
+            max_candidates_per_page: 64,
+        };
+        let replay = planner
+            .plan_with_site_policy("actor", 2, request(), corpus_policy)
+            .expect("corpus-authorized replay");
+        assert_eq!(replay.plan_id, legacy.plan_id);
+        assert_eq!(replay.site_id, "site");
     }
 
     #[test]

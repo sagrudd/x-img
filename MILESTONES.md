@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.27.3
+Version: 1.27.4
 
 Updated: 2026-07-19
 
@@ -1408,6 +1408,20 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   ``pinakotheke_media`` store has no folder-profile binding and the current
   DASObjectStore application-auth surface has no exact-object delete operation;
   raw S3 deletion is explicitly not accepted as release evidence.
+
+## 1.27.4 — Actor-scoped site-corpus capture authority
+
+- The persisted site corpus is the sole exact-origin and media-kind authority
+  for executable Firefox capture; a second static site allow-list cannot drift.
+- Pairing ownership/expiry and the reviewed endpoint plus logical ObjectStore
+  remain independent mandatory admission and worker-time gates.
+- Legacy ``sites`` records remain parseable but grant no authority. Restart
+  recovery re-evaluates each pending plan against its actor's current corpus.
+- Compatibility-sensitive review used design language
+  ``fbfa28e55d1c8111ef95a139d83927c231534b5f``, Monas
+  ``dac0e113c8b197cb06abc38187d72f27e562ad63``, DASObjectStore
+  ``7a11ef58d4aaeccefb332400a7bd959979840acf``, and Mnemosyne
+  ``2244a49f5057ef6251b2760bd0729de8e2207f56``.
 
 ## 1.27.3 — Long-timeline explicit-selection admission
 
