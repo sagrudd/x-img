@@ -15,6 +15,8 @@
   (document.head || document.documentElement).append(style);
   const canonical = raw => { const url = new URL(raw); url.search = ""; url.hash = ""; return url.href; };
   const mediaTokens = new WeakMap();
+  const storedOverlays = new WeakMap();
+  const storedMedia = new Set();
   const isXMediaUrl = raw => {
     try {
       const url = new URL(raw);
@@ -27,6 +29,12 @@
   const presentationUrlFor = image => image.closest("a[href]")?.href
     || image.closest("article")?.querySelector?.('a[href*="/status/"]')?.href
     || location.href;
+  const xOriginalUrl = raw => {
+    const url = new URL(raw);
+    if (!isXMediaUrl(url.href)) return url.href;
+    url.searchParams.set("name", "orig");
+    return url.href;
+  };
   const mediaTokenFor = media => {
     let token = mediaTokens.get(media) || media.dataset?.pinakothekeMediaToken;
     if (!token) token = globalThis.crypto?.randomUUID?.()
@@ -50,6 +58,41 @@
     }
     return targets;
   };
+  const positionStoredOverlay = media => {
+    let overlay = storedOverlays.get(media);
+    if (!overlay) {
+      overlay = document.createElement("span");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.dataset.pinakothekeStoredOverlay = "true";
+      Object.assign(overlay.style, {
+        position: "fixed",
+        pointerEvents: "none",
+        boxSizing: "border-box",
+        border: "2px solid #238636",
+        zIndex: "2147483647",
+      });
+      (document.body || document.documentElement).append(overlay);
+      storedOverlays.set(media, overlay);
+      storedMedia.add(media);
+    }
+    const rect = media.getBoundingClientRect();
+    if (!media.isConnected || rect.width <= 0 || rect.height <= 0) {
+      overlay.remove();
+      storedOverlays.delete(media);
+      storedMedia.delete(media);
+      return;
+    }
+    overlay.style.left = `${rect.left}px`;
+    overlay.style.top = `${rect.top}px`;
+    overlay.style.width = `${rect.width}px`;
+    overlay.style.height = `${rect.height}px`;
+    overlay.style.borderRadius = getComputedStyle(media).borderRadius;
+  };
+  const refreshStoredOverlays = () => {
+    for (const media of [...storedMedia]) positionStoredOverlay(media);
+  };
+  document.addEventListener("scroll", refreshStoredOverlays, { passive: true, capture: true });
+  globalThis.addEventListener?.("resize", refreshStoredOverlays, { passive: true });
   const visibleImages = () => [...document.images]
     .filter(image => {
       const style = getComputedStyle(image);
@@ -74,10 +117,10 @@
   let observationTimer;
   const observed = () => {
     clearTimeout(observationTimer);
-    observationTimer = setTimeout(() => void browser.runtime.sendMessage({
-      command: "visible-media-changed",
-      images: visibleImages(),
-    }), 250);
+    observationTimer = setTimeout(() => {
+      refreshStoredOverlays();
+      void browser.runtime.sendMessage({ command: "visible-media-changed", images: visibleImages() });
+    }, 250);
   };
   new MutationObserver(observed).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "srcset"] });
   document.addEventListener("scroll", observed, { passive: true, capture: true });
@@ -100,6 +143,7 @@
             target.classList.add("pinakotheke-stored-object");
           }
           media.dataset.pinakothekeCaptureState = "Stored in ObjectStore";
+          positionStoredOverlay(media);
         } else {
           for (const target of framingTargets(media)) target.classList.add("pinakotheke-capture-selected");
           media.dataset.pinakothekeCaptureState = message.label || "Selected for download";
@@ -286,7 +330,10 @@
     // The enclosing link is presentation provenance (for example an X status
     // page), not necessarily the image payload. Always submit the bytes that
     // Firefox actually rendered as the media candidate.
-    const mediaUrl = image.currentSrc;
+    // The trusted click is the user's explicit-open action. X thumbnails are
+    // rendition aliases of a stable public media object; request its original
+    // rendition instead of permanently settling the small grid rendition.
+    const mediaUrl = xMedia ? xOriginalUrl(image.currentSrc) : image.currentSrc;
     const presentationUrl = presentationUrlFor(image);
     try {
       if (new URL(mediaUrl).protocol !== "https:") return;

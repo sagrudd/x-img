@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.22.9 - 2026-07-19
+
+- Fix X gallery evidence framing with a browser-only, pointer-transparent
+  top-layer rectangle that follows the settled media element despite X's
+  click overlays and clipping containers.
+- Resolve a trusted X gallery open to the stable original media rendition so
+  explicit-original acquisition does not settle only the small grid image.
+
 ## 1.22.8 - 2026-07-19
 
 - Prioritize genuine X media before applying the visible-candidate bound and

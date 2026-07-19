@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.8
+Version: 1.22.9
 
 Updated: 2026-07-19
 
@@ -1789,7 +1789,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Mozilla-signed ``1.22.8`` passed permanent-install verification and the
   matching package plus checksum-verified XPI are active on DASServer. The
   installed-browser gallery-grid/open-original check remains the closing
-  visual proof.
+  visual proof. That check confirmed authoritative evidence hits but X's
+  overlay/clipping stack still hid element-level borders, while the trusted
+  click submitted the grid rendition rather than the original. Version
+  ``1.22.9`` adds a pointer-transparent top-layer evidence frame bound to the
+  media rectangle and resolves trusted X opens to ``name=orig``. Signed
+  deployment and installed-browser proof remain.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

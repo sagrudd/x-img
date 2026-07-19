@@ -50,7 +50,11 @@ def main() -> int:
     assert "border: 2px solid #238636" in content
     assert "framingTargets(media)" in content
     assert "sameFootprint" in content
+    assert 'zIndex: "2147483647"' in content
+    assert 'pointerEvents: "none"' in content
+    assert 'dataset.pinakothekeStoredOverlay = "true"' in content
     assert "isXMediaUrl" in content
+    assert 'url.searchParams.set("name", "orig")' in content
     assert "[...document.images].reverse().find" in content
     assert 'url.pathname.startsWith("/media/")' in content + background
     assert "mediaToken" in content
