@@ -140,6 +140,17 @@ The AMO issuer and secret are held in access-controlled macOS Keychain entries
 for signing only; they are not present in the repository, artefact, config,
 documentation, command history, or service host.
 
+Video-poster release evidence
+-----------------------------
+
+Mozilla approved Pinakotheke ``1.21.0`` as an unlisted signed extension on
+2026-07-19. Its SHA-256 is
+``d92ef09a9da78f2af11ddb62f083b9d1d975373dd486e7c103ddba18a72a5fff``.
+The isolated permanent-install check retained ``x-img@example.invalid``. The
+checksum-identical DASServer copy is served from
+``https://192.168.1.192:8731/downloads/pinakotheke-1.21.0.xpi`` as
+``application/x-xpinstall``.
+
 Observable-ingress release evidence
 -----------------------------------
 

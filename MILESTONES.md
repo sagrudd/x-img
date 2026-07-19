@@ -1331,7 +1331,8 @@ require normalization retain their existing containerized poster path. The
 first live X video was backfilled through the same verified ObjectStore upload
 boundary: its authenticated thumbnail route returns a 33,906-byte
 ``image/webp`` object with the recorded SHA-256 ETag. DASServer runs ``1.21.0``
-with Monas and Pinakotheke healthy.
+with Monas and Pinakotheke healthy. The version-synchronized extension is
+Mozilla-signed, passed permanent installation, and is served by the same host.
 
 ## Post-1.0 candidates
 

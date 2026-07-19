@@ -1494,7 +1494,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   with the video card. Synthetic tests prove timeout-bounded extraction and
   daemon-verified poster settlement. DASServer runs ``1.21.0``; the existing X
   video was backfilled with a 33,906-byte poster and its authenticated thumbnail
-  route returns ``200 image/webp`` with the matching SHA-256 ETag.
+  route returns ``200 image/webp`` with the matching SHA-256 ETag. Mozilla
+  signed the version-synchronized ``1.21.0`` extension, the permanent-install
+  check retained its stable identity, and DASServer serves the checksum-identical
+  XPI as ``application/x-xpinstall``.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,
