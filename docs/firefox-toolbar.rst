@@ -6,6 +6,14 @@ external cache. It operates only on the active tab's exact, explicitly enabled
 HTTPS origin. Opening the popup does not scan media or contact x-img; the user
 selects ``Run cache for visible media`` to invoke bounded capture/substitution.
 
+The **Video downloads** list reports a bounded set of user-selected videos for
+the current origin. Entries move through ``selected``, ``downloading``,
+``pending``, and ``stored`` (or ``failed``). ``stored`` is described as
+**Available in DASObjectStore** only after authoritative settlement. The list
+retains an opaque capture-plan identifier, not a media URL. Autoplay alone
+never creates an entry: activation must be associated with the video that
+subsequently plays.
+
 The popup identifies itself as ``Pinakotheke cache`` and shows the installed
 Firefox extension version read directly from its signed package manifest. This
 lets an operator distinguish an older installed extension from a newer server

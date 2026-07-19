@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.22.0 - 2026-07-19
+
+- Query authoritative cache-alias evidence for displayed media independently of
+  substitution, and apply the non-destructive two-pixel green stored frame.
+- Correlate user-selected videos with their page elements and expose bounded
+  selected, downloading, pending, stored, and failed status in the toolbar.
+- Remove the page-wide activation fallback that could admit autoplay after an
+  unrelated click, and follow ObjectStore settlement for up to three minutes.
+
 ## 1.21.0 - 2026-07-19
 
 - Extract a bounded WebP poster from every Firefox-compatible committed video

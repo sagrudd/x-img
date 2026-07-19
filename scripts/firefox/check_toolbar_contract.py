@@ -42,6 +42,14 @@ def main() -> int:
     assert "permissionOrigins(value, videos.checked, xIngress.checked)" in options_script
     assert "needsXMediaPermission" in popup_script
     assert "browser.permissions.request({origins:[X_MEDIA_PERMISSION]})" in popup_script
+    assert 'id="video-downloads"' in popup
+    assert "mediaCaptureStates" in popup_script
+    assert "Available in DASObjectStore" in background
+    assert 'command: "media-capture-state"' in background
+    content = (EXTENSION / "content-explicit-open.js").read_text()
+    assert "border: 2px solid #238636" in content
+    assert "mediaToken" in content
+    assert "recentPageActivation" not in content
     click_handler = popup_script[popup_script.index("run.onclick="):popup_script.index("toggle.onclick=")]
     assert "await needsXMediaPermission" not in click_handler
     assert click_handler.index("browser.permissions.request") < click_handler.index(".then(async granted")

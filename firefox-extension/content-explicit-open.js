@@ -8,9 +8,21 @@
   // marker as the upgrade/idempotency authority.
   globalThis.__pinakothekeExplicitOpenObserver = true;
   const style = document.createElement("style");
-  style.textContent = ".pinakotheke-stored-object { box-sizing: border-box !important; border: 2px solid #238636 !important; }";
+  style.textContent = [
+    ".pinakotheke-capture-selected { box-sizing: border-box !important; outline: 2px dashed #1769aa !important; outline-offset: -2px !important; }",
+    ".pinakotheke-stored-object { box-sizing: border-box !important; border: 2px solid #238636 !important; outline: none !important; }",
+  ].join("\n");
   (document.head || document.documentElement).append(style);
   const canonical = raw => { const url = new URL(raw); url.search = ""; url.hash = ""; return url.href; };
+  const mediaTokens = new WeakMap();
+  const mediaTokenFor = media => {
+    let token = mediaTokens.get(media) || media.dataset?.pinakothekeMediaToken;
+    if (!token) token = globalThis.crypto?.randomUUID?.()
+      || `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    mediaTokens.set(media, token);
+    if (media.dataset) media.dataset.pinakothekeMediaToken = token;
+    return token;
+  };
   const visibleImages = () => [...document.images]
     .filter(image => {
       const style = getComputedStyle(image);
@@ -28,6 +40,7 @@
       presentationUrl: image.closest("a[href]")?.href || image.currentSrc,
       width: image.naturalWidth,
       height: image.naturalHeight,
+      mediaToken: mediaTokenFor(image),
     }))
     .slice(0, 16);
   let observationTimer;
@@ -44,16 +57,27 @@
   observed();
 
   browser.runtime.onMessage.addListener(message => {
-    if (message?.command !== "frame-stored" || !message.mediaUrl) return;
-    const wanted = canonical(message.mediaUrl);
+    if (!["frame-stored", "media-capture-state"].includes(message?.command)) return;
+    const wanted = message.mediaUrl ? canonical(message.mediaUrl) : null;
     for (const media of document.querySelectorAll("img,video")) {
-      try { if (media.currentSrc && canonical(media.currentSrc) === wanted) media.classList.add("pinakotheke-stored-object"); } catch (_) { /* ignore malformed page media */ }
+      try {
+        const matches = (message.mediaToken && mediaTokenFor(media) === message.mediaToken)
+          || (wanted && media.currentSrc && canonical(media.currentSrc) === wanted);
+        if (!matches) continue;
+        if (message.command === "frame-stored" || message.state === "stored") {
+          media.classList.remove("pinakotheke-capture-selected");
+          media.classList.add("pinakotheke-stored-object");
+          media.dataset.pinakothekeCaptureState = "Stored in ObjectStore";
+        } else {
+          media.classList.add("pinakotheke-capture-selected");
+          media.dataset.pinakothekeCaptureState = message.label || "Selected for download";
+        }
+      } catch (_) { /* ignore malformed page media */ }
     }
   });
 
   const videoActivations = new WeakMap();
   let recentVisibleVideoActivation = null;
-  let recentPageActivation = null;
   const trustedPlayWindowMilliseconds = 8000;
   const isVisibleVideo = video => {
     const rect = video.getBoundingClientRect();
@@ -74,7 +98,6 @@
       epochMilliseconds: Date.now(),
       performanceMilliseconds: performance.now(),
     };
-    recentPageActivation = activation;
     let element = event.target instanceof Element ? event.target : null;
     let video = element?.closest("video") || null;
     for (let depth = 0; !video && element && depth < 5; depth += 1, element = element.parentElement) {
@@ -180,12 +203,14 @@
         try { return !/\.(?:m4s|cmfv|cmfa)$/i.test(new URL(candidate).pathname); } catch (_) { return false; }
       });
       if (mediaUrl) {
+        const mediaToken = mediaTokenFor(video);
         void browser.runtime.sendMessage({
           command: "explicit-video-opened",
           mediaUrl,
           presentationUrl: location.href,
           width: video.videoWidth || video.clientWidth,
           height: video.videoHeight || video.clientHeight,
+          mediaToken,
         });
         videoResolutions.delete(video);
         return;
@@ -204,8 +229,7 @@
     const video = event.target;
     const activation = videoActivations.get(video)
       || (recentVisibleVideoActivation?.video === video
-        ? recentVisibleVideoActivation.activation : null)
-      || (isVisibleVideo(video) ? recentPageActivation : null);
+        ? recentVisibleVideoActivation.activation : null);
     if (!activation || Date.now() - activation.epochMilliseconds > trustedPlayWindowMilliseconds) {
       void browser.runtime.sendMessage({ command: "explicit-video-observer", outcome: "missing_trusted_activation" });
       return;
@@ -234,6 +258,7 @@
       presentationUrl,
       width: image.naturalWidth,
       height: image.naturalHeight,
+      mediaToken: mediaTokenFor(image),
     });
   }, true);
   }

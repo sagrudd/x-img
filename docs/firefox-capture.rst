@@ -34,6 +34,13 @@ draws a two-pixel green border with words retained in toolbar diagnostics; it
 never alters the downloaded or DASObjectStore-managed bytes. Pending,
 unavailable, rejected, and timeout states remain unframed and origin-served.
 
+Evidence lookup is independent of substitution. A user may leave origin
+delivery enabled while Pinakotheke asks its paired server whether a displayed
+alias is already settled. A positive authoritative answer adds the same
+two-pixel green frame. User-selected videos receive a dashed in-progress frame
+while acquisition runs and the green stored frame after settlement. These
+frames remain browser-only.
+
 Clicking an eligible linked image retains the stricter explicit-original path
 and uses the same verified status before framing. Firefox sends the rendered
 image URL as the byte source and records an enclosing link, such as an X status

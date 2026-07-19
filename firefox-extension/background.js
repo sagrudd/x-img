@@ -20,6 +20,42 @@ const EXPLICIT_OPEN_SCRIPT_ID = "pinakotheke-explicit-open-v1";
 const captureInFlight = new Set();
 let segmentedManifests = [];
 
+async function recordMediaCapture(origin, planId, kind, state, detail) {
+  if (kind !== "explicit_video") return;
+  const stored = await browser.storage.local.get(["mediaCaptureStates"]);
+  const entries = Array.isArray(stored.mediaCaptureStates) ? stored.mediaCaptureStates : [];
+  const next = entries.filter(entry => entry.planId !== planId);
+  next.push({ planId, origin, kind: "Video", state, detail, updatedAt: new Date().toISOString() });
+  await browser.storage.local.set({ mediaCaptureStates: next.slice(-24) });
+}
+
+async function notifyCaptureState(tabId, media, state, label) {
+  try {
+    await browser.tabs.sendMessage(tabId, {
+      command: "media-capture-state", mediaUrl: media.url,
+      mediaToken: media.mediaToken, state, label,
+    });
+  } catch (_) { /* the originating tab may have closed */ }
+}
+
+async function refreshMediaCaptureStates() {
+  const stored = await browser.storage.local.get(["instanceUrl", "pairId", "mediaCaptureStates"]);
+  if (!stored.instanceUrl || !stored.pairId) return;
+  const entries = Array.isArray(stored.mediaCaptureStates) ? stored.mediaCaptureStates : [];
+  await Promise.all(entries.filter(entry => !["stored", "failed"].includes(entry.state)).map(async entry => {
+    try {
+      const response = await fetch(`${stored.instanceUrl}/products/pinakotheke/api/extension/v1/capture-plans/${encodeURIComponent(entry.planId)}`, {
+        cache: "no-store", headers: { "x-pinakotheke-pairing": stored.pairId },
+      });
+      if (!response.ok) return;
+      const status = await response.json();
+      if (status.schema_version === "pinakotheke.capture-plan-status.v1" && status.state === "stored") {
+        await recordMediaCapture(entry.origin, entry.planId, "explicit_video", "stored", "Available in DASObjectStore");
+      }
+    } catch (_) { /* popup refresh is advisory and fails open */ }
+  }));
+}
+
 function segmentedMediaFamily(raw) {
   try {
     const url = new URL(raw);
@@ -272,22 +308,31 @@ async function captureAndFrame(tabId, instanceUrl, pairId, origin, pageUrl, adap
       return { outcome: "invalid" };
     }
     await traceEvent("capture_plan", "admitted", `${captureKind}; ${plan.plan_id}`, origin);
-    for (let attempt = 0; attempt < 15; attempt += 1) {
+    await recordMediaCapture(origin, plan.plan_id, captureKind, "selected", "Selected by your video play action");
+    await notifyCaptureState(tabId, media, "selected", "Selected for download");
+    for (let attempt = 0; attempt < 180; attempt += 1) {
       const status = await fetch(`${instanceUrl}/products/pinakotheke/api/extension/v1/capture-plans/${encodeURIComponent(plan.plan_id)}`, { cache: "no-store", headers: { "x-pinakotheke-pairing": pairId } });
       if (status.ok) {
         const state = await status.json();
         if (state.schema_version === "pinakotheke.capture-plan-status.v1" && state.state === "stored") {
-          await browser.tabs.sendMessage(tabId, { command: "frame-stored", mediaUrl: media.url });
+          await browser.tabs.sendMessage(tabId, { command: "frame-stored", mediaUrl: media.url, mediaToken: media.mediaToken });
+          await recordMediaCapture(origin, plan.plan_id, captureKind, "stored", "Available in DASObjectStore");
           await traceEvent("capture_status", "stored", `${captureKind}; ${plan.plan_id}`, origin);
           return { outcome: "stored" };
         }
       }
+      if (attempt === 1) {
+        await recordMediaCapture(origin, plan.plan_id, captureKind, "downloading", "Acquisition and ObjectStore settlement are in progress");
+        await notifyCaptureState(tabId, media, "downloading", "Download in progress");
+      }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     await traceEvent("capture_status", "pending", `${captureKind}; ${plan.plan_id}`, origin);
+    await recordMediaCapture(origin, plan.plan_id, captureKind, "pending", "Server is still processing; status will reconcile on the next check");
     return { outcome: "pending" };
   } catch (error) {
     await traceEvent("capture_plan", "error", `${captureKind}; ${error?.message || "request failed"}`, origin);
+    await recordMediaCapture(origin, `failed-${Date.now()}`, captureKind, "failed", "Capture request failed; origin playback was not interrupted");
     return { outcome: "error" };
   } finally {
     captureInFlight.delete(key);
@@ -592,7 +637,7 @@ function validatedObservedImages(images) {
       if (url.protocol !== "https:" || presentation.protocol !== "https:"
         || !Number.isInteger(image.width) || !Number.isInteger(image.height)
         || image.width < 1 || image.height < 1 || image.width > 32768 || image.height > 32768) return [];
-      return [{ url: url.href, presentationUrl: presentation.href, width: image.width, height: image.height }];
+      return [{ url: url.href, presentationUrl: presentation.href, width: image.width, height: image.height, mediaToken: String(image.mediaToken || "").slice(0, 80) }];
     } catch (_) {
       return [];
     }
@@ -632,6 +677,15 @@ async function runCacheForTab(tab, contentImages = null) {
     const images = eligibleObservedImages(origin, rule, displayed);
     await traceEvent("viewport_scan", "complete", `${displayed.length} visible image(s); ${images.length} eligible`, origin);
     for (const observed of images) {
+      if (instanceId) {
+        try {
+          const alias = canonicalAlias(observed.url);
+          const evidence = await lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias);
+          if (evidence?.outcome === "hit") {
+            await browser.tabs.sendMessage(tab.id, { command: "frame-stored", mediaUrl: observed.url, mediaToken: observed.mediaToken });
+          }
+        } catch (_) { /* authoritative evidence lookup fails open */ }
+      }
       if (rule.capture && adapter.capabilities.observed_thumbnail) {
         void captureAndFrame(
           tab.id, instanceUrl, pairId, origin, tab.url, adapter, "observed_thumbnail", observed,
@@ -735,6 +789,10 @@ async function runCacheForTab(tab, contentImages = null) {
 }
 
 browser.runtime.onMessage.addListener(async (message, sender) => {
+  if (message?.command === "refresh-media-captures") {
+    await refreshMediaCaptureStates();
+    return { completed: true };
+  }
   if (message?.command === "sync-site-corpus") return syncSiteCorpusFromServer();
   if (message?.command === "sync-capture-observers") {
     return syncExplicitOpenObservers();
@@ -806,7 +864,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     }
     const capture = await captureAndFrame(
       sender.tab.id, instanceUrl, pairId, origin, sender.tab.url, adapter, video ? "explicit_video" : "explicit_original",
-      { url: mediaUrl, presentationUrl, width, height },
+      { url: mediaUrl, presentationUrl, width, height, mediaToken: String(message.mediaToken || "").slice(0, 80) },
     );
     if (capture.outcome === "stored") {
       await recordSiteDiagnostic(origin, {

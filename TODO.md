@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.21.0
+Version: 1.22.0
 
 Updated: 2026-07-19
 
@@ -1717,6 +1717,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   the quality runner preserves but no longer incorrectly executes the one-time
   1.0 cutover gate against later versions.
 - [ ] **XIMG-201 P3 — Add approved site adapters through the registry.**
+- [ ] **XIMG-120 P0 — Make browser cache evidence and video progress explicit.**
+  Query authoritative alias evidence independently of substitution and add a
+  browser-only two-pixel green frame to matching settled images and videos.
+  Correlate each trusted video selection to its page element, exclude autoplay
+  following unrelated page activation, retain a bounded URL-free status list,
+  and report selected/downloading/pending/stored/failed states in the toolbar.
+  Close only after signed-extension installation and live X/DASObjectStore
+  settlement proof on DASServer.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

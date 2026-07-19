@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.21.0
+Version: 1.22.0
 
 Updated: 2026-07-19
 
@@ -1333,6 +1333,16 @@ boundary: its authenticated thumbnail route returns a 33,906-byte
 ``image/webp`` object with the recorded SHA-256 ETag. DASServer runs ``1.21.0``
 with Monas and Pinakotheke healthy. The version-synchronized extension is
 Mozilla-signed, passed permanent installation, and is served by the same host.
+
+## 1.22.0 — Authoritative browser cache feedback
+
+Visible image aliases are checked against the paired Pinakotheke and
+DASObjectStore authority even when substitution is disabled. Settled page
+elements receive a browser-only two-pixel green frame. Trusted user-selected
+videos are correlated to the selected element, tracked through acquisition and
+settlement in the toolbar, and framed when available. Unrelated page clicks no
+longer authorize autoplay capture. Release requires a Mozilla-signed extension
+and live DASServer proof.
 
 ## Post-1.0 candidates
 

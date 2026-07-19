@@ -322,8 +322,8 @@ contentListeners.get("pointerdown")({
 contentListeners.get("play")({ isTrusted: true, target: delayedOverlayVideo });
 await new Promise(resolve => setImmediate(resolve));
 assert.equal(contentMessages.length, 4);
-assert.equal(contentMessages[3].command, "explicit-video-opened");
-assert.equal(contentMessages[3].width, 1920);
+assert.equal(contentMessages[3].command, "explicit-video-observer");
+assert.equal(contentMessages[3].outcome, "missing_trusted_activation");
 
 const sender = { tab: { id: 7, url: "https://art.example.invalid:8443/gallery?private=drop" } };
 const result = await messageListener({

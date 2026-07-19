@@ -2,6 +2,7 @@
 const context=document.querySelector('#context'),capture=document.querySelector('#capture'),substitution=document.querySelector('#substitution'),captureResult=document.querySelector('#capture-result'),substitutionResult=document.querySelector('#substitution-result'),evidence=document.querySelector('#evidence'),run=document.querySelector('#run'),toggle=document.querySelector('#toggle'),source=document.querySelector('#source'),settings=document.querySelector('#settings'),status=document.querySelector('#status');
 const extensionVersion=document.querySelector('#extension-version');
 const diagnosticLog=document.querySelector('#diagnostic-log'),downloadDiagnostics=document.querySelector('#download-diagnostics');
+const videoDownloads=document.querySelector('#video-downloads');
 const X_MEDIA_PERMISSION='https://video.twimg.com/*';
 let activeOrigin=null,activeRule=null,stored=null,xMediaPermissionMissing=false;
 async function needsXMediaPermission(){return activeOrigin==='https://x.com'&&activeRule?.capture&&activeRule.xIngress&&activeRule.media.includes('videos')&&!await browser.permissions.contains({origins:[X_MEDIA_PERMISSION]});}
@@ -11,4 +12,6 @@ toggle.onclick=async()=>{if(!activeRule)return;activeRule.substitution=!activeRu
 source.onclick=async()=>{if(!stored.instanceUrl||!activeOrigin)return;const url=new URL('/products/pinakotheke/app/',stored.instanceUrl);url.searchParams.set('source','websites');url.searchParams.set('origin',activeOrigin);await browser.tabs.create({url:url.href});};
 settings.onclick=()=>browser.runtime.openOptionsPage();
 downloadDiagnostics.onclick=async()=>{const data=await browser.storage.local.get(['diagnosticEvents']);const blob=new Blob([JSON.stringify({schema_version:'pinakotheke.extension-diagnostics.v1',version:browser.runtime.getManifest().version,events:data.diagnosticEvents||[]},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`pinakotheke-extension-diagnostics-${Date.now()}.json`;link.click();URL.revokeObjectURL(url);};
-render();
+async function renderVideoCaptures(){await browser.runtime.sendMessage({command:'refresh-media-captures'});const data=await browser.storage.local.get(['mediaCaptureStates']);const entries=(Array.isArray(data.mediaCaptureStates)?data.mediaCaptureStates:[]).filter(entry=>!activeOrigin||entry.origin===activeOrigin).slice(-8).reverse();videoDownloads.replaceChildren(...(entries.length?entries.map(entry=>{const item=document.createElement('li');const when=new Date(entry.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});item.textContent=`${entry.kind} ${entry.planId.slice(0,12)} — ${entry.state}. ${entry.detail} (${when})`;return item;}):[Object.assign(document.createElement('li'),{textContent:'No videos selected in this browser session.'})]));}
+browser.storage.onChanged.addListener(changes=>{if(changes.mediaCaptureStates)void renderVideoCaptures();});
+render().then(renderVideoCaptures);
