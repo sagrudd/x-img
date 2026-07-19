@@ -18,7 +18,8 @@ def main() -> int:
     forbidden = {"cookies", "history", "webRequestBlocking"}
     assert forbidden.isdisjoint(manifest["permissions"])
     assert "webRequest" in manifest["permissions"]
-    assert manifest["host_permissions"] == ["https://video.twimg.com/*"]
+    assert manifest["host_permissions"] == []
+    assert "https://video.twimg.com/*" in manifest["optional_host_permissions"]
     popup = (EXTENSION / "popup.html").read_text()
     popup_script = (EXTENSION / "popup.js").read_text()
     options_script = (EXTENSION / "options.js").read_text()
@@ -38,6 +39,9 @@ def main() -> int:
         assert forbidden_text not in background + popup_script
     assert 'browser.webRequest.onCompleted.addListener' in background
     assert 'https://video.twimg.com/*' in background + options_script
+    assert "permissionOrigins(value, videos.checked, xIngress.checked)" in options_script
+    assert "needsXMediaPermission" in popup_script
+    assert "browser.permissions.request({origins:[X_MEDIA_PERMISSION]})" in popup_script
     diagnostic_block = background[background.index("async function recordSiteDiagnostic"):]
     diagnostic_block = diagnostic_block[: diagnostic_block.index("async function recordSegmentedOriginFallback")]
     for forbidden_field in ("pageUrl", "mediaUrl", "canonicalAlias", "checksum", "cookie"):

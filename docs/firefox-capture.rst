@@ -1,6 +1,17 @@
 Viewed-media capture plans
 ==========================
 
+X video permission
+------------------
+
+X video ingress needs Firefox access to the exact
+``https://video.twimg.com/*`` media origin so the extension can observe a
+worker-fetched manifest URL. Pinakotheke requests this permission only when the
+user enables X ingress with videos selected. Existing installations show
+``Permission required`` in the toolbar; choose ``Check visible media`` and
+approve the Firefox prompt, reload X, and play the video again. Denial is
+fail-open: playback remains served by X and no capture is claimed.
+
 Automatic cache interaction
 ---------------------------
 

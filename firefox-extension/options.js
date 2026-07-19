@@ -9,12 +9,18 @@ const sites = document.querySelector('#sites');
 const images = document.querySelector('#images');
 const videos = document.querySelector('#videos');
 const xIngress = document.querySelector('#x-ingress');
+const X_MEDIA_PERMISSION = 'https://video.twimg.com/*';
 
 const originPattern = value => {
   const parsed = new URL(value);
   if (parsed.protocol !== 'https:') throw new Error('HTTPS required');
   return `https://${parsed.hostname}/*`;
 };
+
+const permissionOrigins = (value, wantsVideos, wantsXIngress) => [
+  originPattern(value),
+  ...(value === 'https://x.com' && wantsVideos && wantsXIngress ? [X_MEDIA_PERMISSION] : []),
+];
 
 const serverRule = rule => ({
   origin: rule.origin,
@@ -80,6 +86,11 @@ async function render() {
         const updated = key === 'remove' ? next.filter(item => item.origin !== rule.origin) : next;
         if (key !== 'remove') selected[key] = !selected[key];
         try {
+          if (key === 'capture' && selected.capture && selected.origin === 'https://x.com'
+            && selected.xIngress && selected.media.includes('videos')) {
+            const granted = await browser.permissions.request({ origins: [X_MEDIA_PERMISSION] });
+            if (!granted) throw new Error('X media permission was not granted');
+          }
           const result = await persistSites(updated);
           await browser.runtime.sendMessage({ command: 'sync-capture-observers' });
           if (key === 'remove') await browser.permissions.remove({ origins: [originPattern(rule.origin)] });
@@ -97,7 +108,9 @@ document.querySelector('#save').onclick = async () => {
   let value;
   try { value = new URL(input.value.trim()).origin; } catch (_) { status.textContent = 'HTTPS URL, instance identifier, and pairing reference required.'; return; }
   if (!value.startsWith('https://') || !instanceId.value.trim() || !pair.value.trim()) { status.textContent = 'HTTPS URL, instance identifier, and pairing reference required.'; return; }
-  const granted = await browser.permissions.request({ origins: [originPattern(value)] });
+  const granted = await browser.permissions.request({
+    origins: permissionOrigins(value, videos.checked, xIngress.checked),
+  });
   if (!granted) { status.textContent = 'Permission for the Pinakotheke server was not granted.'; return; }
   status.textContent = 'Authenticating with Pinakotheke…';
   try {

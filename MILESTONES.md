@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.20.1
+Version: 1.20.2
 
 Updated: 2026-07-19
 
@@ -1276,6 +1276,15 @@ to 32 manifest URLs and two minutes. Diagnostics expose only ``observed``,
 DASServer runs the matching backend and serves the byte-identical signed XPI
 as ``application/x-xpinstall``. One fresh user-played video must still prove
 verified DASObjectStore settlement before XIMG-117 can close.
+
+## 1.20.2 — Explicit X media-origin permission
+
+Live ``1.20.1`` proof found no new server plan. Firefox confirmed the signed
+extension was active but showed no granted origin access for
+``https://video.twimg.com/*``; therefore its bounded request observer could not
+see worker manifests. ``1.20.2`` makes this an explicit runtime permission,
+requests it while the user enables X video ingress, and offers a toolbar repair
+for an existing saved rule. Refusal leaves ordinary X playback unchanged.
 
 ## Post-1.0 candidates
 

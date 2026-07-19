@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.20.1
+Version: 1.20.2
 
 Updated: 2026-07-19
 
@@ -1452,6 +1452,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   identical DASServer deployment of the matching backend and XPI are complete.
   The settlement criterion remains unchecked pending one fresh play with the
   newly installed ``1.20.1`` extension.
+  Live ``1.20.1`` then produced no new plan because Firefox had not granted the
+  user-controlled ``video.twimg.com`` origin permission. ``1.20.2`` requests
+  that exact permission during X-video enablement and from the toolbar repair
+  action for existing rules; a new signed-install and real settlement proof
+  remain required.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

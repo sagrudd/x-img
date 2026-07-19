@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.2 - 2026-07-19
+
+- Treat the exact X video CDN origin as an explicit Firefox runtime permission.
+- Request that permission when X video ingress is enabled and let the toolbar
+  repair existing installations before another user-played capture attempt.
+- Show a clear permission-required state instead of silently missing worker
+  manifests.
+
 ## 1.20.1 - 2026-07-19
 
 - Retain worker-owned X manifests even when Firefox reports no owning tab, then
