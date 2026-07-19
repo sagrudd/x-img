@@ -1436,8 +1436,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   of the matching ``1.19.1`` backend and XPI are complete. Live ``1.19.1`` then
   proved that its injected script exited against the legacy observer marker in
   an already-open X tab. ``1.19.2`` versions that marker so upgraded logic is
-  installed immediately; the live user-played settlement criterion remains
-  unchecked.
+  installed immediately. Implementation is pushed in ``25284ef``; Mozilla
+  signing, permanent-install verification, and checksum-identical DASServer
+  deployment of the matching ``1.19.2`` backend and XPI are complete. The live
+  user-played settlement criterion remains unchecked.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

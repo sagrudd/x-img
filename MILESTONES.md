@@ -1242,7 +1242,10 @@ plan despite the extension being active. The existing X page retained the
 legacy boolean observer marker, causing the newly injected script to exit
 before installing ``1.19.1`` behavior. ``1.19.2`` keys observer admission by
 the installed extension version: a new version activates in open eligible tabs,
-while repeated injection of that same version stays idempotent.
+while repeated injection of that same version stays idempotent. Mozilla signed
+``1.19.2`` and the permanent-install fixture accepted its stable identity.
+DASServer runs the matching ``/usr/bin/pinakotheke`` backend and serves the
+checksum-identical signed XPI as ``application/x-xpinstall``.
 
 ## Post-1.0 candidates
 
