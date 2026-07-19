@@ -167,7 +167,10 @@
       }));
       let backgroundManifest = null;
       try {
-        const resolved = await browser.runtime.sendMessage({ command: "resolve-segmented-video" });
+        const resolved = await browser.runtime.sendMessage({
+          command: "resolve-segmented-video",
+          mediaFamilies: [...recentFamilies].slice(0, 8),
+        });
         backgroundManifest = resolved?.mediaUrl || null;
       } catch (_) {
         // URL-only request observation is optional and capture remains fail-open.

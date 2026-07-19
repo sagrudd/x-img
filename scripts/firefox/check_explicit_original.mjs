@@ -162,10 +162,10 @@ assert.equal(
 
 storage.sites.push({ origin: "https://x.com", capture: true, media: ["videos"] });
 completedRequestListener({ tabId: 91, url: "https://video.twimg.com/amplify_video/42/pl/avc1/video.m3u8" });
-completedRequestListener({ tabId: 91, url: "https://video.twimg.com/amplify_video/42/pl/master.m3u8" });
+completedRequestListener({ tabId: -1, url: "https://video.twimg.com/amplify_video/42/pl/master.m3u8" });
 await new Promise(resolve => setImmediate(resolve));
 const segmentedRequest = await messageListener(
-  { command: "resolve-segmented-video" },
+  { command: "resolve-segmented-video", mediaFamilies: ["video.twimg.com/amplify_video/42"] },
   { tab: { id: 91, url: "https://x.com/home" } },
 );
 assert.equal(segmentedRequest.mediaUrl, "https://video.twimg.com/amplify_video/42/pl/master.m3u8");

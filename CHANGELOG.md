@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.20.1 - 2026-07-19
+
+- Retain worker-owned X manifests even when Firefox reports no owning tab, then
+  correlate them to trusted playback by the stable X media-family identity.
+- Add bounded URL-free diagnostics for manifest observation and trusted-play
+  resolution without recording browsing or media URLs.
+
 ## 1.20.0 - 2026-07-19
 
 - Observe only completed X media-CDN HLS/DASH manifest URLs for explicitly

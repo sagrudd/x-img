@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.20.0
+Version: 1.20.1
 
 Updated: 2026-07-19
 
@@ -1445,7 +1445,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   media host. Implementation is pushed in ``cc99a20``; Mozilla signing,
   permanent-install verification, and checksum-identical DASServer deployment
   of the matching ``1.20.0`` backend and XPI are complete. The user-played
-  settlement criterion remains unchecked.
+  request still produced no plan because Firefox attributed the worker-owned
+  manifest to no tab. ``1.20.1`` correlates such manifests by stable media
+  family under the enabled X-video rule; the settlement criterion remains
+  unchecked.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

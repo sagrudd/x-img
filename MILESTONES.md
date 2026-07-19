@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.20.0
+Version: 1.20.1
 
 Updated: 2026-07-19
 
@@ -1262,6 +1262,16 @@ verified DASObjectStore settlement gates. Mozilla signed ``1.20.0`` and the
 permanent-install fixture accepted its stable identity. DASServer runs the
 matching backend and serves the checksum-identical signed XPI as
 ``application/x-xpinstall``.
+
+## 1.20.1 — Worker manifest media-family correlation
+
+Live ``1.20.0`` playback still produced no plan because Firefox can attribute
+a worker-owned X manifest to ``tabId = -1``. ``1.20.1`` retains the manifest
+only while the X-video site rule is enabled, records its stable
+``video.twimg.com/{media-kind}/{media-id}`` family, and resolves it after trusted
+play against the families visible to that page. The shared list remains limited
+to 32 manifest URLs and two minutes. Diagnostics expose only ``observed``,
+``resolved``, or ``missing`` categories and never the URL.
 
 ## Post-1.0 candidates
 

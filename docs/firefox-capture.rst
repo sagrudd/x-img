@@ -143,12 +143,19 @@ does not add tab, history, or cookie permission.
 The signed extension declares only the exact ``https://video.twimg.com/*``
 media-host permission for its obligate X-video adapter. A non-blocking
 ``webRequest.onCompleted`` listener retains at most 32 completed HLS/DASH
-manifest URLs per tab for two minutes. It records no headers or bodies and is
-discarded unless the owning tab currently has an enabled ``https://x.com``
-video rule; it is consulted only after a trusted visible play. This supplies
+manifest URLs for two minutes. It records no headers or bodies and discards
+them unless the ``https://x.com`` video rule is enabled; when Firefox supplies
+an owning tab, that tab must also be on X. The list is consulted only after a
+trusted visible play. This supplies
 manifests fetched by workers that are absent from page
 Resource Timing while preserving the existing server-side policy and bounded
 assembly gates.
+
+Firefox can report ``tabId = -1`` for a worker-owned request. Such a manifest is
+retained only while the X-video rule is enabled and is correlated after trusted
+play by its stable X media-family path. URL-free diagnostics distinguish
+``observed``, ``resolved``, and ``missing`` without recording the manifest or
+page URL.
 
 After registration, the extension also injects the same idempotent observer
 into eligible tabs that are already open. This matters for long-lived

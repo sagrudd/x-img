@@ -18,10 +18,19 @@ browser.runtime.onStartup.addListener(syncExplicitOpenObservers);
 
 const EXPLICIT_OPEN_SCRIPT_ID = "pinakotheke-explicit-open-v1";
 const captureInFlight = new Set();
-const segmentedManifestsByTab = new Map();
+let segmentedManifests = [];
+
+function segmentedMediaFamily(raw) {
+  try {
+    const url = new URL(raw);
+    const match = url.pathname.match(/^\/(amplify_video|ext_tw_video)\/([^/]+)\//);
+    return match ? `${url.hostname}/${match[1]}/${match[2]}` : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 async function observeSegmentedRequest(details) {
-  if (!Number.isInteger(details.tabId) || details.tabId < 0) return;
   let candidate;
   try {
     candidate = new URL(details.url);
@@ -30,21 +39,29 @@ async function observeSegmentedRequest(details) {
   }
   if (candidate.protocol !== "https:" || candidate.hostname !== "video.twimg.com"
     || !/\.(?:m3u8|mpd)$/i.test(candidate.pathname)) return;
-  let tab;
-  try {
-    tab = await browser.tabs.get(details.tabId);
-  } catch (_) {
-    return;
-  }
-  if (!tab?.url || new URL(tab.url).origin !== "https://x.com") return;
   const { sites = [] } = await browser.storage.local.get(["sites"]);
   const rule = sites.find(site => site.origin === "https://x.com");
   if (!rule?.capture || !rule.media.includes("videos")) return;
+  if (Number.isInteger(details.tabId) && details.tabId >= 0) {
+    let tab;
+    try {
+      tab = await browser.tabs.get(details.tabId);
+    } catch (_) {
+      return;
+    }
+    if (!tab?.url || new URL(tab.url).origin !== "https://x.com") return;
+  }
   const now = Date.now();
-  const recent = (segmentedManifestsByTab.get(details.tabId) || [])
+  segmentedManifests = segmentedManifests
     .filter(item => now - item.observedAt < 120000);
-  recent.push({ url: candidate.href, observedAt: now });
-  segmentedManifestsByTab.set(details.tabId, recent.slice(-32));
+  segmentedManifests.push({
+    url: candidate.href,
+    family: segmentedMediaFamily(candidate.href),
+    tabId: Number.isInteger(details.tabId) ? details.tabId : -1,
+    observedAt: now,
+  });
+  segmentedManifests = segmentedManifests.slice(-32);
+  await traceEvent("segmented_manifest", "observed", "completed manifest URL retained", "https://x.com");
 }
 
 browser.webRequest.onCompleted.addListener(
@@ -52,11 +69,14 @@ browser.webRequest.onCompleted.addListener(
   { urls: ["https://video.twimg.com/*"] },
 );
 
-function recentSegmentedManifest(tabId) {
+function recentSegmentedManifest(tabId, mediaFamilies) {
   const now = Date.now();
-  const recent = (segmentedManifestsByTab.get(tabId) || [])
+  const allowedFamilies = new Set(Array.isArray(mediaFamilies) ? mediaFamilies.slice(0, 8) : []);
+  segmentedManifests = segmentedManifests
     .filter(item => now - item.observedAt < 120000);
-  segmentedManifestsByTab.set(tabId, recent);
+  const recent = segmentedManifests.filter(item =>
+    (item.tabId < 0 || item.tabId === tabId)
+      && (!allowedFamilies.size || (item.family && allowedFamilies.has(item.family))));
   return recent.sort((left, right) => {
     const leftDepth = new URL(left.url).pathname.split("/").length;
     const rightDepth = new URL(right.url).pathname.split("/").length;
@@ -731,7 +751,14 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
     if (origin !== "https://x.com" || !rule?.capture || !rule.media.includes("videos")) {
       return { mediaUrl: null };
     }
-    return { mediaUrl: recentSegmentedManifest(sender.tab.id) };
+    const mediaUrl = recentSegmentedManifest(sender.tab.id, message.mediaFamilies);
+    await traceEvent(
+      "segmented_manifest",
+      mediaUrl ? "resolved" : "missing",
+      mediaUrl ? "matching manifest supplied after trusted play" : "no matching recent manifest",
+      origin,
+    );
+    return { mediaUrl };
   }
   if (message?.command === "visible-media-changed" && sender?.tab) {
     await traceEvent("content_observer", "signal", "visible media changed", new URL(sender.tab.url).origin);
