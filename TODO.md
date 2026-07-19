@@ -2010,6 +2010,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   duplicate, failure, stale-plan, restart-persistence, helper-protocol, Yew,
   documentation, deployment, and live synthetic deletion evidence without
   touching user media.
+  Pinakotheke implementation ``846e4aa`` is pushed: exact shared-object plans,
+  authority-before-projection ordering, persistent rollback on failure, the
+  bounded helper protocol, confirmation UI, native/Wasm tests, real Firefox
+  gallery assurance, quality checks, and pinned Sphinx HTML/dummy builds pass.
+  Live inspection found that ``pinakotheke_media`` is Garage-backed with no
+  daemon profile binding, while DASObjectStore's application-auth contract has
+  no delete operation and its existing single-object delete is folder-profile
+  only. Do not substitute a raw S3 delete. Remaining work is the narrow
+  DASObjectStore application-authorized Garage delete plus catalogue/audit
+  confirmation adapter, followed by synthetic live deployment evidence.
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
 - [x] **XIMG-205 P0 — Consume audience-bound Prosopikon host identity.**

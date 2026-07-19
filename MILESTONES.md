@@ -1403,6 +1403,11 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   never claims that DASObjectStore bytes were removed.
 - DASObjectStore remains responsible for current authorization, retention
   policy, provider mutation, authoritative catalogue reconciliation, and audit.
+- Pinakotheke implementation ``846e4aa`` and local browser/native/docs evidence
+  pass. Live release remains gated because the Garage-backed
+  ``pinakotheke_media`` store has no folder-profile binding and the current
+  DASObjectStore application-auth surface has no exact-object delete operation;
+  raw S3 deletion is explicitly not accepted as release evidence.
 
 ## 1.23.3 — Deep-timeline explicit image capture
 
