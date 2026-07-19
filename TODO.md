@@ -1767,7 +1767,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   layer and therefore lacked the authoritative catalogue required to prove a
   hit. Version ``1.22.6`` attaches that exact shared catalogue to the route and
   adds a production-monolith regression request; deployment and repeat browse
-  remain.
+  remain. Fix ``3873fe8`` is pushed; Mozilla-signed ``1.22.6`` passed permanent
+  Firefox installation and is deployed with the matching DASServer package.
+  A live request using the installed extension's scoped pairing now returns
+  HTTP 200 ``outcome=hit`` with settled checksum and gallery delivery evidence.
+  Only the repeat installed-browser visual check remains.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
