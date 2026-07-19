@@ -1802,7 +1802,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   and zero evidence requests. Version ``1.22.10`` removes the obsolete client
   gate on the legacy display-only instance identifier while preserving Monas
   host authentication and scoped pairing at the evidence endpoint. Signed
-  deployment and restart-spanning browser proof remain.
+  fix ``94e883e`` is pushed; Mozilla-signed ``1.22.10`` passed permanent-install
+  verification and the matching server plus XPI are active on DASServer. A
+  browse of media settled before this extension session remains the closing
+  visual proof.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
