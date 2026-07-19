@@ -1258,7 +1258,10 @@ contains at most 32 ``.m3u8``/``.mpd`` URLs for two minutes and is consulted
 only after trusted visible playback. No request/response headers, cookies,
 bodies, credentials, blocking, or rewriting are involved; the selected manifest
 still passes through Pinakotheke's server-side policy, assembly, probe, and
-verified DASObjectStore settlement gates.
+verified DASObjectStore settlement gates. Mozilla signed ``1.20.0`` and the
+permanent-install fixture accepted its stable identity. DASServer runs the
+matching backend and serves the checksum-identical signed XPI as
+``application/x-xpinstall``.
 
 ## Post-1.0 candidates
 
