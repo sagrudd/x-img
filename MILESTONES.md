@@ -1321,6 +1321,18 @@ the deployed route returned ``206 Partial Content``, ``video/mp4``, and the
 requested 1,024-byte range for the affected object. The pinned local-authority
 Sphinx container also built successfully on DASServer.
 
+## 1.21.0 — Settled video poster cards
+
+Every newly acquired Firefox-compatible MP4 now has a representative WebP
+frame extracted under a bounded FFmpeg timeout. The poster is independently
+checksummed, submitted through DASObjectStore's daemon completion boundary, and
+catalogued as the card thumbnail only after verified settlement. Videos that
+require normalization retain their existing containerized poster path. The
+first live X video was backfilled through the same verified ObjectStore upload
+boundary: its authenticated thumbnail route returns a 33,906-byte
+``image/webp`` object with the recorded SHA-256 ETag. DASServer runs ``1.21.0``
+with Monas and Pinakotheke healthy.
+
 ## Post-1.0 candidates
 
 - Synoptikon catalogue/plugin integration through the preserved host adapter

@@ -1487,6 +1487,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``1.20.4`` and live verification returned a 1,024-byte ``206`` MP4 range for
   the affected 12,628,955-byte object; both services remained active.
 
+- [x] **XIMG-119 P1 — Generate and settle representative video posters.**
+  Completed in ``df45e38``. Firefox-compatible MP4 acquisition now probes
+  duration, dimensions, and codecs, extracts one bounded WebP frame, commits it
+  as a distinct checksum-verified DASObjectStore object, and admits its metadata
+  with the video card. Synthetic tests prove timeout-bounded extraction and
+  daemon-verified poster settlement. DASServer runs ``1.21.0``; the existing X
+  video was backfilled with a 33,906-byte poster and its authenticated thumbnail
+  route returns ``200 image/webp`` with the matching SHA-256 ETag.
+
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,
   ``c91c544``, and ``90ed54a`` and recorded
