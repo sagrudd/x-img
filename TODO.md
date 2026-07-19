@@ -1725,6 +1725,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   and report selected/downloading/pending/stored/failed states in the toolbar.
   Close only after signed-extension installation and live X/DASObjectStore
   settlement proof on DASServer.
+  Implementation is pushed in ``9e874df``. Mozilla approved the unlisted
+  ``1.22.0`` XPI; permanent-install verification passed, and DASServer serves
+  the checksum-matching artifact while both version-``1.22.0`` services are
+  active. One user-driven X browse/play cycle remains before closure.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

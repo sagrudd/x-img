@@ -1343,6 +1343,10 @@ videos are correlated to the selected element, tracked through acquisition and
 settlement in the toolbar, and framed when available. Unrelated page clicks no
 longer authorize autoplay capture. Release requires a Mozilla-signed extension
 and live DASServer proof.
+The implementation is pushed in ``9e874df`` and the Mozilla-signed XPI passed
+permanent installation. DASServer serves the checksum-matching artifact and
+runs the ``1.22.0`` package; final milestone evidence is one user-driven X
+browse/play cycle demonstrating the frames and settled toolbar transition.
 
 ## Post-1.0 candidates
 
