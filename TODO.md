@@ -1914,6 +1914,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   selected/downloading uses non-green progress state. Acceptance requires
   concurrent-worker regression proof, adaptive polling proof, full local
   verification, deployment, and measured real-Firefox capture-to-green timing.
+  Implementation and deterministic regression evidence were delivered in
+  ``7d44f4e`` and the concurrent 1.23.1 server is active on the DASServer. The
+  final gate remains installation of the matching extension and a measured
+  real-Firefox capture; the currently installed older extension retains its
+  one-second polling cadence even though it benefits from the server worker
+  lanes immediately.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
