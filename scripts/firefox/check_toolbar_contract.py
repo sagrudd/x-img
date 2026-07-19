@@ -62,6 +62,8 @@ def main() -> int:
     assert "setInterval(observed, 2000)" in content
     assert "if (result?.completed) lastVisibleFingerprint = fingerprint" in content
     assert 'outcome: "pairing_incomplete"' in background
+    assert "if (image.currentSrc && isXMediaUrl(image.currentSrc)) return inViewport" in content
+    assert "if (xMedia) return inViewport" in background
     assert 'lookupAlias(instanceUrl, instanceId || "", pairId' in background
     assert "browser.tabs.onUpdated.addListener" in background
     assert "browser.tabs.onActivated.addListener" in background

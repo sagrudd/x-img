@@ -463,19 +463,22 @@ function displayedImages() {
     .filter(image => {
       const style = window.getComputedStyle(image);
       const rect = image.getBoundingClientRect();
-      return image.complete
-        && image.currentSrc
-        && image.naturalWidth >= 64
-        && image.naturalHeight >= 64
+      const inViewport = rect.width >= 32 && rect.height >= 32
+        && rect.bottom > 0 && rect.right > 0
+        && rect.top < window.innerHeight && rect.left < window.innerWidth;
+      const xMedia = (() => {
+        try {
+          const url = new URL(image.currentSrc);
+          return url.hostname === "pbs.twimg.com" && url.pathname.startsWith("/media/");
+        } catch (_) { return false; }
+      })();
+      if (xMedia) return inViewport;
+      return image.complete && image.currentSrc
+        && image.naturalWidth >= 64 && image.naturalHeight >= 64
         && style.display !== "none"
         && style.visibility !== "hidden"
         && Number(style.opacity) > 0
-        && rect.width > 0
-        && rect.height > 0
-        && rect.bottom > 0
-        && rect.right > 0
-        && rect.top < window.innerHeight
-        && rect.left < window.innerWidth;
+        && inViewport;
     })
     .map(image => {
       const linked = image.closest("a[href]")?.href;
@@ -485,7 +488,12 @@ function displayedImages() {
       } catch (_) {
         // A malformed link cannot prevent other visible images from being observed.
       }
-      return { url: image.currentSrc, presentationUrl, width: image.naturalWidth, height: image.naturalHeight };
+      return {
+        url: image.currentSrc,
+        presentationUrl,
+        width: image.naturalWidth || Math.round(image.getBoundingClientRect().width),
+        height: image.naturalHeight || Math.round(image.getBoundingClientRect().height),
+      };
     })
     .sort((left, right) => {
       const isXMedia = raw => {

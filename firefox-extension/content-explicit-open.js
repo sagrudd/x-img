@@ -97,19 +97,20 @@
     .filter(image => {
       const style = getComputedStyle(image);
       const rect = image.getBoundingClientRect();
+      const inViewport = rect.width >= 32 && rect.height >= 32
+        && rect.bottom > 0 && rect.right > 0
+        && rect.top < innerHeight && rect.left < innerWidth;
+      if (image.currentSrc && isXMediaUrl(image.currentSrc)) return inViewport;
       return image.complete && image.currentSrc
         && image.naturalWidth >= 64 && image.naturalHeight >= 64
         && style.display !== "none" && style.visibility !== "hidden"
-        && Number(style.opacity) > 0
-        && rect.width > 0 && rect.height > 0
-        && rect.bottom > 0 && rect.right > 0
-        && rect.top < innerHeight && rect.left < innerWidth;
+        && Number(style.opacity) > 0 && inViewport;
     })
     .map(image => ({
       url: image.currentSrc,
       presentationUrl: presentationUrlFor(image),
-      width: image.naturalWidth,
-      height: image.naturalHeight,
+      width: image.naturalWidth || Math.round(image.getBoundingClientRect().width),
+      height: image.naturalHeight || Math.round(image.getBoundingClientRect().height),
       mediaToken: mediaTokenFor(image),
     }))
     .sort((left, right) => Number(isXMediaUrl(right.url)) - Number(isXMediaUrl(left.url)))

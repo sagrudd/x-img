@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.14 - 2026-07-19
+
+- Treat a genuine X media image with positive on-screen geometry as visible
+  without requiring generic intrinsic-load, opacity, and style heuristics that
+  incorrectly rejected X's virtualized gallery elements.
+
 ## 1.22.13 - 2026-07-19
 
 - Make visible-media fingerprint delivery acknowledgement-driven so an early
