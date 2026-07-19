@@ -1415,7 +1415,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   checksum-identical DASServer deployment of the ``1.17.2`` backend and XPI
   are complete in ``7f145d6``.
 
-- [ ] **XIMG-117 P0 — Assemble trusted-play HLS/fMP4 into a committed video.**
+- [x] **XIMG-117 P0 — Assemble trusted-play HLS/fMP4 into a committed video.**
   Live ``1.17.2`` plan ``capture-plan-48`` proved end-to-end observer and plan
   admission, then correctly failed because the chosen ``.m4s`` object was a
   48,529-byte fragment without initialization metadata. ``1.18.0`` selects the
@@ -1469,7 +1469,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   resulting ``1.20.3`` package upgraded the backend and Yew web assets. Live
   readiness reports Monas and DASObjectStore ``Ready``, and the authenticated
   web application now receives the ``1.20.3`` XPI path from onboarding. Live
-  permission and settlement proof remain.
+  ``1.20.3`` then admitted user-played ``capture-plan-52`` from an X HLS master.
+  DASServer initially rejected the helper configuration because its timeout
+  executable was a symlink; resolving that configured path to its regular
+  executable allowed restart reconciliation to assemble, checksum-verify,
+  settle, and admit the 12,628,955-byte MP4. The live catalogue exposes it as a
+  new ``normalized_video`` card for ``X / @bblinguinii`` with an authorized
+  ``/video`` delivery route and an ObjectStore key beneath that account's
+  ``explicit_video`` prefix. XIMG-117 is complete.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,

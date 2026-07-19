@@ -1303,6 +1303,12 @@ output, the same pushed source was built in the DASServer Docker engine. The
 resulting package upgraded the backend and Yew assets to ``1.20.3`` so the
 authenticated onboarding response and web-application link identify the
 current signed extension.
+Live ``1.20.3`` subsequently admitted a user-played X HLS master as
+``capture-plan-52``. Resolving DASServer's configured timeout executable from a
+symlink to the required regular file allowed reconciliation to assemble and
+settle a 12,628,955-byte MP4. The catalogue now exposes the verified object as
+a new ``normalized_video`` card for the originating X account with an
+authorized video delivery route, closing XIMG-117.
 
 ## Post-1.0 candidates
 

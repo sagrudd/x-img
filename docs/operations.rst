@@ -1,6 +1,18 @@
 Health, metrics, and audit
 ==========================
 
+Capture helper executables
+--------------------------
+
+Every executable configured for the DASObjectStore capture helper must be an
+absolute executable regular file. Symlinks are rejected before acquisition so
+an administrator cannot replace a reviewed tool target indirectly. Resolve a
+distribution alias such as ``/usr/bin/timeout`` with ``readlink -f`` and store
+the resulting regular-file path in ``timeout_executable``. A rejected helper
+configuration leaves the plan unsettled; after correcting the private config,
+restart Pinakotheke and its journal reconciliation retries the plan without a
+duplicate committed object.
+
 x-img exposes coarse public liveness and a separate host-authenticated
 operations snapshot. Diagnostics are intended to answer whether the service and
 its authority boundaries are usable without revealing what a user browsed,
