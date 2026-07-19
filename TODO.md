@@ -1855,8 +1855,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   thumbnails and opened originals use one immutable media-path identity, plan
   journals persist the resolved card binding, and a guarded dry-run/apply
   command reconciles historic cards without deleting DASObjectStore objects.
-  Live pre-apply evidence on 2026-07-19 found 38 exact duplicate groups and 41
-  redundant cards; the copied-state apply and second dry run converged to zero.
+  The stopped-service DASServer apply on 2026-07-19 reconciled 38 exact
+  duplicate groups, removed 41 redundant gallery cards, rebound 282 capture
+  plans, and left 240 unique cards. Private metadata backups were created, no
+  DASObjectStore object was deleted, and the post-restart dry run converged to
+  zero changes with Monas, Pinakotheke, and DASObjectStore all ``Ready``.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
