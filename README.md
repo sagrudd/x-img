@@ -65,7 +65,7 @@ release remains available from its historical
 with checksums, typed artifact manifest, CycloneDX SBOM, explicit limitations,
 and dual-architecture upgrade/rollback evidence.
 
-The `1.21.0` development workspace provides shared model and core boundaries, a `clap`
+The `1.26.0` development workspace provides shared model and core boundaries, a `clap`
 CLI, an Axum composition boundary, and a Yew client boundary. It compiles
 without enabling unconfigured source, storage, authentication, or media-payload
 integration. The first local monolith slice can now run a loopback Axum service
@@ -213,6 +213,12 @@ Approved deletion/compliance actions now use an explicit metadata lifecycle:
 catalogue visibility is tombstoned first, while durable object removal requires
 a separately approved exact-object request and matching DASObjectStore
 verification. See [deletion and compliance reconciliation](docs/deletion-compliance.rst).
+
+The authenticated quick viewer now offers an explicit deletion review for
+images and normalized videos. It removes every exact DASObjectStore
+representation through a reviewed host adapter before removing the persistent
+gallery projection; failures remain visible and retryable, and raw provider
+deletion is never treated as authoritative completion.
 
 Operational readiness now has separate coarse public health and authenticated,
 redacted component/metric/audit snapshots. The bounded typed schema cannot hold

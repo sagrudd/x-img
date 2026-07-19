@@ -169,6 +169,15 @@ pub enum GalleryCatalogueError {
     InvalidPageSize,
     InvalidFilter,
     InvalidItem(String),
+    NotFound,
+    DeleteConflict,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GalleryDeletePlan {
+    pub catalogue_id: String,
+    pub affected_catalogue_ids: Vec<String>,
+    pub objects: Vec<AuthorizedObjectReference>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -616,6 +625,81 @@ impl GalleryCatalogue {
     pub fn items(&self) -> &[GalleryItem] {
         &self.items
     }
+
+    /// Plans deletion of the selected asset and every duplicate catalogue row
+    /// that shares one of its exact immutable object references.
+    pub fn delete_plan(
+        &self,
+        context: &AuthenticatedHostContext,
+        catalogue_id: &str,
+    ) -> Result<GalleryDeletePlan, GalleryCatalogueError> {
+        if context.host_mode() != HostMode::MonasStandalone || !context.permits(XIMG_ACCESS) {
+            return Err(GalleryCatalogueError::Unauthorized);
+        }
+        let selected = self
+            .items
+            .iter()
+            .find(|item| item.catalogue_id == catalogue_id)
+            .ok_or(GalleryCatalogueError::NotFound)?;
+        let mut objects = representation_objects(selected);
+        let mut affected = std::collections::BTreeSet::from([catalogue_id.to_owned()]);
+        loop {
+            let mut changed = false;
+            for item in &self.items {
+                let item_objects = representation_objects(item);
+                if item_objects.iter().any(|object| objects.contains(object))
+                    && affected.insert(item.catalogue_id.clone())
+                {
+                    objects.extend(item_objects);
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        Ok(GalleryDeletePlan {
+            catalogue_id: catalogue_id.to_owned(),
+            affected_catalogue_ids: affected.into_iter().collect(),
+            objects: objects.into_iter().collect(),
+        })
+    }
+
+    /// Removes only the catalogue rows represented by an unchanged reviewed
+    /// plan. The caller must first verify every planned object deletion at the
+    /// DASObjectStore authority.
+    pub fn apply_verified_delete(
+        &mut self,
+        context: &AuthenticatedHostContext,
+        plan: &GalleryDeletePlan,
+    ) -> Result<(), GalleryCatalogueError> {
+        let current = self.delete_plan(context, &plan.catalogue_id)?;
+        if current != *plan {
+            return Err(GalleryCatalogueError::DeleteConflict);
+        }
+        let affected = plan
+            .affected_catalogue_ids
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>();
+        self.items
+            .retain(|item| !affected.contains(&item.catalogue_id));
+        Ok(())
+    }
+}
+
+fn representation_objects(
+    item: &GalleryItem,
+) -> std::collections::BTreeSet<AuthorizedObjectReference> {
+    std::iter::once(&item.thumbnail)
+        .chain(item.preview.iter())
+        .map(|representation| AuthorizedObjectReference {
+            endpoint_id: representation.endpoint_id.clone(),
+            object_store_id: representation.object_store_id.clone(),
+            object_key: representation.object_key.clone(),
+            object_version: representation.object_version,
+            checksum: representation.checksum.clone(),
+        })
+        .collect()
 }
 
 fn validate_filter(
@@ -1012,6 +1096,53 @@ mod tests {
             );
         }
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn verified_delete_removes_shared_duplicate_rows_only_after_exact_plan() {
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .unwrap();
+        let mut first = item("first", 2);
+        first.preview = Some(GalleryRepresentation {
+            kind: GalleryRepresentationKind::OriginalImage,
+            object_key: "objects/original-1".into(),
+            ..representation(GalleryObjectAvailability::Ready)
+        });
+        let mut duplicate = item("duplicate", 1);
+        duplicate.thumbnail = first.thumbnail.clone();
+        duplicate.preview = first.preview.clone();
+        let mut unrelated = item("unrelated", 3);
+        unrelated.thumbnail.object_key = "objects/unrelated".into();
+        let mut catalogue = GalleryCatalogue::new(vec![first, duplicate, unrelated]).unwrap();
+
+        let plan = catalogue.delete_plan(&context, "first").unwrap();
+        assert_eq!(plan.affected_catalogue_ids, ["duplicate", "first"]);
+        assert_eq!(plan.objects.len(), 2);
+        assert_eq!(catalogue.items().len(), 3, "planning is non-mutating");
+
+        catalogue.apply_verified_delete(&context, &plan).unwrap();
+        assert_eq!(catalogue.items().len(), 1);
+        assert_eq!(catalogue.items()[0].catalogue_id, "unrelated");
+    }
+
+    #[test]
+    fn verified_delete_rejects_a_stale_plan() {
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .unwrap();
+        let mut catalogue = GalleryCatalogue::new(vec![item("selected", 1)]).unwrap();
+        let plan = catalogue.delete_plan(&context, "selected").unwrap();
+        catalogue.items[0].thumbnail.object_version = 2;
+        assert_eq!(
+            catalogue.apply_verified_delete(&context, &plan),
+            Err(GalleryCatalogueError::DeleteConflict)
+        );
+        assert_eq!(catalogue.items().len(), 1);
     }
 
     #[test]

@@ -51,6 +51,9 @@ pub(crate) struct ServeArgs {
     /// Absolute executable implementing the scoped object-read helper v1 protocol.
     #[arg(long)]
     object_read_helper: Option<PathBuf>,
+    /// Absolute executable implementing authoritative object-delete helper v1.
+    #[arg(long)]
+    object_delete_helper: Option<PathBuf>,
     /// Private metadata-only Firefox pairing/site authority document.
     #[arg(long)]
     capture_authority_file: Option<PathBuf>,
@@ -400,6 +403,11 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
         .as_deref()
         .map(crate::object_read_helper::backend)
         .transpose()?;
+    let object_delete_backend = arguments
+        .object_delete_helper
+        .as_deref()
+        .map(crate::object_delete_helper::backend)
+        .transpose()?;
     let capture_authority = arguments
         .capture_authority_file
         .as_deref()
@@ -562,6 +570,15 @@ pub(crate) fn serve(arguments: ServeArgs) -> Result<(), Box<dyn std::error::Erro
                     capture_plans.map(|plans| {
                         let composition =
                             x_img_api::CapturePlanComposition::new(plans, capture_completion);
+                        let composition = match object_delete_backend {
+                            Some(backend) => {
+                                composition.with_deletion(x_img_api::GalleryDeletionAuthority::new(
+                                    gallery_store.clone(),
+                                    backend,
+                                ))
+                            }
+                            None => composition,
+                        };
                         let composition = match capture_acquire {
                             Some(backend) => composition.with_acquire(backend),
                             None => composition,
@@ -887,6 +904,7 @@ mod tests {
             web_root: None,
             firefox_downloads_root: None,
             object_read_helper: None,
+            object_delete_helper: None,
             capture_authority_file: None,
             capture_completion_token_file: None,
             capture_acquire_helper: None,
@@ -930,6 +948,7 @@ mod tests {
             web_root: None,
             firefox_downloads_root: None,
             object_read_helper: None,
+            object_delete_helper: None,
             capture_authority_file: None,
             capture_completion_token_file: None,
             capture_acquire_helper: None,

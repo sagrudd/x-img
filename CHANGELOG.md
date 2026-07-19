@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.26.0 - 2026-07-19
+
+- Adds an authenticated deletion review and confirmation action to image and
+  normalized-video quick preview.
+- Deletes every exact DASObjectStore representation before removing the
+  persistent Pinakotheke projection; failed authority deletion keeps the
+  gallery record visible and retryable.
+- Removes duplicate catalogue rows sharing the selected asset's immutable
+  object references without issuing duplicate ObjectStore mutations.
+- Defines a bounded host deletion-helper protocol so DASObjectStore retains
+  authority over policy, retention, catalogue mutation, and audit.
+
 ## 1.25.0 - 2026-07-19
 
 - Adds generic trusted-play discovery for progressive and already-observed

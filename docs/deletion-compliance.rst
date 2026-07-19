@@ -6,6 +6,31 @@ approved actions. A source deletion, access loss, policy change, rights request,
 or user request may require prompt catalogue tombstoning, but none is inferred
 to authorize deletion of an immutable DASObjectStore object.
 
+User deletion from the library
+------------------------------
+
+Open an image or normalized video, choose ``Review deletion``, read the exact
+number of affected catalogue records and DASObjectStore objects, then choose
+``Delete from Pinakotheke and DASObjectStore``. This is an authenticated,
+irreversible action. It covers the card thumbnail or video poster and the
+stored original image or normalized video rendition. Exact duplicate cards
+that share those immutable object references are disclosed and removed as one
+asset; unrelated records are not changed.
+
+The browser never deletes bytes itself. Pinakotheke sends only endpoint,
+ObjectStore, key, positive version, and SHA-256 evidence through the reviewed
+``pinakotheke.object-delete-helper.v1`` host adapter. DASObjectStore remains
+responsible for current actor/application authorization, retention policy,
+provider deletion, authoritative catalogue mutation, capacity reconciliation,
+and audit. A raw S3 delete is not a valid adapter implementation because it can
+leave the DASObjectStore catalogue inconsistent.
+
+Pinakotheke removes its persistent projection only after every exact object is
+reported ``deleted`` or ``already_absent``. If the helper is missing, rejects
+the operation, times out, or the gallery changes during deletion, the record
+remains visible with a retryable failure. A retry is safe after a partial
+authority operation because already-absent objects are idempotent success.
+
 Approved request
 ----------------
 
@@ -60,7 +85,8 @@ Run the focused contract tests with:
    cargo +1.97.0 test -p pinakotheke-core compliance_reconciliation
 
 They prove catalogue-only scope, required approval, tombstone-before-delete,
-pending/retry behavior, exact-object verification, replay idempotency, and
-conflict on changed authority identity. A live DASObjectStore deletion adapter
-must still enforce its own current authorization, policy, retention, and audit
-requirements immediately before mutation.
+pending/retry behavior, exact-object verification, replay idempotency, shared
+duplicate expansion, projection-after-authority ordering, and conflict on
+changed authority identity. The live DASObjectStore deletion adapter still
+enforces current authorization, policy, retention, catalogue reconciliation,
+and audit immediately before mutation.

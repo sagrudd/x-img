@@ -22,6 +22,7 @@ pub fn run() {
 
 const GALLERY_API: &str = "/products/pinakotheke/api/gallery/v1/catalogue";
 const GALLERY_FOLDERS_API: &str = "/products/pinakotheke/api/gallery/v1/folders";
+const GALLERY_DELETE_SCHEMA: &str = "pinakotheke.gallery-delete.v1";
 const OBJECT_STORE_API: &str = "/products/dasobjectstore/api/v1/dashboard/object-stores";
 const EXTENSION_ONBOARDING_API: &str = "/products/pinakotheke/api/extension/v1/onboarding";
 const INGESTION_STATUS_API: &str = "/products/pinakotheke/api/ingestion/v1/status";
@@ -220,6 +221,42 @@ enum GalleryLoadState {
     PermissionDenied,
     TransportError,
     InvalidResponse,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GalleryDeletePlanResponse {
+    schema_version: String,
+    catalogue_id: String,
+    catalogue_records_affected: usize,
+    objects_affected: usize,
+    confirmation: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(deny_unknown_fields)]
+struct GalleryDeleteRequest<'a> {
+    schema_version: &'static str,
+    confirmation: &'a str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GalleryDeleteResponse {
+    schema_version: String,
+    outcome: String,
+    catalogue_records_removed: usize,
+    catalogue_ids_removed: Vec<String>,
+    objects_verified_absent: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum GalleryDeletionState {
+    Closed,
+    Loading,
+    Review(GalleryDeletePlanResponse),
+    Deleting,
+    Failed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -465,6 +502,7 @@ pub fn app() -> Html {
     let preview_open = use_state(|| false);
     let preview_mode = use_state(|| "Fit to pane".to_owned());
     let preview_ref = use_node_ref();
+    let deletion_state = use_state(|| GalleryDeletionState::Closed);
     let review_notice = use_state(|| "3 items need review".to_owned());
     let object_view = use_state(|| true);
     let filter = use_state(String::new);
@@ -1271,16 +1309,20 @@ pub fn app() -> Html {
                     let selected_card = selected_card.expect("checked selected card");
                     let close_preview_state = preview_open.clone();
                     let close_preview_card = active_card.clone();
+                    let close_deletion_state = deletion_state.clone();
                     let close_preview = Callback::from(move |_| {
                         close_preview_state.set(false);
+                        close_deletion_state.set(GalleryDeletionState::Closed);
                         focus_by_id(&format!("preview-trigger-{}", *close_preview_card));
                     });
                     let keyboard_preview_state = preview_open.clone();
                     let keyboard_active_card = active_card.clone();
+                    let keyboard_deletion_state = deletion_state.clone();
                     let on_keydown = Callback::from(move |event: KeyboardEvent| match event.key().as_str() {
                         "Escape" => {
                             event.prevent_default();
                             keyboard_preview_state.set(false);
+                            keyboard_deletion_state.set(GalleryDeletionState::Closed);
                             focus_by_id(&format!("preview-trigger-{}", *keyboard_active_card));
                         }
                         "Tab" => {
@@ -1298,6 +1340,28 @@ pub fn app() -> Html {
                     let toggle_view = Callback::from(move |_| {
                         preview_mode.set(if *preview_mode == "Fit to pane" { "Original size".to_owned() } else { "Fit to pane".to_owned() })
                     });
+                    let request_deletion = {
+                        let deletion_state = deletion_state.clone();
+                        let catalogue_id = selected_card.catalogue_id.clone();
+                        Callback::from(move |_| {
+                            deletion_state.set(GalleryDeletionState::Loading);
+                            let deletion_state = deletion_state.clone();
+                            let url = format!("{GALLERY_API}/{catalogue_id}/deletion");
+                            spawn_local(async move {
+                                let state = match Request::get(&url).send().await {
+                                    Ok(response) if response.ok() => response
+                                        .json::<GalleryDeletePlanResponse>()
+                                        .await
+                                        .ok()
+                                        .filter(|plan| plan.schema_version == GALLERY_DELETE_SCHEMA)
+                                        .map(GalleryDeletionState::Review)
+                                        .unwrap_or(GalleryDeletionState::Failed),
+                                    _ => GalleryDeletionState::Failed,
+                                };
+                                deletion_state.set(state);
+                            });
+                        })
+                    };
                     html! {
                         <section
                             ref={preview_ref.clone()}
@@ -1392,6 +1456,75 @@ pub fn app() -> Html {
                                         } else {
                                             Html::default()
                                         }}
+                                        <section class="ximg-preview__delete" aria-labelledby="preview-delete-title">
+                                            <h3 id="preview-delete-title">{ "Delete this asset" }</h3>
+                                            { match &*deletion_state {
+                                                GalleryDeletionState::Closed => html! {
+                                                    <>
+                                                        <p>{ "Deletes the exact image or video objects from DASObjectStore, then removes their Pinakotheke catalogue records. This cannot be undone." }</p>
+                                                        <button type="button" onclick={request_deletion}>{ "Review deletion" }</button>
+                                                    </>
+                                                },
+                                                GalleryDeletionState::Loading => html! { <p role="status">{ "Preparing authoritative deletion review…" }</p> },
+                                                GalleryDeletionState::Deleting => html! { <p role="status">{ "Deleting from DASObjectStore and verifying removal…" }</p> },
+                                                GalleryDeletionState::Failed => html! {
+                                                    <>
+                                                        <p role="alert">{ "Deletion did not complete. The gallery record remains visible; retry or check the DASObjectStore deletion authority." }</p>
+                                                        <button type="button" onclick={request_deletion}>{ "Retry deletion review" }</button>
+                                                    </>
+                                                },
+                                                GalleryDeletionState::Review(plan) => {
+                                                    let confirmation = plan.confirmation.clone();
+                                                    let catalogue_id = plan.catalogue_id.clone();
+                                                    let deletion_state = deletion_state.clone();
+                                                    let confirm_deletion_state = deletion_state.clone();
+                                                    let gallery = gallery.clone();
+                                                    let preview_open = preview_open.clone();
+                                                    html! {
+                                                        <div role="alertdialog" aria-label="Confirm authoritative deletion">
+                                                            <p>{ format!("This removes {} catalogue record(s) and {} exact DASObjectStore object(s). Duplicate cards sharing those objects are included.", plan.catalogue_records_affected, plan.objects_affected) }</p>
+                                                            <button type="button" onclick={Callback::from(move |_| {
+                                                                confirm_deletion_state.set(GalleryDeletionState::Deleting);
+                                                                let deletion_state = confirm_deletion_state.clone();
+                                                                let gallery = gallery.clone();
+                                                                let preview_open = preview_open.clone();
+                                                                let confirmation = confirmation.clone();
+                                                                let url = format!("{GALLERY_API}/{catalogue_id}/deletion");
+                                                                spawn_local(async move {
+                                                                    let request = GalleryDeleteRequest { schema_version: GALLERY_DELETE_SCHEMA, confirmation: &confirmation };
+                                                                    let result = match Request::delete(&url).json(&request) {
+                                                                        Ok(request) => match request.send().await {
+                                                                            Ok(response) if response.ok() => response.json::<GalleryDeleteResponse>().await.ok(),
+                                                                            _ => None,
+                                                                        },
+                                                                        Err(_) => None,
+                                                                    };
+                                                                    if let Some(result) = result.filter(|result| result.schema_version == GALLERY_DELETE_SCHEMA && result.outcome == "deleted") {
+                                                                        if let GalleryLoadState::Ready { items, next_offset, matched_items, total_items } = &*gallery {
+                                                                            let retained = items.iter().filter(|item| !result.catalogue_ids_removed.contains(&item.catalogue_id)).cloned().collect::<Vec<_>>();
+                                                                            gallery.set(GalleryLoadState::Ready {
+                                                                                items: retained,
+                                                                                next_offset: *next_offset,
+                                                                                matched_items: matched_items.saturating_sub(result.catalogue_records_removed),
+                                                                                total_items: total_items.saturating_sub(result.catalogue_records_removed),
+                                                                            });
+                                                                        }
+                                                                        preview_open.set(false);
+                                                                        deletion_state.set(GalleryDeletionState::Closed);
+                                                                    } else {
+                                                                        deletion_state.set(GalleryDeletionState::Failed);
+                                                                    }
+                                                                });
+                                                            })}>{ "Delete from Pinakotheke and DASObjectStore" }</button>
+                                                            <button type="button" onclick={{
+                                                                let deletion_state = deletion_state.clone();
+                                                                Callback::from(move |_| deletion_state.set(GalleryDeletionState::Closed))
+                                                            }}>{ "Cancel" }</button>
+                                                        </div>
+                                                    }
+                                                },
+                                            }}
+                                        </section>
                                         { if object_label(&selected_card) == "Object unavailable" {
                                             html! {
                                                 <section class="ximg-preview__unavailable" role="status" aria-live="polite">

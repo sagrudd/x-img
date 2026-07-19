@@ -15,6 +15,7 @@ mod destination_revalidation_helper;
 mod launchd;
 mod local_objectstore;
 mod monolith;
+mod object_delete_helper;
 mod object_read_helper;
 mod video_normalize;
 

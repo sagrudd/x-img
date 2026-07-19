@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AuthorizedObjectReference {
     pub endpoint_id: String,
     pub object_store_id: String,

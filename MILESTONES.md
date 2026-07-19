@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.25.0
+Version: 1.26.0
 
 Updated: 2026-07-19
 
@@ -1388,6 +1388,21 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   checksum-identical test XPI. User-driven production-origin evidence remains
   operational assurance, not an unrepresented prerequisite to the generic
   implementation.
+
+## 1.26.0 — Authoritative media deletion
+
+- The open image/video detail pane exposes a destructive review action with
+  explicit impact and confirmation, not a one-click card control.
+- Pinakotheke submits exact endpoint, ObjectStore, key, version, and checksum
+  evidence to a reviewed host deletion adapter. The gallery projection is
+  rewritten only after every authority operation reports deleted or already
+  absent.
+- Exact shared-object duplicate rows are disclosed and removed together;
+  unrelated catalogue records and objects remain untouched.
+- Failure or a concurrent catalogue change leaves visible, retryable state and
+  never claims that DASObjectStore bytes were removed.
+- DASObjectStore remains responsible for current authorization, retention
+  policy, provider mutation, authoritative catalogue reconciliation, and audit.
 
 ## 1.23.3 — Deep-timeline explicit image capture
 

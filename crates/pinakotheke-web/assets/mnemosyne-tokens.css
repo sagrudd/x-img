@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-/* Versioned mirror of mnemosyne_design_language 5539df8 semantic web tokens. */
+/* Versioned mirror of mnemosyne_design_language fbfa28e semantic web tokens. */
 :root {
   --mn-color-surface-canvas:#f6f7f5;
   --mn-color-surface-raised:#fff;
@@ -8,6 +8,7 @@
   --mn-color-border-subtle:#d9e0e3;
   --mn-color-action-primary-default:#0f6b78;
   --mn-color-brand-footer:#1c2b0b;
+  --mn-color-status-danger:#8a3c25;
   --mn-font-family-sans:"Source Sans 3",ui-sans-serif,system-ui,sans-serif;
   --mn-font-family-serif:"Crimson Pro",ui-serif,Georgia,serif;
   --mn-space-1:.25rem;

@@ -35,8 +35,9 @@ use x_img_core::{
     },
     gallery_catalogue::{
         GalleryCatalogue, GalleryCatalogueError, GalleryCatalogueFilter, GalleryCatalogueStore,
-        GalleryFolderPage, GalleryImageResolveError, GalleryImageRole, GalleryMediaKind,
-        GalleryObjectAvailability, GalleryPage, GalleryReviewState, GallerySourceKind,
+        GalleryDeletePlan, GalleryFolderPage, GalleryImageResolveError, GalleryImageRole,
+        GalleryMediaKind, GalleryObjectAvailability, GalleryPage, GalleryReviewState,
+        GallerySourceKind,
     },
     host_context::{
         AuthenticatedHostContext, HostContextAdapter, MonasHostContextAdapter, XIMG_ACCESS,
@@ -89,6 +90,38 @@ pub struct CapturePlanComposition {
     site_corpus: Option<SiteCorpusStore>,
     reviewed_destinations: Option<ReviewedDestinationStore>,
     destination_revalidator: Option<HostCaptureDestinationRevalidateBackend>,
+    deletion: Option<GalleryDeletionAuthority>,
+}
+
+/// Host-owned authoritative object deletion and persistent gallery projection.
+#[derive(Clone)]
+pub struct GalleryDeletionAuthority {
+    gallery_store: GalleryCatalogueStore,
+    backend: HostObjectDeleteBackend,
+}
+
+/// Idempotent result from deleting one exact DASObjectStore object version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostObjectDeleteOutcome {
+    /// The exact object version existed and was removed.
+    Deleted,
+    /// The exact object version was already absent; idempotent success.
+    AlreadyAbsent,
+}
+
+/// Process-isolated callback which must delete through DASObjectStore authority.
+pub type HostObjectDelete = Arc<
+    dyn Fn(
+            &x_img_core::object_read::AuthorizedObjectReference,
+        ) -> Result<HostObjectDeleteOutcome, String>
+        + Send
+        + Sync,
+>;
+
+/// Host adapter for one exact-object authoritative deletion operation.
+#[derive(Clone)]
+pub struct HostObjectDeleteBackend {
+    delete: HostObjectDelete,
 }
 
 /// Reviewed server identity and DASObjectStore destination exposed only to an
@@ -356,7 +389,15 @@ impl CapturePlanComposition {
             site_corpus: None,
             reviewed_destinations: None,
             destination_revalidator: None,
+            deletion: None,
         }
+    }
+
+    /// Adds authoritative deletion of gallery assets and their DAS objects.
+    #[must_use]
+    pub fn with_deletion(mut self, deletion: GalleryDeletionAuthority) -> Self {
+        self.deletion = Some(deletion);
+        self
     }
 
     /// Adds a reviewed asynchronous acquisition adapter.
@@ -396,6 +437,25 @@ impl CapturePlanComposition {
     ) -> Self {
         self.destination_revalidator = Some(backend);
         self
+    }
+}
+
+impl HostObjectDeleteBackend {
+    /// Creates a backend around a reviewed host-owned deletion callback.
+    #[must_use]
+    pub fn new(delete: HostObjectDelete) -> Self {
+        Self { delete }
+    }
+}
+
+impl GalleryDeletionAuthority {
+    /// Binds exact-object deletion to the persistent gallery projection.
+    #[must_use]
+    pub fn new(gallery_store: GalleryCatalogueStore, backend: HostObjectDeleteBackend) -> Self {
+        Self {
+            gallery_store,
+            backend,
+        }
     }
 }
 
@@ -979,6 +1039,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
             site_corpus,
             reviewed_destinations,
             destination_revalidator,
+            deletion,
         } = capture;
         let capture_plans = Arc::new(Mutex::new(capture_plans));
         let reviewed_destinations = reviewed_destinations.map(|store| Arc::new(Mutex::new(store)));
@@ -1027,6 +1088,15 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                 .layer(Extension(Arc::new(Mutex::new(site_corpus))));
         }
         protected = protected.layer(Extension(Arc::clone(&capture_plans)));
+        if let Some(deletion) = deletion {
+            protected = protected
+                .route(
+                    "/products/pinakotheke/api/gallery/v1/catalogue/{catalogue_id}/deletion",
+                    get(gallery_delete_plan).delete(delete_gallery_item),
+                )
+                .layer(Extension(Arc::clone(&gallery)))
+                .layer(Extension(deletion));
+        }
         if let Some(authority) = completion_authority {
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -1429,8 +1499,126 @@ struct GalleryFoldersQuery {
     prefix: Option<String>,
 }
 
+const GALLERY_DELETE_SCHEMA: &str = "pinakotheke.gallery-delete.v1";
+
+#[derive(Debug, Serialize)]
+struct GalleryDeletePlanResponse {
+    schema_version: &'static str,
+    catalogue_id: String,
+    catalogue_records_affected: usize,
+    objects_affected: usize,
+    confirmation: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GalleryDeleteRequest {
+    schema_version: String,
+    confirmation: String,
+}
+
+#[derive(Debug, Serialize)]
+struct GalleryDeleteResponse {
+    schema_version: &'static str,
+    outcome: &'static str,
+    catalogue_records_removed: usize,
+    catalogue_ids_removed: Vec<String>,
+    objects_verified_absent: usize,
+}
+
 const fn default_catalogue_limit() -> usize {
     100
+}
+
+async fn gallery_delete_plan(
+    context: Option<Extension<AuthenticatedHostContext>>,
+    authority: Option<Extension<GalleryDeletionAuthority>>,
+    Path(catalogue_id): Path<String>,
+    gallery: Option<Extension<MonasGalleryCatalogue>>,
+) -> Result<Json<GalleryDeletePlanResponse>, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    let _authority = authority.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let gallery = gallery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let plan = gallery
+        .lock()
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+        .delete_plan(&context, &catalogue_id)
+        .map_err(gallery_delete_error)?;
+    Ok(Json(delete_plan_response(&plan)))
+}
+
+async fn delete_gallery_item(
+    context: Option<Extension<AuthenticatedHostContext>>,
+    authority: Option<Extension<GalleryDeletionAuthority>>,
+    Path(catalogue_id): Path<String>,
+    gallery: Option<Extension<MonasGalleryCatalogue>>,
+    Json(request): Json<GalleryDeleteRequest>,
+) -> Result<Json<GalleryDeleteResponse>, StatusCode> {
+    let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
+    let authority = authority.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let gallery = gallery.ok_or(StatusCode::SERVICE_UNAVAILABLE)?.0;
+    let plan = gallery
+        .lock()
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+        .delete_plan(&context, &catalogue_id)
+        .map_err(gallery_delete_error)?;
+    let expected_confirmation = format!("DELETE {}", plan.catalogue_id);
+    if request.schema_version != GALLERY_DELETE_SCHEMA
+        || request.confirmation != expected_confirmation
+    {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let backend = authority.backend.clone();
+    let objects = plan.objects.clone();
+    tokio::task::spawn_blocking(move || {
+        for object in &objects {
+            (backend.delete)(object).map_err(|_| ())?;
+        }
+        Ok::<_, ()>(())
+    })
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let mut catalogue = gallery
+        .lock()
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    let mut candidate = catalogue.clone();
+    candidate
+        .apply_verified_delete(&context, &plan)
+        .map_err(gallery_delete_error)?;
+    authority
+        .gallery_store
+        .replace(candidate.items().to_vec())
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    *catalogue = candidate;
+    Ok(Json(GalleryDeleteResponse {
+        schema_version: GALLERY_DELETE_SCHEMA,
+        outcome: "deleted",
+        catalogue_records_removed: plan.affected_catalogue_ids.len(),
+        catalogue_ids_removed: plan.affected_catalogue_ids.clone(),
+        objects_verified_absent: plan.objects.len(),
+    }))
+}
+
+fn delete_plan_response(plan: &GalleryDeletePlan) -> GalleryDeletePlanResponse {
+    GalleryDeletePlanResponse {
+        schema_version: GALLERY_DELETE_SCHEMA,
+        catalogue_id: plan.catalogue_id.clone(),
+        catalogue_records_affected: plan.affected_catalogue_ids.len(),
+        objects_affected: plan.objects.len(),
+        confirmation: format!("DELETE {}", plan.catalogue_id),
+    }
+}
+
+fn gallery_delete_error(error: GalleryCatalogueError) -> StatusCode {
+    match error {
+        GalleryCatalogueError::Unauthorized => StatusCode::FORBIDDEN,
+        GalleryCatalogueError::NotFound => StatusCode::NOT_FOUND,
+        GalleryCatalogueError::DeleteConflict => StatusCode::CONFLICT,
+        _ => StatusCode::BAD_REQUEST,
+    }
 }
 
 async fn synoptikon_catalogue(
@@ -1481,6 +1669,8 @@ async fn gallery_catalogue(
             GalleryCatalogueError::InvalidPageSize => StatusCode::BAD_REQUEST,
             GalleryCatalogueError::InvalidFilter => StatusCode::BAD_REQUEST,
             GalleryCatalogueError::InvalidItem(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            GalleryCatalogueError::NotFound => StatusCode::NOT_FOUND,
+            GalleryCatalogueError::DeleteConflict => StatusCode::CONFLICT,
         })
 }
 
@@ -1502,6 +1692,8 @@ async fn gallery_folders(
                 StatusCode::BAD_REQUEST
             }
             GalleryCatalogueError::InvalidItem(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            GalleryCatalogueError::NotFound => StatusCode::NOT_FOUND,
+            GalleryCatalogueError::DeleteConflict => StatusCode::CONFLICT,
         })
 }
 
@@ -3052,6 +3244,103 @@ mod tests {
                 stream: Body::from(b"image-bytes!".to_vec()),
             })
         }))
+    }
+
+    #[tokio::test]
+    async fn authoritative_gallery_delete_removes_bytes_before_persisted_projection() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-api-delete-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let store = GalleryCatalogueStore::new(root.join("gallery.json"));
+        let catalogue = gallery_catalogue();
+        store.replace(catalogue.items().to_vec()).unwrap();
+        let gallery = Arc::new(Mutex::new(catalogue));
+        let deleted = Arc::new(AtomicUsize::new(0));
+        let deleted_for_backend = Arc::clone(&deleted);
+        let authority = super::GalleryDeletionAuthority::new(
+            store.clone(),
+            super::HostObjectDeleteBackend::new(Arc::new(move |object| {
+                assert_eq!(object.endpoint_id, "endpoint-1");
+                assert_eq!(object.object_store_id, "store-1");
+                deleted_for_backend.fetch_add(1, Ordering::SeqCst);
+                Ok(super::HostObjectDeleteOutcome::Deleted)
+            })),
+        );
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .unwrap();
+
+        let review = super::gallery_delete_plan(
+            Some(Extension(context.clone())),
+            Some(Extension(authority.clone())),
+            axum::extract::Path("media-1".into()),
+            Some(Extension(Arc::clone(&gallery))),
+        )
+        .await
+        .unwrap();
+        assert_eq!(review.catalogue_records_affected, 1);
+        assert_eq!(review.objects_affected, 1);
+
+        let response = super::delete_gallery_item(
+            Some(Extension(context)),
+            Some(Extension(authority)),
+            axum::extract::Path("media-1".into()),
+            Some(Extension(gallery)),
+            axum::Json(super::GalleryDeleteRequest {
+                schema_version: super::GALLERY_DELETE_SCHEMA.into(),
+                confirmation: "DELETE media-1".into(),
+            }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(response.outcome, "deleted");
+        assert_eq!(deleted.load(Ordering::SeqCst), 1);
+        assert!(store.load_or_empty().unwrap().items().is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn failed_authority_delete_keeps_the_gallery_projection() {
+        let root = std::env::temp_dir().join(format!(
+            "pinakotheke-api-delete-failure-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let store = GalleryCatalogueStore::new(root.join("gallery.json"));
+        let catalogue = gallery_catalogue();
+        store.replace(catalogue.items().to_vec()).unwrap();
+        let gallery = Arc::new(Mutex::new(catalogue));
+        let authority = super::GalleryDeletionAuthority::new(
+            store.clone(),
+            super::HostObjectDeleteBackend::new(Arc::new(|_| Err("rejected".into()))),
+        );
+        let context = MonasHostContextAdapter
+            .authenticate(include_bytes!(
+                "../../../fixtures/host-context/v1/monas-valid.json"
+            ))
+            .unwrap();
+        let result = super::delete_gallery_item(
+            Some(Extension(context)),
+            Some(Extension(authority)),
+            axum::extract::Path("media-1".into()),
+            Some(Extension(Arc::clone(&gallery))),
+            axum::Json(super::GalleryDeleteRequest {
+                schema_version: super::GALLERY_DELETE_SCHEMA.into(),
+                confirmation: "DELETE media-1".into(),
+            }),
+        )
+        .await;
+        assert!(matches!(result, Err(StatusCode::SERVICE_UNAVAILABLE)));
+        assert_eq!(gallery.lock().unwrap().items().len(), 1);
+        assert_eq!(store.load_or_empty().unwrap().items().len(), 1);
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     fn video_gallery_catalogue() -> GalleryCatalogue {

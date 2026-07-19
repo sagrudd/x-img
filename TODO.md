@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.25.0
+Version: 1.26.0
 
 Updated: 2026-07-19
 
@@ -1999,6 +1999,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   DASServer as ``1.25.0``; the backend health response and served XPI manifest
   both report that version. The served XPI SHA-256 is
   ``859a38e7eb370785b516527ad0b462b4bbfdf1fce788619e291554c54bb6d62e``.
+- [ ] **XIMG-130 P0 — Implement authoritative gallery deletion.** An
+  authenticated user can review and explicitly confirm deletion from an open
+  image or video. Delete and verify every exact thumbnail, original, poster,
+  and normalized rendition through DASObjectStore before atomically removing
+  the persistent gallery projection. Already-absent results are idempotent;
+  rejection, transport failure, a changed plan, or persistence failure remains
+  visible and retryable. Disclose and remove duplicate catalogue rows sharing
+  exact object references together. Acceptance requires image/video,
+  duplicate, failure, stale-plan, restart-persistence, helper-protocol, Yew,
+  documentation, deployment, and live synthetic deletion evidence without
+  touching user media.
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
 - [x] **XIMG-205 P0 — Consume audience-bound Prosopikon host identity.**
