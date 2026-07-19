@@ -609,7 +609,7 @@ async function substituteDisplayedVideo(candidate) {
   }
 }
 
-async function lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias) {
+async function lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, alias, presentation = undefined) {
   const response = await fetch(`${instanceUrl}/products/pinakotheke/api/extension/v1/cache-aliases/lookup`, {
     method: "POST",
     credentials: "include",
@@ -621,6 +621,7 @@ async function lookupAlias(instanceUrl, instanceId, pairId, origin, adapter, ali
       instance_id: instanceId,
       origin,
       canonical_alias: alias,
+      canonical_presentation: presentation,
       adapter_id: adapter.id,
       adapter_version: adapter.version,
     }),
@@ -687,7 +688,27 @@ function validatedObservedImages(images) {
   });
 }
 
-async function runCacheForTab(tab, contentImages = null) {
+function validatedObservedVideos(videos) {
+  if (!Array.isArray(videos)) return [];
+  return videos.slice(0, 8).flatMap(video => {
+    try {
+      const presentation = new URL(video.presentationUrl);
+      if (presentation.protocol !== "https:"
+        || !Number.isInteger(video.width) || !Number.isInteger(video.height)
+        || video.width < 1 || video.height < 1 || video.width > 32768 || video.height > 32768) return [];
+      return [{
+        presentationUrl: presentation.href,
+        width: video.width,
+        height: video.height,
+        mediaToken: String(video.mediaToken || "").slice(0, 80),
+      }];
+    } catch (_) {
+      return [];
+    }
+  });
+}
+
+async function runCacheForTab(tab, contentImages = null, contentVideos = null) {
   try {
     if (!tab.id || !tab.url) {
       await traceEvent("viewport_scan", "skipped", "tab identity unavailable");
@@ -718,6 +739,7 @@ async function runCacheForTab(tab, contentImages = null) {
       ? reported || (await browser.scripting.executeScript({ target: { tabId: tab.id }, func: displayedImages }))[0].result || []
       : [];
     const images = eligibleObservedImages(origin, rule, displayed);
+    const videos = rule.media.includes("videos") ? validatedObservedVideos(contentVideos) : [];
     await traceEvent("viewport_scan", "complete", `${displayed.length} visible image(s); ${images.length} eligible`, origin);
     for (const observed of images) {
       // Pairing plus the Monas-authenticated host context are authoritative for
@@ -778,6 +800,28 @@ async function runCacheForTab(tab, contentImages = null) {
         });
       }
     }
+    for (const observed of videos) {
+      try {
+        const presentation = canonicalAlias(observed.presentationUrl);
+        const evidence = await lookupAlias(
+          instanceUrl, instanceId || "", pairId, origin, adapter, presentation, presentation,
+        );
+        if (evidence?.outcome === "hit" && evidence.media_class === "normalized_mp4") {
+          const framing = await browser.tabs.sendMessage(tab.id, {
+            command: "frame-stored",
+            mediaToken: observed.mediaToken,
+          });
+          await traceEvent(
+            "stored_video_frame",
+            framing?.matched ? "applied" : "unmatched",
+            `${framing?.matched || 0} page element(s)`,
+            origin,
+          );
+        }
+      } catch (error) {
+        await traceEvent("video_cache_evidence", "error", String(error?.message || "lookup failed"), origin);
+      }
+    }
     if (rule.substitution && instanceId && rule.media.includes("videos") && adapter.capabilities.mp4_substitution) {
       const videos = (await browser.scripting.executeScript({
         target: { tabId: tab.id }, func: displayedVideos,
@@ -818,9 +862,10 @@ async function runCacheForTab(tab, contentImages = null) {
         });
       }
     }
+    const processed = images.length + videos.length;
     return {
-      completed: images.length > 0,
-      outcome: images.length > 0 ? "visible_media_processed" : "no_eligible_media",
+      completed: processed > 0,
+      outcome: processed > 0 ? "visible_media_processed" : "no_eligible_media",
     };
   } catch (_) {
     if (tab?.url) {
@@ -873,7 +918,7 @@ browser.runtime.onMessage.addListener(async (message, sender) => {
   }
   if (message?.command === "visible-media-changed" && sender?.tab) {
     await traceEvent("content_observer", "signal", "visible media changed", new URL(sender.tab.url).origin);
-    return runCacheForTab(sender.tab, message.images);
+    return runCacheForTab(sender.tab, message.images, message.videos);
   }
   if (message?.command === "explicit-video-unresolved" && sender?.tab?.url) {
     const origin = new URL(sender.tab.url).origin;

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.15
+Version: 1.22.16
 
 Updated: 2026-07-19
 
@@ -1835,7 +1835,13 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   scratch permissions as the parent MP4 so DASObjectStore can settle them.
   Deployed v1.22.15 proof on the x86_64 host reconciled and gallery-admitted
   pending X video plans 124, 129, and 158 with their derived poster objects.
-  Fresh installed-Firefox capture proof remains.
+  Live follow-up then showed image evidence traffic but no new explicit-video
+  plans: X's JavaScript-started playback produced an untrusted ``play`` event
+  after a real trusted pointer activation. Version ``1.22.16`` uses that
+  recorded activation as the capture authority and adds pairing-scoped video
+  evidence lookup by the stable X status/presentation identity, allowing a
+  stored video's transient ``blob:`` element to regain its green frame after
+  browser or page restart. Fresh installed-Firefox proof remains.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

@@ -115,6 +115,16 @@
     }))
     .sort((left, right) => Number(isXMediaUrl(right.url)) - Number(isXMediaUrl(left.url)))
     .slice(0, 16);
+  const visibleVideos = () => [...document.querySelectorAll("video")]
+    .filter(video => isVisibleVideo(video))
+    .map(video => ({
+      presentationUrl: presentationUrlFor(video),
+      width: video.videoWidth || Math.round(video.getBoundingClientRect().width),
+      height: video.videoHeight || Math.round(video.getBoundingClientRect().height),
+      mediaToken: mediaTokenFor(video),
+    }))
+    .filter(video => video.width > 0 && video.height > 0)
+    .slice(0, 8);
   let observationTimer;
   let lastVisibleFingerprint = "";
   const observed = () => {
@@ -122,9 +132,13 @@
     observationTimer = setTimeout(() => {
       refreshStoredOverlays();
       const images = visibleImages();
-      const fingerprint = images.map(image => `${canonical(image.url)}|${image.mediaToken}`).join("\n");
+      const videos = visibleVideos();
+      const fingerprint = [
+        ...images.map(image => `image|${canonical(image.url)}|${image.mediaToken}`),
+        ...videos.map(video => `video|${canonical(video.presentationUrl)}|${video.mediaToken}`),
+      ].join("\n");
       if (fingerprint === lastVisibleFingerprint) return;
-      void browser.runtime.sendMessage({ command: "visible-media-changed", images })
+      void browser.runtime.sendMessage({ command: "visible-media-changed", images, videos })
         .then(result => {
           if (result?.completed) lastVisibleFingerprint = fingerprint;
         })
@@ -200,6 +214,11 @@
     if (video) {
       videoActivations.set(video, activation);
       recentVisibleVideoActivation = { video, activation };
+      setTimeout(() => {
+        if (video.isConnected && isVisibleVideo(video) && !video.paused && video.currentSrc) {
+          void resolvePlayedVideo(video, activation);
+        }
+      }, 150);
     }
   };
   document.addEventListener("pointerdown", rememberVideoActivation, true);
@@ -314,7 +333,7 @@
     void browser.runtime.sendMessage({ command: "explicit-video-unresolved" });
   };
   document.addEventListener("play", event => {
-    if (!event.isTrusted || !(event.target instanceof HTMLVideoElement)) return;
+    if (!(event.target instanceof HTMLVideoElement)) return;
     if (!event.target.currentSrc) {
       void browser.runtime.sendMessage({ command: "explicit-video-observer", outcome: "missing_current_src" });
       return;

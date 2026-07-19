@@ -341,6 +341,28 @@ impl CapturePlanService {
         adapter_version: &str,
         canonical_alias: &str,
     ) -> Option<CapturePlan> {
+        self.settled_for_alias_or_presentation(
+            actor_id,
+            pairing_id,
+            now,
+            origin,
+            adapter_version,
+            canonical_alias,
+            None,
+        )
+    }
+
+    #[must_use]
+    pub fn settled_for_alias_or_presentation(
+        &self,
+        actor_id: &str,
+        pairing_id: &str,
+        now: u64,
+        origin: &str,
+        adapter_version: &str,
+        canonical_alias: &str,
+        canonical_presentation: Option<&str>,
+    ) -> Option<CapturePlan> {
         let pairing = self.pairings.get(pairing_id)?;
         if pairing.actor_id != actor_id || pairing.revoked || pairing.expires_at <= now {
             return None;
@@ -353,8 +375,12 @@ impl CapturePlanService {
                     && pending.settled
                     && pending.plan.origin == origin
                     && pending.plan.adapter_version == adapter_version
-                    && cache_alias_identity(&pending.plan.canonical_media_url)
+                    && (cache_alias_identity(&pending.plan.canonical_media_url)
                         == cache_alias_identity(canonical_alias)
+                        || (pending.plan.capture_kind == CaptureKind::ExplicitVideo
+                            && canonical_presentation.is_some_and(|presentation| {
+                                pending.plan.canonical_presentation_url == presentation
+                            })))
             })
             .map(|pending| pending.plan.clone())
     }
@@ -863,6 +889,33 @@ mod tests {
                     &plan.canonical_media_url,
                 )
                 .is_none()
+        );
+        let mut video_request = request();
+        planner
+            .sites
+            .get_mut("https://example.invalid")
+            .expect("site")
+            .allow_explicit_originals = true;
+        video_request.capture_kind = CaptureKind::ExplicitVideo;
+        video_request.media_url = "https://video.example.invalid/fixture.m3u8".into();
+        video_request.presentation_url = Some("https://example.invalid/status/42".into());
+        let video = planner.plan("actor", 3, video_request).expect("video plan");
+        planner
+            .settle("actor", &video.plan_id)
+            .expect("settle video");
+        assert_eq!(
+            planner
+                .settled_for_alias_or_presentation(
+                    "actor",
+                    "pair-0",
+                    4,
+                    &video.origin,
+                    &video.adapter_version,
+                    "https://example.invalid/status/42",
+                    Some("https://example.invalid/status/42"),
+                )
+                .map(|matched| matched.plan_id),
+            Some(video.plan_id)
         );
     }
 

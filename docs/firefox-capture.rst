@@ -649,6 +649,26 @@ extension update as required by Firefox's registration lifecycle. The same
 observer is immediately injected into already-open eligible tabs so update and
 startup do not leave an existing single-page application unobserved.
 
+X video capture and stored framing
+----------------------------------
+
+X commonly starts a clicked video through page JavaScript and exposes a
+transient ``blob:`` URL on the visible ``video`` element. Pinakotheke therefore
+records the genuine trusted pointer or keyboard activation first; a subsequent
+playing state is eligible only while it remains bound to that visible element
+and short activation window. The extension resolves the bounded X manifest
+candidate without forwarding cookies or request headers and submits one
+explicit-video plan. Autoplay without that activation remains ineligible.
+
+After verified DASObjectStore settlement, the same video receives the
+browser-only two-pixel green frame and the written ``Stored in ObjectStore``
+state. On a later page load the transient ``blob:`` URL cannot identify the
+stored object, so the observer sends the canonical X status/presentation URL
+through the existing pairing-scoped evidence endpoint. Only a settled
+explicit-video plan for the same actor, pairing, origin, adapter version, and
+presentation may produce a hit. The frame is an overlay; it neither changes
+the source page nor mutates stored media bytes.
+
 Verification
 ------------
 

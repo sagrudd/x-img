@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.22.16 - 2026-07-19
+
+- Capture X playback initiated by site JavaScript when it follows the recorded
+  trusted user activation, without trusting an uncorrelated programmatic play.
+- Include visible video cards in bounded viewport evidence scans and recover
+  their stored green frames using pairing-scoped X presentation identity when
+  the live media element exposes only a transient ``blob:`` URL.
+
 ## 1.22.15 - 2026-07-19
 
 - Preserve bounded, redacted acquisition failure categories across the capture

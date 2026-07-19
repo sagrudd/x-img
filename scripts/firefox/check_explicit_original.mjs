@@ -12,6 +12,8 @@ let completedRequestListener;
 let tabUpdatedListener;
 let tabActivatedListener;
 const captures = [];
+const framedMessages = [];
+let cacheResult = { schema_version: "x-img.cache-alias-result.v1", outcome: "miss" };
 let registeredScripts = [];
 const fileInjections = [];
 const storage = {
@@ -63,7 +65,7 @@ const browser = {
     onActivated: { addListener(callback) { tabActivatedListener = callback; } },
     async query() { return [{ id: 73, url: "https://art.example.invalid:8443/gallery" }]; },
     async get(tabId) { return { id: tabId, url: tabId === 91 ? "https://x.com/home" : "https://art.example.invalid:8443/gallery" }; },
-    async sendMessage() {},
+    async sendMessage(_tabId, message) { framedMessages.push(message); return { matched: 1 }; },
   },
   scripting: {
     async executeScript(details) {
@@ -87,7 +89,7 @@ const fetchFixture = async (url, options) => {
   }
   if (String(url).includes("/cache-aliases/lookup")) {
     captures.push({ url: String(url), options });
-    return { ok: true, async json() { return { schema_version: "x-img.cache-alias-result.v1", outcome: "miss" }; } };
+    return { ok: true, async json() { return cacheResult; } };
   }
   captures.push({ url: String(url), options });
   return { ok: true, async json() { return { plan_id: "capture-plan-fixture" }; } };
@@ -176,9 +178,29 @@ assert.equal(
 );
 
 storage.sites.push({ origin: "https://x.com", capture: true, media: ["videos"] });
+cacheResult = {
+  schema_version: "x-img.cache-alias-result.v1",
+  outcome: "hit",
+  media_class: "normalized_mp4",
+};
+const videoEvidenceResult = await messageListener(
+  { command: "visible-media-changed", images: [], videos: [{
+    presentationUrl: "https://x.com/FixtureArtist/status/42",
+    width: 1280,
+    height: 720,
+    mediaToken: "video-token-42",
+  }] },
+  { tab: { id: 91, url: "https://x.com/home" } },
+);
+assert.equal(videoEvidenceResult.completed, true);
+const videoEvidenceBody = JSON.parse(captures.at(-1).options.body);
+assert.equal(videoEvidenceBody.canonical_presentation, "https://x.com/FixtureArtist/status/42");
+assert.equal(framedMessages.at(-1).command, "frame-stored");
+assert.equal(framedMessages.at(-1).mediaToken, "video-token-42");
 completedRequestListener({ tabId: 91, url: "https://video.twimg.com/amplify_video/42/pl/avc1/video.m3u8" });
 completedRequestListener({ tabId: -1, url: "https://video.twimg.com/amplify_video/42/pl/master.m3u8" });
 await new Promise(resolve => setImmediate(resolve));
+captures.length = 0;
 const segmentedRequest = await messageListener(
   { command: "resolve-segmented-video", mediaFamilies: ["video.twimg.com/amplify_video/42"] },
   { tab: { id: 91, url: "https://x.com/home" } },
@@ -295,7 +317,7 @@ playedVideo.videoHeight = 720;
 playedVideo.clientWidth = 640;
 playedVideo.clientHeight = 360;
 contentListeners.get("pointerdown")({ isTrusted: true, target: playedVideo });
-contentListeners.get("play")({ isTrusted: true, target: playedVideo });
+contentListeners.get("play")({ isTrusted: false, target: playedVideo });
 await new Promise(resolve => setImmediate(resolve));
 assert.equal(contentMessages.length, 2);
 assert.equal(contentMessages[1].command, "explicit-video-opened");

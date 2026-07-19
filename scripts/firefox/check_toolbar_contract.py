@@ -65,6 +65,11 @@ def main() -> int:
     assert "if (image.currentSrc && isXMediaUrl(image.currentSrc)) return inViewport" in content
     assert "if (xMedia) return inViewport" in background
     assert 'lookupAlias(instanceUrl, instanceId || "", pairId' in background
+    assert "canonical_presentation: presentation" in background
+    assert 'command: "visible-media-changed", images, videos' in content
+    assert "settled_video_frame" not in background
+    assert '"stored_video_frame"' in background
+    assert "if (!(event.target instanceof HTMLVideoElement)) return" in content
     assert "browser.tabs.onUpdated.addListener" in background
     assert "browser.tabs.onActivated.addListener" in background
     assert "scheduleTabScan(tabId)" in background

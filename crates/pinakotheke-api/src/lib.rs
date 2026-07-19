@@ -173,6 +173,8 @@ struct CacheAliasLookupEnvelope {
     instance_id: String,
     origin: String,
     canonical_alias: String,
+    #[serde(default)]
+    canonical_presentation: Option<String>,
     adapter_id: String,
     adapter_version: String,
 }
@@ -2178,6 +2180,17 @@ async fn capture_alias_evidence(
     if envelope.adapter_id.is_empty() || envelope.adapter_id.len() > 128 {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);
     }
+    if envelope
+        .canonical_presentation
+        .as_deref()
+        .is_some_and(|value| {
+            value.len() > 2_048
+                || !value.starts_with("https://")
+                || value.contains([' ', '\n', '\r', '@', '?', '#'])
+        })
+    {
+        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+    }
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
@@ -2185,13 +2198,14 @@ async fn capture_alias_evidence(
     let plan = capture_plans
         .lock()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .settled_for_alias(
+        .settled_for_alias_or_presentation(
             context.actor_id(),
             &envelope.pairing_id,
             now,
             &envelope.origin,
             &envelope.adapter_version,
             &envelope.canonical_alias,
+            envelope.canonical_presentation.as_deref(),
         );
     let Some(plan) = plan else {
         eprintln!("pinakotheke_cache_evidence outcome=miss stage=settled_alias");
