@@ -1900,6 +1900,12 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   request for a 16-image Firefox viewport, correct green framing for every
   returned original and none for misses, a bounded 256-identity server test,
   local quality/docs verification, deployment, and real-Firefox proof.
+  Implementation and deterministic regressions were delivered in ``e496252``.
+  Version 1.23.0 is deployed on the DASServer; a live authenticated request for
+  256 identities returned HTTP 200 with all 256 results in 5.266 ms. The final
+  unchecked gate is installation and real-Firefox proof of the matching 1.23.0
+  extension; Mozilla signing credentials are not currently available in the
+  development environment, so this is not falsely recorded as deployed.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
