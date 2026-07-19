@@ -1367,6 +1367,17 @@ Exit criteria:
 - live reconciliation backfills existing records idempotently without deleting
   any DASObjectStore object.
 
+Completed by ``856a00b``. Local verification passed 237 native tests, strict
+Clippy, WASM compilation, deterministic Firefox contracts, quality checks, and
+the pinned Sphinx container. The x86_64 DASServer deployment backfilled 236
+historic source links, converged on the second dry run, recovered the failed
+explicit-original plan into its existing card, and retained unique catalogue
+IDs throughout. Compatibility-sensitive work used design language
+``fbfa28e55d1c8111ef95a139d83927c231534b5f``, Monas
+``dac0e113c8b197cb06abc38187d72f27e562ad63``, DASObjectStore
+``27ae0d9e936a68b5cd5783b44725d709e1ba665e``, and Mnemosyne
+``2244a49f5057ef6251b2760bd0729de8e2207f56``.
+
 ## 1.22.19 — Exact X image gallery convergence
 
 Observed thumbnails and manually opened originals now resolve to one stable
