@@ -2042,7 +2042,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   requires actor isolation, newly enabled origin admission, disabled media
   rejection, legacy-config non-authority, restart recovery, local release
   checks, DASServer deployment, and one live capture-plan admission from the
-  corrected generic video origin.
+  corrected generic video origin. Implementation ``5815882`` passes 254 Rust
+  tests, strict Clippy, Wasm compilation, repository quality checks, and both
+  pinned Sphinx container builds. DASServer runs ``1.27.4`` with no ``sites``
+  field in its private capture-authority file; both services are active, four
+  video-enabled exact-origin corpus rules remain persisted, and the served XPI
+  matches local SHA-256
+  ``6bb3bcc3ddee3510f39f85cab004762253db9870442a979770c21b8ff9d49733``.
+  Remaining handoff: one user-trusted play on the corrected generic origin,
+  followed by log evidence that the plan is admitted rather than rejected as
+  ``SiteNotEnabled``.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

@@ -1417,6 +1417,9 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   remain independent mandatory admission and worker-time gates.
 - Legacy ``sites`` records remain parseable but grant no authority. Restart
   recovery re-evaluates each pending plan against its actor's current corpus.
+- Implementation ``5815882`` is deployed on DASServer as ``1.27.4``. Its
+  private authority contains no site list, and the checksum-identical test XPI
+  is served; final acceptance awaits one user-trusted generic-video admission.
 - Compatibility-sensitive review used design language
   ``fbfa28e55d1c8111ef95a139d83927c231534b5f``, Monas
   ``dac0e113c8b197cb06abc38187d72f27e562ad63``, DASObjectStore
