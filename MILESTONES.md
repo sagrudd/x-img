@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.22.6
+Version: 1.22.7
 
 Updated: 2026-07-19
 

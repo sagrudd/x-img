@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.6
+Version: 1.22.7
 
 Updated: 2026-07-19
 
@@ -1772,6 +1772,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   A live request using the installed extension's scoped pairing now returns
   HTTP 200 ``outcome=hit`` with settled checksum and gallery delivery evidence.
   Only the repeat installed-browser visual check remains.
+  That check proved frames on unobstructed inline images, while X gallery-grid
+  wrappers could visually cover the framed ``img``. Version ``1.22.7`` applies
+  the same reversible browser-only state to the image and only its bounded
+  same-footprint wrapper chain; it never expands to the tweet or changes stored
+  bytes. Signed deployment and a repeat gallery-grid check remain.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

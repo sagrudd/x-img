@@ -23,6 +23,21 @@
     if (media.dataset) media.dataset.pinakothekeMediaToken = token;
     return token;
   };
+  const framingTargets = media => {
+    const targets = [media];
+    const mediaRect = media.getBoundingClientRect();
+    let parent = media.parentElement;
+    for (let depth = 0; parent && depth < 4; depth += 1, parent = parent.parentElement) {
+      const rect = parent.getBoundingClientRect();
+      const sameFootprint = Math.abs(rect.left - mediaRect.left) <= 3
+        && Math.abs(rect.top - mediaRect.top) <= 3
+        && Math.abs(rect.right - mediaRect.right) <= 3
+        && Math.abs(rect.bottom - mediaRect.bottom) <= 3;
+      if (!sameFootprint) break;
+      targets.push(parent);
+    }
+    return targets;
+  };
   const visibleImages = () => [...document.images]
     .filter(image => {
       const style = getComputedStyle(image);
@@ -67,11 +82,13 @@
         if (!matches) continue;
         matched += 1;
         if (message.command === "frame-stored" || message.state === "stored") {
-          media.classList.remove("pinakotheke-capture-selected");
-          media.classList.add("pinakotheke-stored-object");
+          for (const target of framingTargets(media)) {
+            target.classList.remove("pinakotheke-capture-selected");
+            target.classList.add("pinakotheke-stored-object");
+          }
           media.dataset.pinakothekeCaptureState = "Stored in ObjectStore";
         } else {
-          media.classList.add("pinakotheke-capture-selected");
+          for (const target of framingTargets(media)) target.classList.add("pinakotheke-capture-selected");
           media.dataset.pinakothekeCaptureState = message.label || "Selected for download";
         }
       } catch (_) { /* ignore malformed page media */ }

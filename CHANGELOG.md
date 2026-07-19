@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.22.7 - 2026-07-19
+
+- Make stored framing visible through X gallery overlays by marking the media
+  and only its same-footprint visual wrapper chain.
+
 ## 1.22.6 - 2026-07-19
 
 - Attach the authoritative gallery catalogue to the production monolith's

@@ -48,6 +48,8 @@ def main() -> int:
     assert 'command: "media-capture-state"' in background
     content = (EXTENSION / "content-explicit-open.js").read_text()
     assert "border: 2px solid #238636" in content
+    assert "framingTargets(media)" in content
+    assert "sameFootprint" in content
     assert "mediaToken" in content
     assert "recentPageActivation" not in content
     click_handler = popup_script[popup_script.index("run.onclick="):popup_script.index("toggle.onclick=")]
