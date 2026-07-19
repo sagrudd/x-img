@@ -1271,7 +1271,11 @@ only while the X-video site rule is enabled, records its stable
 ``video.twimg.com/{media-kind}/{media-id}`` family, and resolves it after trusted
 play against the families visible to that page. The shared list remains limited
 to 32 manifest URLs and two minutes. Diagnostics expose only ``observed``,
-``resolved``, or ``missing`` categories and never the URL.
+``resolved``, or ``missing`` categories and never the URL. Mozilla signed
+``1.20.1`` and the permanent-install fixture accepted its stable identity.
+DASServer runs the matching backend and serves the byte-identical signed XPI
+as ``application/x-xpinstall``. One fresh user-played video must still prove
+verified DASObjectStore settlement before XIMG-117 can close.
 
 ## Post-1.0 candidates
 

@@ -1447,8 +1447,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   of the matching ``1.20.0`` backend and XPI are complete. The user-played
   request still produced no plan because Firefox attributed the worker-owned
   manifest to no tab. ``1.20.1`` correlates such manifests by stable media
-  family under the enabled X-video rule; the settlement criterion remains
-  unchecked.
+  family under the enabled X-video rule. Implementation is pushed in
+  ``03b42e3``; Mozilla signing, permanent-install verification, and checksum-
+  identical DASServer deployment of the matching backend and XPI are complete.
+  The settlement criterion remains unchecked pending one fresh play with the
+  newly installed ``1.20.1`` extension.
 
 - [x] **XIMG-115 P0 — Make Monas restart invalidate sessions and harden product
   forwarding.** Completed in Monas ``0.8.4`` commits ``624e7b4``,
