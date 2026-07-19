@@ -11,6 +11,10 @@ user enables X ingress with videos selected. Existing installations show
 ``Permission required`` in the toolbar; choose ``Check visible media`` and
 approve the Firefox prompt, reload X, and play the video again. Denial is
 fail-open: playback remains served by X and no capture is claimed.
+The extension determines whether this permission is missing while rendering
+the toolbar. The subsequent request starts directly in the button handler,
+before any awaited work, because Firefox preserves approval eligibility only
+for the immediate user action.
 
 Automatic cache interaction
 ---------------------------

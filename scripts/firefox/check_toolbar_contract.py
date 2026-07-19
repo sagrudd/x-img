@@ -42,6 +42,9 @@ def main() -> int:
     assert "permissionOrigins(value, videos.checked, xIngress.checked)" in options_script
     assert "needsXMediaPermission" in popup_script
     assert "browser.permissions.request({origins:[X_MEDIA_PERMISSION]})" in popup_script
+    click_handler = popup_script[popup_script.index("run.onclick="):popup_script.index("toggle.onclick=")]
+    assert "await needsXMediaPermission" not in click_handler
+    assert click_handler.index("browser.permissions.request") < click_handler.index(".then(async granted")
     diagnostic_block = background[background.index("async function recordSiteDiagnostic"):]
     diagnostic_block = diagnostic_block[: diagnostic_block.index("async function recordSegmentedOriginFallback")]
     for forbidden_field in ("pageUrl", "mediaUrl", "canonicalAlias", "checksum", "cookie"):

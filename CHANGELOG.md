@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.20.3 - 2026-07-19
+
+- Preserve Firefox's user-action eligibility by invoking the X media-origin
+  permission request synchronously from the toolbar button handler.
+- Cache the asynchronously inspected permission state while rendering, before
+  the user clicks, so no awaited operation precedes the request.
+
 ## 1.20.2 - 2026-07-19
 
 - Treat the exact X video CDN origin as an explicit Firefox runtime permission.

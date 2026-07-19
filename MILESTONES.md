@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.20.2
+Version: 1.20.3
 
 Updated: 2026-07-19
 
@@ -1288,6 +1288,14 @@ for an existing saved rule. Refusal leaves ordinary X playback unchanged.
 Mozilla signed ``1.20.2`` and the permanent-install fixture accepted its stable
 identity. DASServer runs the matching backend and serves the checksum-identical
 XPI as ``application/x-xpinstall``.
+
+## 1.20.3 — Firefox user-action-safe permission request
+
+Live ``1.20.2`` displayed ``Requesting access to X video media`` without a
+Firefox prompt. The toolbar handler awaited ``permissions.contains()`` before
+calling ``permissions.request()``; Firefox discards user-action eligibility
+after an awaited promise. ``1.20.3`` caches the inspected state while rendering
+and invokes the request synchronously from the button click.
 
 ## Post-1.0 candidates
 
