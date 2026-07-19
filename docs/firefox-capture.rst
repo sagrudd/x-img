@@ -83,6 +83,14 @@ make synthetic or unrelated input eligible. An unresolved trusted click is
 recorded as a redacted diagnostic rather than being mistaken for an
 ObjectStore failure.
 
+The admission budget distinguishes passive page observation from explicit
+selection. Automatic or observed candidates share the configured canonical
+page/day limit. Each explicitly opened image or user-played video is instead
+bounded with the other candidates belonging to that individual canonical
+presentation/post. Scrolling a profile containing many distinct posts cannot
+therefore exhaust one shared page allowance; repeated or malicious candidates
+for one selected item remain bounded, and exact replay remains idempotent.
+
 Clicking an eligible linked image retains the stricter explicit-original path
 and uses the same verified status before framing. Firefox sends the rendered
 image URL as the byte source and records an enclosing link, such as an X status

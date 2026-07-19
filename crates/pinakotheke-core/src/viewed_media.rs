@@ -582,7 +582,17 @@ impl CapturePlanService {
             .iter()
             .filter(|pending| {
                 pending.actor_id == actor_id
-                    && pending.plan.canonical_page_url == canonical_page_url
+                    && match request.capture_kind {
+                        CaptureKind::ObservedThumbnail => {
+                            pending.plan.capture_kind == CaptureKind::ObservedThumbnail
+                                && pending.plan.canonical_page_url == canonical_page_url
+                        }
+                        CaptureKind::ExplicitOriginal | CaptureKind::ExplicitVideo => {
+                            pending.plan.capture_kind != CaptureKind::ObservedThumbnail
+                                && pending.plan.canonical_presentation_url
+                                    == canonical_presentation_url
+                        }
+                    }
                     && pending.admitted_at_epoch_seconds / 86_400 == day
             })
             .count() as u64;
@@ -1306,6 +1316,47 @@ mod tests {
         assert_eq!(
             planner.plan("actor", 1, third_request),
             Err(CapturePlanError::CandidateBudgetExceeded)
+        );
+    }
+
+    #[test]
+    fn explicit_selections_are_bounded_per_presentation_not_long_page() {
+        let mut planner = service();
+        let site = planner
+            .sites
+            .get_mut("https://example.invalid")
+            .expect("site");
+        site.allow_explicit_originals = true;
+
+        for sequence in 1..=3 {
+            let mut selected = request();
+            selected.capture_kind = CaptureKind::ExplicitOriginal;
+            selected.media_url = format!("https://example.invalid/media/{sequence}.webp");
+            selected.presentation_url = Some(format!(
+                "https://example.invalid/creator/status/{sequence}/photo/1"
+            ));
+            planner
+                .plan("actor", 1, selected)
+                .expect("a distinct explicitly selected item on the same long page");
+        }
+
+        let presentation = "https://example.invalid/creator/status/1/photo/1";
+        let mut second_for_item = request();
+        second_for_item.capture_kind = CaptureKind::ExplicitOriginal;
+        second_for_item.media_url = "https://example.invalid/media/1-second.webp".into();
+        second_for_item.presentation_url = Some(presentation.into());
+        planner
+            .plan("actor", 1, second_for_item)
+            .expect("second explicit candidate for one presentation");
+
+        let mut over_item_budget = request();
+        over_item_budget.capture_kind = CaptureKind::ExplicitOriginal;
+        over_item_budget.media_url = "https://example.invalid/media/1-third.webp".into();
+        over_item_budget.presentation_url = Some(presentation.into());
+        assert_eq!(
+            planner.plan("actor", 1, over_item_budget),
+            Err(CapturePlanError::CandidateBudgetExceeded),
+            "one selected presentation remains bounded without exhausting its scrolling page",
         );
     }
 

@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.27.2
+Version: 1.27.3
 
 Updated: 2026-07-19
 
@@ -1408,6 +1408,16 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   ``pinakotheke_media`` store has no folder-profile binding and the current
   DASObjectStore application-auth surface has no exact-object delete operation;
   raw S3 deletion is explicitly not accepted as release evidence.
+
+## 1.27.3 — Long-timeline explicit-selection admission
+
+- Automatic or observed candidates retain the configured per-page daily
+  budget.
+- Explicit user-opened images and user-played videos use the same configured
+  bound per individual presentation/post, so selections from distinct posts
+  do not exhaust one long scrolling profile URL.
+- Rejections emit only a fixed capture-plan error category in server logs;
+  page, media, and presentation URLs remain excluded.
 
 ## 1.27.2 — Native-control trusted video activation
 

@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.27.2
+Version: 1.27.3
 
 Updated: 2026-07-19
 
@@ -2018,6 +2018,15 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``1.27.2`` and serves the checksum-identical unsigned test XPI at the
   versioned download route with SHA-256
   ``e5034a041638497ffe905db4dd2664037e732563ccbeb88cd1b417f02f2891fc``.
+- [ ] **XIMG-133 P0 — Remove false long-timeline candidate exhaustion.** Keep
+  automatic/observed media bounded by canonical page and day, but account for
+  explicit user-opened images and user-played videos by their individual
+  canonical presentation/post. Distinct selected posts on one virtualized
+  profile must not consume one shared 64-item ceiling. Preserve a configured
+  per-presentation bound, idempotent replay, and redacted categorical rejection
+  logging. Acceptance requires deterministic automatic-page and explicit-item
+  budget tests, local release checks, deployment, and one new deep-timeline
+  explicit original admitted beyond the existing live 64-plan history.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

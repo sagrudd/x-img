@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.27.3 - 2026-07-19
+
+- Scopes explicit user-opened image and user-played video candidate budgets to
+  the selected presentation/post instead of an entire scrolling profile page.
+- Retains the configured per-page daily limit for automatic or observed
+  candidates and the configured per-presentation limit for explicit media.
+- Adds redacted categorical server diagnostics for capture-plan rejection.
+
 ## 1.27.2 - 2026-07-19
 
 - Admits a visible video's trusted native-control play when Firefox reports an

@@ -2161,13 +2161,19 @@ async fn capture_plan(
     let mut capture_plans = capture_plans
         .lock()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let plan = match destination {
+    let planned = match destination {
         Some(destination) => {
             capture_plans.plan_with_destination(context.actor_id(), now, request, destination)
         }
         None => capture_plans.plan(context.actor_id(), now, request),
-    }
-    .map_err(capture_plan_status)?;
+    };
+    let plan = match planned {
+        Ok(plan) => plan,
+        Err(error) => {
+            eprintln!("pinakotheke_ingress event=plan_rejected reason={error:?}");
+            return Err(capture_plan_status(error));
+        }
+    };
     let already_settled = capture_plans.is_settled(context.actor_id(), &plan.plan_id);
     eprintln!(
         "pinakotheke_ingress event={} plan_id={} kind={:?} origin={} site_id={}",
