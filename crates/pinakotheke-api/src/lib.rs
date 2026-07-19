@@ -235,6 +235,7 @@ struct CaptureCompletionRuntime {
     destination_revalidator: Option<Mutex<HostCaptureDestinationRevalidateBackend>>,
     in_flight: Mutex<BTreeSet<String>>,
     progress: Arc<Mutex<std::collections::BTreeMap<String, CaptureProgressUpdate>>>,
+    reconciliation: Option<GalleryReconciliationAuthority>,
 }
 
 const CACHE_LOOKUP_SCHEMA_VERSION: &str = "x-img.cache-alias-lookup.v1";
@@ -1180,6 +1181,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                 .layer(Extension(Arc::clone(&gallery)))
                 .layer(Extension(deletion));
         }
+        let completion_reconciliation = reconciliation.clone();
         if let Some(reconciliation) = reconciliation {
             let convergence = reconciliation.report();
             protected = protected
@@ -1187,7 +1189,8 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                     "/products/pinakotheke/api/operations/v1/gallery-convergence",
                     get(gallery_convergence),
                 )
-                .layer(Extension(Arc::clone(&convergence)));
+                .layer(Extension(Arc::clone(&convergence)))
+                .layer(Extension(reconciliation.clone()));
             let reconciler = reconciliation.clone();
             let reconciled_gallery = Arc::clone(&gallery);
             tokio::spawn(async move {
@@ -1222,6 +1225,7 @@ pub fn monolith_router_with_gallery_web_delivery_and_capture_authority(
                 destination_revalidator: destination_revalidator.map(Mutex::new),
                 in_flight: Mutex::new(BTreeSet::new()),
                 progress: Arc::new(Mutex::new(std::collections::BTreeMap::new())),
+                reconciliation: completion_reconciliation,
             });
             for (actor_id, plan) in recoverable {
                 let _ = schedule_capture_runtime(&runtime, actor_id, plan);
@@ -1678,6 +1682,7 @@ async fn delete_gallery_item(
     authority: Option<Extension<GalleryDeletionAuthority>>,
     Path(catalogue_id): Path<String>,
     gallery: Option<Extension<MonasGalleryCatalogue>>,
+    reconciliation: Option<Extension<GalleryReconciliationAuthority>>,
     Json(request): Json<GalleryDeleteRequest>,
 ) -> Result<Json<GalleryDeleteResponse>, StatusCode> {
     let context = context.ok_or(StatusCode::UNAUTHORIZED)?.0;
@@ -1719,6 +1724,10 @@ async fn delete_gallery_item(
         .replace(candidate.items().to_vec())
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     *catalogue = candidate;
+    drop(catalogue);
+    if let Some(reconciliation) = reconciliation {
+        schedule_gallery_reconciliation(reconciliation.0, Arc::clone(&gallery));
+    }
     Ok(Json(GalleryDeleteResponse {
         schema_version: GALLERY_DELETE_SCHEMA,
         outcome: "deleted",
@@ -2564,7 +2573,21 @@ fn settle_capture_runtime(
         .gallery
         .lock()
         .map_err(|_| CaptureCompletionError::InvalidEvidence)? = refreshed;
+    if let Some(reconciliation) = runtime.reconciliation.clone() {
+        schedule_gallery_reconciliation(reconciliation, Arc::clone(&runtime.gallery));
+    }
     Ok(outcome)
+}
+
+fn schedule_gallery_reconciliation(
+    authority: GalleryReconciliationAuthority,
+    gallery: MonasGalleryCatalogue,
+) {
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        handle.spawn(async move {
+            let _ = tokio::task::spawn_blocking(move || authority.reconcile(&gallery)).await;
+        });
+    }
 }
 
 fn capture_plan_status(error: CapturePlanError) -> StatusCode {
@@ -3473,6 +3496,7 @@ mod tests {
             Some(Extension(authority)),
             axum::extract::Path("media-1".into()),
             Some(Extension(gallery)),
+            None,
             axum::Json(super::GalleryDeleteRequest {
                 schema_version: super::GALLERY_DELETE_SCHEMA.into(),
                 confirmation: "DELETE media-1".into(),
@@ -3511,6 +3535,7 @@ mod tests {
             Some(Extension(authority)),
             axum::extract::Path("media-1".into()),
             Some(Extension(Arc::clone(&gallery))),
+            None,
             axum::Json(super::GalleryDeleteRequest {
                 schema_version: super::GALLERY_DELETE_SCHEMA.into(),
                 confirmation: "DELETE media-1".into(),
@@ -3923,6 +3948,7 @@ mod tests {
             destination_revalidator: None,
             in_flight: Mutex::new(std::collections::BTreeSet::new()),
             progress: Arc::new(Mutex::new(std::collections::BTreeMap::new())),
+            reconciliation: None,
         };
         assert!(revalidate_capture_destination(&runtime, "synthetic-monas-user", &plan).is_err());
         store

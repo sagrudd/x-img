@@ -1961,7 +1961,7 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   assurance proves zero capture from viewport observation followed by trusted
   opened-image and played-video capture; the remaining acceptance evidence is
   one prolonged user-driven X timeline session with the deployed extension.
-- [ ] **XIMG-128 P0 — Enforce DASObjectStore/gallery convergence.** Treat the
+- [x] **XIMG-128 P0 — Enforce DASObjectStore/gallery convergence.** Treat the
   live DASObjectStore catalogue as payload authority and Pinakotheke as its
   metadata projection. Reconcile at startup and after delete/commit events;
   never report an object as available when its exact endpoint/store/object
@@ -1975,8 +1975,17 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   deploying and restarting ``1.24.0``, Garage, DASObjectStore catalogue,
   Pinakotheke gallery, and capture-plan counts remained exactly zero; trusted
   TLS readiness and the matching XPI route passed. Automatic reconciliation
-  after a future out-of-band DAS deletion remains required before this item can
-  be closed.
+  after a future out-of-band DAS deletion is implemented in ``9fcb81a``.
+  Pinakotheke ``1.27.0`` now reconciles the complete bounded ``Protected`` DAS
+  catalogue at startup and every ten seconds, atomically tombstones missing
+  representations, restores returned authority, defers on a concurrent gallery
+  change, and exposes authenticated aggregate convergence diagnostics. Local
+  native, strict Clippy, Wasm, quality, Sphinx container, helper-protocol,
+  external-deletion, restart, duplicate, orphan, and non-protected-state proofs
+  pass. The exact x86_64 package is deployed on DASServer; its live
+  authenticated report is authoritative ``0``, projected-ready ``0``, orphan
+  ``0``, stale ``54`` after the earlier out-of-band reset, and a subsequent
+  periodic pass reports zero further changes.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted
