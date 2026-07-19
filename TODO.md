@@ -1745,6 +1745,8 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``generic-observed-image`` was incorrectly compared with server site policy
   ID ``x-web``. Version ``1.22.3`` removes that invalid comparison without
   weakening actor, pairing, origin, version, settlement, or gallery checks.
+  Fix ``cbfcf62`` and the matching Mozilla-signed ``1.22.3`` package are now
+  deployed; the next browse is the visual acceptance check.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**
