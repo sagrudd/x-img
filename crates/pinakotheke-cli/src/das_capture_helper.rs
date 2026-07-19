@@ -226,7 +226,7 @@ pub(crate) fn run_protocol() -> Result<(), Box<dyn std::error::Error>> {
 
 fn protocol_failure_code(error: &(dyn std::error::Error + 'static)) -> &'static str {
     match error.to_string().as_str() {
-        "segmented video assembly failed" => "segmented_assembly",
+        "bounded segmented video assembly failed" => "segmented_assembly",
         "HTTPS media retrieval failed" => "media_retrieval",
         "retrieved object is not an eligible bounded medium"
         | "retrieved media payload is invalid" => "invalid_media",
@@ -571,7 +571,14 @@ fn acquire_with_progress(
     let segmented_manifest = video && is_segmented_manifest(retrieval_media_url);
     let content_type = if segmented_manifest {
         progress("downloading", 5, None, None);
-        assemble_segmented_video(config, retrieval_media_url, &payload, max_bytes)?;
+        assemble_segmented_video(
+            config,
+            retrieval_media_url,
+            &request.canonical_page_url,
+            &request.origin,
+            &payload,
+            max_bytes,
+        )?;
         progress(
             "downloading",
             70,
@@ -799,6 +806,8 @@ fn is_segmented_manifest(raw_url: &str) -> bool {
 fn assemble_segmented_video(
     config: &Config,
     manifest_url: &str,
+    page_url: &str,
+    origin: &str,
     payload: &Path,
     max_bytes: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -811,6 +820,7 @@ fn assemble_segmented_video(
         .as_deref()
         .ok_or("segmented video requires a timeout boundary")?;
     let max_bytes_text = max_bytes.to_string();
+    let origin_header = format!("Origin: {origin}\r\n");
     let mut command = Command::new(timeout);
     command
         .args(["--signal=TERM", "--kill-after=10", "300"])
@@ -823,6 +833,10 @@ fn assemble_segmented_video(
             "error",
             "-rw_timeout",
             "15000000",
+            "-referer",
+            page_url,
+            "-headers",
+            &origin_header,
             "-protocol_whitelist",
             "https,tcp,tls,crypto",
             "-i",
@@ -1551,6 +1565,12 @@ mod tests {
         assert_eq!(protocol_failure_outcome(&permission), "policy_blocked");
         assert_eq!(protocol_failure_outcome(&unavailable), "unavailable");
         assert_eq!(protocol_failure_outcome(&invalid), "rejected");
+        let segmented = "bounded segmented video assembly failed".to_owned();
+        let segmented: Box<dyn std::error::Error> = segmented.into();
+        assert_eq!(
+            protocol_failure_code(segmented.as_ref()),
+            "segmented_assembly"
+        );
     }
 
     #[test]
@@ -1677,9 +1697,13 @@ mod tests {
         let ffmpeg = root.join("ffmpeg");
         executable(&ffmpeg, "#!/bin/sh\nexit 0\n");
         let timeout = root.join("timeout");
+        let arguments = root.join("arguments");
         executable(
             &timeout,
-            "#!/bin/sh\nfor last do :; done\nprintf assembled-video > \"$last\"\n",
+            &format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" > '{}'\nfor last do :; done\nprintf assembled-video > \"$last\"\n",
+                arguments.display()
+            ),
         );
         let config = Config {
             schema_version: CONFIG_SCHEMA.into(),
@@ -1702,11 +1726,16 @@ mod tests {
         assemble_segmented_video(
             &config,
             "https://video.example.invalid/master.m3u8",
+            "https://example.invalid/watch/1",
+            "https://example.invalid",
             &payload,
             1024,
         )
         .unwrap();
         assert_eq!(fs::read(&payload).unwrap(), b"assembled-video");
+        let arguments = fs::read_to_string(arguments).unwrap();
+        assert!(arguments.contains("-referer https://example.invalid/watch/1"));
+        assert!(arguments.contains("-headers Origin: https://example.invalid"));
         assert!(is_segmented_manifest(
             "https://example.invalid/master.m3u8?token=redacted"
         ));

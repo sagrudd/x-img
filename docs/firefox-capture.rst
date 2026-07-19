@@ -311,6 +311,13 @@ can enter the gallery. Encrypted, DRM-protected, authorization-dependent,
 unresolved, oversized, or timed-out media remains origin-served or failed with
 a bounded diagnostic.
 
+Some clear-media CDNs require ordinary provenance headers even when the
+manifest URL already carries a bounded retrieval capability. Pinakotheke sends
+only the plan's validated, credential-free canonical page as ``Referer`` and
+its exact enabled HTTPS origin as ``Origin`` during segmented assembly. It does
+not accept arbitrary request headers from Firefox and never forwards cookies,
+authorization state, passwords, or site-local storage.
+
 The experimental generic adapter is available for any exact HTTPS origin only
 after that origin has been added through the site policy UI and Firefox has
 granted its optional permission. Explicit adapters may remain origin-limited.

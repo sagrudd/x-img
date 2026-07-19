@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.27.4
+Version: 1.27.5
 
 Updated: 2026-07-19
 
@@ -1408,6 +1408,15 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   ``pinakotheke_media`` store has no folder-profile binding and the current
   DASObjectStore application-auth surface has no exact-object delete operation;
   raw S3 deletion is explicitly not accepted as release evidence.
+
+## 1.27.5 — Credential-free segmented retrieval provenance
+
+- Clear HLS/DASH assembly supplies only the validated canonical-page referrer
+  and exact enabled origin already bound to the admitted plan.
+- No cookie, authorization header, arbitrary browser header, credential, or
+  storage state crosses into server retrieval.
+- A deterministic structured-argument test pins the bounded FFmpeg invocation,
+  and assembly failures retain a specific redacted diagnostic category.
 
 ## 1.27.4 — Actor-scoped site-corpus capture authority
 

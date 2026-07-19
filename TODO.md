@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.27.4
+Version: 1.27.5
 
 Updated: 2026-07-19
 
@@ -2052,6 +2052,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Remaining handoff: one user-trusted play on the corrected generic origin,
   followed by log evidence that the plan is admitted rather than rejected as
   ``SiteNotEnabled``.
+- [ ] **XIMG-135 P0 — Retrieve clear segmented media with bounded provenance.**
+  Supply only the validated canonical page referrer and exact enabled origin
+  already present in the admitted plan when FFmpeg retrieves a clear HLS/DASH
+  manifest. Never forward cookies, authorization headers, arbitrary browser
+  headers, credentials, or browser storage. Report segmented assembly failures
+  categorically. Acceptance requires structured-argument and redaction tests,
+  local release checks, DASServer deployment, retry of the already admitted
+  generic video plan, and verified DASObjectStore settlement.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [x] **XIMG-129 P0 — Generalize trusted-play video capture and feedback.** On
   any explicitly enabled HTTPS origin, admit only a video selected by a trusted

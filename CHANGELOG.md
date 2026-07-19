@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.27.5 - 2026-07-19
+
+- Supplies clear HLS/DASH assembly with the credential-free canonical page
+  referrer and exact enabled origin already bound to the capture plan.
+- Continues to exclude cookies, authorization headers, browser credentials,
+  and arbitrary caller-supplied request headers from server-side retrieval.
+- Reports bounded segmented-assembly failures accurately instead of collapsing
+  them into the generic capture-rejected category.
+
 ## 1.27.4 - 2026-07-19
 
 - Makes the authenticated actor's persisted exact-origin site corpus the sole
