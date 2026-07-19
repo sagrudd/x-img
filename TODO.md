@@ -2,7 +2,7 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.22.7
+Version: 1.22.8
 
 Updated: 2026-07-19
 
@@ -1779,6 +1779,14 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   bytes. Fix ``81bc048`` is pushed; Mozilla-signed ``1.22.7`` passed permanent
   installation and is deployed with the matching DASServer package. A repeat
   gallery-grid check remains.
+  The repeat check and captured screenshot showed the remaining functional
+  cause: the bounded visible-image list admitted avatars/emoji before actual X
+  media, and X photo overlays received trusted clicks instead of the underlying
+  unlinked ``img``. Version ``1.22.8`` prioritizes and admits only visible
+  ``pbs.twimg.com/media`` assets for X evidence/capture, derives status-page
+  provenance where available, and resolves a trusted click coordinate to the
+  visible X media beneath the overlay. Signed deployment and live verification
+  remain.
 - [ ] **XIMG-202 P3 — Add perceptual duplicate grouping.**
 - [ ] **XIMG-203 P3 — Add collections, tags, and saved searches.**
 - [ ] **XIMG-204 P3 — Add provenance-linked derivatives/transcodes.**

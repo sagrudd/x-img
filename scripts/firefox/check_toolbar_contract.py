@@ -50,6 +50,9 @@ def main() -> int:
     assert "border: 2px solid #238636" in content
     assert "framingTargets(media)" in content
     assert "sameFootprint" in content
+    assert "isXMediaUrl" in content
+    assert "[...document.images].reverse().find" in content
+    assert 'url.pathname.startsWith("/media/")' in content + background
     assert "mediaToken" in content
     assert "recentPageActivation" not in content
     click_handler = popup_script[popup_script.index("run.onclick="):popup_script.index("toggle.onclick=")]

@@ -467,20 +467,28 @@ function displayedImages() {
       }
       return { url: image.currentSrc, presentationUrl, width: image.naturalWidth, height: image.naturalHeight };
     })
+    .sort((left, right) => {
+      const isXMedia = raw => {
+        try {
+          const url = new URL(raw);
+          return url.hostname === "pbs.twimg.com" && url.pathname.startsWith("/media/");
+        } catch (_) { return false; }
+      };
+      return Number(isXMedia(right.url)) - Number(isXMedia(left.url));
+    })
     .slice(0, 16);
 }
 
 function eligibleObservedImages(origin, rule, images) {
   if (origin !== "https://x.com" || !rule.xIngress) return images;
-  // X changes the delivery host used by images without changing the page-level
-  // opt-in contract.  Restricting observed media to one historical CDN host
-  // prevented both authoritative cache-evidence lookup and capture for images
-  // Firefox had visibly rendered.  The content observer has already bounded
-  // this list to visible HTTPS images; the server remains the policy authority
-  // for acquisition and treats an unknown alias as a harmless cache miss.
+  // Only user-interest media participates in X capture/evidence. Avatars,
+  // emoji, and interface imagery must not consume the bounded candidate budget
+  // or receive a misleading stored frame.
   return images.filter(observed => {
     try {
-      return new URL(observed.url).protocol === "https:";
+      const url = new URL(observed.url);
+      return url.protocol === "https:" && url.hostname === "pbs.twimg.com"
+        && url.pathname.startsWith("/media/");
     } catch (_) {
       return false;
     }

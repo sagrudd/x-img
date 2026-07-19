@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.22.8 - 2026-07-19
+
+- Prioritize genuine X media before applying the visible-candidate bound and
+  exclude avatars, emoji, and interface imagery from capture/evidence frames.
+- Resolve trusted clicks on X photo overlays to the visible underlying media
+  so opening an unlinked gallery tile submits the explicit original again.
+
 ## 1.22.7 - 2026-07-19
 
 - Make stored framing visible through X gallery overlays by marking the media

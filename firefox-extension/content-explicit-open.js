@@ -15,6 +15,18 @@
   (document.head || document.documentElement).append(style);
   const canonical = raw => { const url = new URL(raw); url.search = ""; url.hash = ""; return url.href; };
   const mediaTokens = new WeakMap();
+  const isXMediaUrl = raw => {
+    try {
+      const url = new URL(raw);
+      return url.protocol === "https:" && url.hostname === "pbs.twimg.com"
+        && url.pathname.startsWith("/media/");
+    } catch (_) {
+      return false;
+    }
+  };
+  const presentationUrlFor = image => image.closest("a[href]")?.href
+    || image.closest("article")?.querySelector?.('a[href*="/status/"]')?.href
+    || location.href;
   const mediaTokenFor = media => {
     let token = mediaTokens.get(media) || media.dataset?.pinakothekeMediaToken;
     if (!token) token = globalThis.crypto?.randomUUID?.()
@@ -52,11 +64,12 @@
     })
     .map(image => ({
       url: image.currentSrc,
-      presentationUrl: image.closest("a[href]")?.href || image.currentSrc,
+      presentationUrl: presentationUrlFor(image),
       width: image.naturalWidth,
       height: image.naturalHeight,
       mediaToken: mediaTokenFor(image),
     }))
+    .sort((left, right) => Number(isXMediaUrl(right.url)) - Number(isXMediaUrl(left.url)))
     .slice(0, 16);
   let observationTimer;
   const observed = () => {
@@ -258,15 +271,23 @@
   }, true);
   document.addEventListener("click", event => {
     if (!event.isTrusted || event.button !== 0) return;
-    const image = event.target instanceof Element ? event.target.closest("img") : null;
+    const directImage = event.target instanceof Element ? event.target.closest("img") : null;
+    const image = directImage || [...document.images].reverse().find(candidate => {
+      if (location.origin !== "https://x.com" || !isXMediaUrl(candidate.currentSrc)) return false;
+      const rect = candidate.getBoundingClientRect();
+      return Number.isFinite(event.clientX) && Number.isFinite(event.clientY)
+        && event.clientX >= rect.left && event.clientX <= rect.right
+        && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    });
     if (!image || !image.currentSrc || image.naturalWidth < 1 || image.naturalHeight < 1) return;
     const link = image.closest("a[href]");
-    if (!link && !document.contentType?.startsWith("image/")) return;
+    const xMedia = location.origin === "https://x.com" && isXMediaUrl(image.currentSrc);
+    if (!link && !xMedia && !document.contentType?.startsWith("image/")) return;
     // The enclosing link is presentation provenance (for example an X status
     // page), not necessarily the image payload. Always submit the bytes that
     // Firefox actually rendered as the media candidate.
     const mediaUrl = image.currentSrc;
-    const presentationUrl = link?.href || mediaUrl;
+    const presentationUrl = presentationUrlFor(image);
     try {
       if (new URL(mediaUrl).protocol !== "https:") return;
     } catch (_) {

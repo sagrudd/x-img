@@ -123,7 +123,6 @@ const xObserved = vm.runInContext(`eligibleObservedImages("https://x.com", ${JSO
 ])`, backgroundContext);
 assert.deepEqual(Array.from(xObserved, item => item.url), [
   "https://pbs.twimg.com/media/synthetic.jpg",
-  "https://abs.twimg.com/emoji/v2/svg/1f380.svg",
 ]);
 const genericObserved = vm.runInContext(`eligibleObservedImages("https://art.example.invalid", {}, [
   { url: "https://media.example.invalid/synthetic.jpg" }
