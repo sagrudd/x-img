@@ -1426,6 +1426,13 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   single-file remote-completion contract. The optional all-sibling check remains
   intentionally pinned to older Monas/DASObjectStore revisions and reported
   that drift; the public x-img-owned contract and clean-build checks pass.
+- Implementation ``88f37dd`` is deployed on DASServer as ``1.27.6`` with an
+  explicitly true daemon-submission flag and absolute reviewed daemon socket.
+  Both services are active, the versioned XPI is served, startup reconciliation
+  reports 430 authoritative objects with zero stale projections, and the
+  previously settled 69,977,212-byte MP4 remains checksum- and range-readable.
+  One fresh installed-Firefox capture after this deployment remains the final
+  XIMG-109 acceptance event.
 
 ## 1.27.5 — Credential-free segmented retrieval provenance
 

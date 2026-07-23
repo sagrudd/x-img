@@ -1302,8 +1302,16 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   Pinakotheke ``1.27.6`` removes the last parser/documentation ambiguity:
   ``submit_to_daemon`` must be explicitly present and true, and only one final
   daemon event may authorize settlement. Transfer-only output, multiple final
-  events, or trailing contradictory output fails closed. Local release checks,
-  DASServer deployment, and live verification remain before closure.
+  events, or trailing contradictory output fails closed. Implementation
+  ``88f37dd`` passes 256 Rust tests, strict Clippy, Wasm, quality, public
+  contract, and both pinned Sphinx container checks. DASServer runs ``1.27.6``;
+  its private config has the explicit flag and absolute daemon socket, both
+  services are active, the matching XPI is served, startup convergence reports
+  430 authoritative objects and zero stale projections, and the previously
+  settled 69,977,212-byte MP4 remains checksum- and range-readable. No pending
+  browser plan existed after deployment. Remaining handoff: one new
+  installed-Firefox image or video selection must settle through this exact
+  binary before marking the item complete.
 
 - [x] **XIMG-110 P0 — Generalize trusted-play progressive video capture.**
   Remove the accidental single-source restriction from the first-party capture
