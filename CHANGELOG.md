@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.27.7 - 2026-07-23
+
+- Record DASObjectStore 0.124.0's new application-authorized exact-object
+  deletion boundary as the concrete XIMG-130 dependency.
+- Keep authoritative deletion unavailable until the Pinakotheke helper,
+  capacity reconciliation, deployment, and live synthetic evidence are
+  complete; raw S3 deletion remains prohibited.
+
 ## 1.27.6 - 2026-07-23
 
 - Makes ``submit_to_daemon: true`` an explicit mandatory capture-helper

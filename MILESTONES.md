@@ -2,7 +2,7 @@
 
 Status: 1.0 stable release
 
-Version: 1.27.6
+Version: 1.27.7
 
 Updated: 2026-07-23
 
@@ -1404,10 +1404,24 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
 - DASObjectStore remains responsible for current authorization, retention
   policy, provider mutation, authoritative catalogue reconciliation, and audit.
 - Pinakotheke implementation ``846e4aa`` and local browser/native/docs evidence
-  pass. Live release remains gated because the Garage-backed
-  ``pinakotheke_media`` store has no folder-profile binding and the current
-  DASObjectStore application-auth surface has no exact-object delete operation;
-  raw S3 deletion is explicitly not accepted as release evidence.
+  pass. DASObjectStore ``0.124.0`` commit
+  ``7cf31c3cb1582ad9817dc98b7db57fd335007735`` now supplies the missing scoped
+  application ``delete`` operation, exact Garage evidence verification,
+  provider delete/absence proof, atomic catalogue withdrawal, idempotent
+  absence, and redacted audit. Release remains gated on the narrow
+  Pinakotheke helper transport, capacity-ledger reconciliation, deployment, and
+  live synthetic deletion. Raw S3 deletion is explicitly not accepted as
+  release evidence.
+
+## 1.27.7 — Authoritative deletion dependency unblocked
+
+- DASObjectStore now has the application-authorized exact-object deletion
+  boundary required by XIMG-130.
+- Pinakotheke's existing destructive review, shared-object expansion, strict
+  helper protocol, and authority-before-projection ordering remain unchanged.
+- The next slice implements the host helper against DASObjectStore
+  ``dasobjectstore.application_object_delete.v1`` and proves a synthetic
+  image/video deletion without touching user media.
 
 ## 1.27.6 — Unambiguous daemon-authoritative capture completion
 

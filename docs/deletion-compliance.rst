@@ -75,6 +75,22 @@ free-form provider responses and secrets are not retained. Provenance remains
 available for accountable compliance evidence even after normal presentation
 is removed.
 
+DASObjectStore authority status
+-------------------------------
+
+DASObjectStore ``0.124.0`` commit
+``7cf31c3cb1582ad9817dc98b7db57fd335007735`` defines the required
+``dasobjectstore.application_object_delete.v1`` authority. It separately scopes
+the ``delete`` operation, checks exact ObjectStore, object ID/version, size,
+SHA-256, Garage bucket/key, and provider metadata before mutation, verifies
+provider absence, then atomically withdraws the matching catalogue row and
+records a redacted audit event. Exact absence is idempotent success.
+
+The Pinakotheke helper transport and live synthetic deletion remain explicit
+integration work. Until that helper is configured, the deletion pane retains
+the record and reports the authority as unavailable. A raw S3 operation remains
+invalid even though the provider supports it.
+
 Local proof
 -----------
 
@@ -88,5 +104,5 @@ They prove catalogue-only scope, required approval, tombstone-before-delete,
 pending/retry behavior, exact-object verification, replay idempotency, shared
 duplicate expansion, projection-after-authority ordering, and conflict on
 changed authority identity. The live DASObjectStore deletion adapter still
-enforces current authorization, policy, retention, catalogue reconciliation,
-and audit immediately before mutation.
+has to prove authorization, policy, retention, provider absence, catalogue
+withdrawal, and audit immediately before Pinakotheke projection removal.
