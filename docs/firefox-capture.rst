@@ -511,15 +511,11 @@ and malformed receipts fail before settlement. ``policy_blocked``,
 The executable exchange is defined by
 ``contracts/dasobjectstore/pinakotheke-capture-acquire-helper.v1.schema.json``.
 
-The native helper prefers daemon-submitted uploads. Where a DASObjectStore
-release cannot yet map a logical ObjectStore identifier to its S3 export
-bucket during daemon admission, an administrator may set
-``submit_to_daemon`` to ``false`` in the private helper configuration. The
-helper then uses the same scoped ``dasobjectstore-remote`` client and store
-credential directly, requires its successful completion acknowledgement, and
-still records the logical ObjectStore identity in provenance. This is an
-explicit compatibility mode, not browser-side storage or a payload copy in
-Pinakotheke.
+The native helper requires daemon-submitted, single-file uploads.
+``submit_to_daemon`` must be present and ``true`` in the private helper
+configuration, and a reviewed absolute daemon socket is mandatory. There is no
+provider-only compatibility mode: a transfer acknowledgement cannot create a
+gallery card or a ``Stored in ObjectStore`` claim.
 This run-one interface is testable now and is the adapter seam for a later
 continuously scheduled host worker; it is not permission to scrape, traverse,
 open hidden media, ingest DRM-protected material, or forward browser cookies.
@@ -682,10 +678,12 @@ directory, validates a non-empty ``image/*`` response, and computes SHA-256 by
 bounded streaming. It invokes ``dasobjectstore-remote upload`` with an exact
 checksum-derived key and ``--submit-to-daemon``. A zero process exit is not
 enough: the helper requires the daemon response to say both ``Complete`` and
-``remote_s3_transfer_complete`` before emitting a verified receipt. The daemon
-therefore owns provider verification and catalogue completion. Scratch is
-deleted on success and every error; no payload is written beneath the
-Pinakotheke product root.
+``remote_s3_transfer_complete`` in exactly one terminal ``Final:`` event. That
+event must be the final non-empty client-output line; transfer-only output,
+multiple terminal events, or any contradictory result fails closed before a
+receipt is emitted. The daemon therefore owns provider verification and
+catalogue completion. Scratch is deleted on success and every error; no payload
+is written beneath the Pinakotheke product root.
 
 For a linked thumbnail, Firefox submits the visible media URL for acquisition
 and the link target as a separate presentation URL. A later trusted click on

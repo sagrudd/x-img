@@ -75,7 +75,6 @@ struct Config {
     dasobjectstore_remote_config: Option<PathBuf>,
     #[serde(default)]
     daemon_socket: Option<PathBuf>,
-    #[serde(default = "default_submit_to_daemon")]
     submit_to_daemon: bool,
     #[serde(default)]
     container_execution: Option<ContainerExecution>,
@@ -127,10 +126,6 @@ struct CodecGapRecord {
     audio_codec: String,
     occurrences: u64,
     last_observed_at_epoch_seconds: u64,
-}
-
-const fn default_submit_to_daemon() -> bool {
-    true
 }
 
 #[derive(Debug, Deserialize)]
@@ -653,12 +648,7 @@ fn acquire_with_progress(
         return Err("DASObjectStore remote upload failed".into());
     }
     let report = String::from_utf8(upload_stdout)?;
-    let daemon_verified = report.lines().any(|line| {
-        line.starts_with("Final:")
-            && line.contains("state=Complete")
-            && line.contains("stage=remote_s3_transfer_complete")
-    });
-    if !daemon_verified {
+    if !daemon_report_verified(&report) {
         return Err("DASObjectStore did not report verified completion".into());
     }
     let video_metadata = if video {
@@ -767,12 +757,7 @@ fn create_and_commit_video_poster(
         let mut upload =
             upload_command(config, scratch, &poster, request, &object_key, "image/webp")?;
         let (status, stdout) = output_bounded(&mut upload, 64 * 1024)?;
-        verified = status.success()
-            && String::from_utf8(stdout)?.lines().any(|line| {
-                line.starts_with("Final:")
-                    && line.contains("state=Complete")
-                    && line.contains("stage=remote_s3_transfer_complete")
-            });
+        verified = status.success() && daemon_report_verified(&String::from_utf8(stdout)?);
         if verified {
             break;
         }
@@ -796,6 +781,19 @@ fn create_and_commit_video_poster(
         poster_checksum_sha256: checksum,
         poster_content_length: metadata.len(),
     })
+}
+
+fn daemon_report_verified(report: &str) -> bool {
+    let mut nonempty = report.lines().filter(|line| !line.trim().is_empty());
+    let mut final_lines = nonempty.clone().filter(|line| line.starts_with("Final:"));
+    let Some(final_line) = final_lines.next() else {
+        return false;
+    };
+    if final_lines.next().is_some() || nonempty.next_back() != Some(final_line) {
+        return false;
+    }
+    final_line.contains("state=Complete")
+        && final_line.contains("stage=remote_s3_transfer_complete")
 }
 
 fn is_segmented_manifest(raw_url: &str) -> bool {
@@ -1882,6 +1880,41 @@ print(json.dumps({'schema_version':h['schema_version'],'endpoint_id':h['endpoint
         fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
         assert!(load_config(&path).is_err());
         fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn daemon_submission_flag_is_mandatory() {
+        let path = std::env::temp_dir().join(format!(
+            "pinakotheke-missing-daemon-submit-config-{}",
+            std::process::id()
+        ));
+        fs::write(
+            &path,
+            r#"{"schema_version":"pinakotheke.das-capture-helper.v1","endpoint_id":"endpoint-1","curl_executable":"/does/not/run","dasobjectstore_remote_executable":"/does/not/run","dasobjectstore_remote_config":"/does/not/read","daemon_socket":"/does/not/connect"}"#,
+        )
+        .unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        assert!(load_config(&path).is_err());
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn only_one_terminal_daemon_completion_is_authoritative() {
+        assert!(daemon_report_verified(
+            "Daemon remote upload job submitted\n\
+             Final: job state=Complete stage=remote_s3_transfer_complete\n"
+        ));
+        assert!(!daemon_report_verified(
+            "Final: job state=Complete stage=remote_s3_transfer_complete\n\
+             Final: job state=Failed stage=catalogue_publication\n"
+        ));
+        assert!(!daemon_report_verified(
+            "Final: job state=Complete stage=remote_s3_transfer_complete\n\
+             transfer worker reported additional output\n"
+        ));
+        assert!(!daemon_report_verified(
+            "Final: job state=Complete stage=remote_s3_transfer_only\n"
+        ));
     }
 
     fn executable(path: &Path, body: &str) {

@@ -2,9 +2,9 @@
 
 Status: dependency-ordered planning backlog
 
-Version: 1.27.5
+Version: 1.27.6
 
-Updated: 2026-07-19
+Updated: 2026-07-23
 
 ## How to use this backlog
 
@@ -1278,7 +1278,10 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   reviewed daemon socket; the paired DASObjectStore remote client must attach
   SHA-256 metadata and report the terminal
   ``remote_s3_transfer_complete`` state only after provider verification,
-  two-copy placement settlement, and catalogue publication. The DASServer
+  the logical ObjectStore's required-copy placement settlement, and catalogue
+  publication. The dedicated ``pinakotheke_media`` policy now requires one
+  verified copy; the historic two-copy wording is superseded and must not be
+  reintroduced as an application-global rule. The DASServer
   writer was paused on 2026-07-17 and guarded ``--reconcile-s3`` recovered 38
   provider objects (3,793,683 source bytes) through normal SSD-first ingest.
   Follow-up verification scanned 38 catalogue objects and 76 placements with
@@ -1296,10 +1299,11 @@ milestone; P2 improves a usable milestone; P3 is post-1.0.
   ``profile_catalogue_objects`` table under ``provider:garage``; three live
   completion records are now present and staging was empty after each run.
   DASObjectStore commit ``6e89fd55`` supplies the reviewed bucket handoff.
-  Keep this item open: the current remote-completion contract records verified
-  externally replicated provider placement, while this acceptance contract
-  additionally requires automatic settlement into the store's two managed HDD
-  copies and a fresh installed-Firefox capture proof.
+  Pinakotheke ``1.27.6`` removes the last parser/documentation ambiguity:
+  ``submit_to_daemon`` must be explicitly present and true, and only one final
+  daemon event may authorize settlement. Transfer-only output, multiple final
+  events, or trailing contradictory output fails closed. Local release checks,
+  DASServer deployment, and live verification remain before closure.
 
 - [x] **XIMG-110 P0 — Generalize trusted-play progressive video capture.**
   Remove the accidental single-source restriction from the first-party capture

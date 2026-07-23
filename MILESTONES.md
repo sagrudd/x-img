@@ -2,9 +2,9 @@
 
 Status: 1.0 stable release
 
-Version: 1.27.5
+Version: 1.27.6
 
-Updated: 2026-07-19
+Updated: 2026-07-23
 
 Product identity: Pinakotheke is canonical from v1.0.0 at
 `sagrudd/pinakotheke`; `x-img` remains only where documented compatibility or
@@ -1408,6 +1408,24 @@ browse/play cycle demonstrating the frames and settled toolbar transition.
   ``pinakotheke_media`` store has no folder-profile binding and the current
   DASObjectStore application-auth surface has no exact-object delete operation;
   raw S3 deletion is explicitly not accepted as release evidence.
+
+## 1.27.6 — Unambiguous daemon-authoritative capture completion
+
+- The capture helper requires an explicit ``submit_to_daemon: true`` and an
+  absolute reviewed daemon socket; provider-only compatibility is removed.
+- Only one terminal remote-client event is accepted, it must be the final
+  non-empty result, and it must report ``Complete`` at
+  ``remote_s3_transfer_complete``.
+- Transfer-only success, missing or repeated terminal events, and a success
+  followed by contradictory output all fail closed before gallery settlement.
+- Placement acceptance follows the reviewed logical ObjectStore policy. The
+  dedicated ``pinakotheke_media`` store currently requires one verified copy;
+  Pinakotheke does not impose a stale global two-copy rule.
+- Compatibility-sensitive review used DASObjectStore commit
+  ``91812ec130d3a41528cbcb76ad3790086d2098a7`` and its current authoritative
+  single-file remote-completion contract. The optional all-sibling check remains
+  intentionally pinned to older Monas/DASObjectStore revisions and reported
+  that drift; the public x-img-owned contract and clean-build checks pass.
 
 ## 1.27.5 — Credential-free segmented retrieval provenance
 

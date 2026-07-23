@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.27.6 - 2026-07-23
+
+- Makes ``submit_to_daemon: true`` an explicit mandatory capture-helper
+  configuration field and removes the documented provider-only compatibility
+  path.
+- Accepts a DASObjectStore upload only when one authoritative completion event
+  is the final non-empty remote-client result; transfer-only, ambiguous, and
+  contradictory terminal output fails closed.
+
 ## 1.27.5 - 2026-07-19
 
 - Supplies clear HLS/DASH assembly with the credential-free canonical page
